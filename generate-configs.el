@@ -499,22 +499,16 @@ Returns the install script content as a string."
 
     ;; Services discovery
     (push "# Copy services discovery (dashboard + swank)" lines)
-    ;; Services topology is YARD OUTPUT and now travels in generated/,
-    ;; not in the Captain's dot-files tree.  Falls back to the old path so
-    ;; an overlay checkout that has not been regenerated since the move
-    ;; still installs correctly.
+    ;; Services topology is YARD OUTPUT and travels in generated/, never in
+    ;; the Captain's dot-files tree.
     (push "echo \"Installing services discovery...\"" lines)
     (push "mkdir -p \"$TARGET_DIR/generated\"" lines)
-    ;; Legacy path first, generated/ last: when both exist the canonical
-    ;; copy is applied second and wins.
     (if is-base
         (progn
-          (push "for f in \"$SCRIPT_DIR/dot-files/emacs.d/etc/\"*services-generated.el \\" lines)
-          (push "         \"$SCRIPT_DIR/generated/\"*services-generated.el; do" lines)
+          (push "for f in \"$SCRIPT_DIR/generated/\"*services-generated.el; do" lines)
           (push "    [ -f \"$f\" ] && cp \"$f\" \"$TARGET_DIR/generated/\"" lines)
           (push "done" lines))
-      (push "for svc_file in \"$SCRIPT_DIR/dot-files/emacs.d/etc/\"*-services-generated.el \\" lines)
-      (push "                \"$SCRIPT_DIR/generated/\"*-services-generated.el; do" lines)
+      (push "for svc_file in \"$SCRIPT_DIR/generated/\"*-services-generated.el; do" lines)
       (push "    if [ -f \"$svc_file\" ]; then" lines)
       (push "        cp \"$svc_file\" \"$TARGET_DIR/generated/\"" lines)
       (push "    fi" lines)
@@ -864,37 +858,24 @@ Examples:
 
     ;; Generate Elisp services file (base or overlay, using prefix).
     ;;
-    ;; Written to TWO places during the skewed-emacs -> basilisk move:
+    ;; Lands in generated/ ONLY.  This is yard output: it describes what the
+    ;; stack composes to, is derived entirely from services.sexp, and has no
+    ;; business in dot-files/, which is the Captain's Emacs configuration and
+    ;; belongs to the skewed-emacs repo.  Keeping the two apart is what let
+    ;; the stack machinery be lifted out of that repo cleanly.
     ;;
-    ;;   generated/                 -- the new home.  Yard output belongs in
-    ;;                                 the yard, and this directory is what
-    ;;                                 gets bind-mounted to /etc/basilisk/
-    ;;                                 inside every container, following the
-    ;;                                 /etc/cyclops/cyclops.sexp convention.
-    ;;                                 Mounting each stack's OWN generated/
-    ;;                                 at one fixed path is also what answers
-    ;;                                 "which stack am I" inside a container.
-    ;;
-    ;;   dot-files/emacs.d/etc/     -- the old home, kept writing for now.
-    ;;                                 compose-dev still copies from here into
-    ;;                                 running containers, and services-
-    ;;                                 discovery.el still falls back to it, so
-    ;;                                 dropping it before the mount is proven
-    ;;                                 would take out dashboard and SLIME
-    ;;                                 discovery everywhere at once.
-    ;;
-    ;; Remove the dot-files write, and compose-dev's copy step, once a stack
-    ;; has booted against /etc/basilisk/ -- not before.
+    ;; It reaches a running container by compose-dev copying it in; the
+    ;; consumer, services-discovery.el, is unchanged and still reads it from
+    ;; the container's own dot-files tree.
     (let* ((elisp-name (if (string-empty-p skewed-gen-output-prefix)
                            "services-generated.el"
                          (format "%sservices-generated.el" skewed-gen-output-prefix)))
            (generated-dir (expand-file-name "generated/" skewed-gen-output-dir))
-           (elisp-body (skewed--generate-elisp config)))
+           (elisp-file (expand-file-name elisp-name generated-dir)))
       (make-directory generated-dir t)
-      (dolist (target (list (expand-file-name elisp-name generated-dir)
-                            (expand-file-name elisp-name elisp-dir)))
-        (with-temp-file target (insert elisp-body))
-        (message "Generated: %s" target)))
+      (with-temp-file elisp-file
+        (insert (skewed--generate-elisp config)))
+      (message "Generated: %s" elisp-file))
 
     ;; Generate install script -- for host OVERLAYS only.  A base repo is
     ;; the thing you run the stack FROM, not something you install into

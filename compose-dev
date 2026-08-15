@@ -46,62 +46,36 @@ $_devs}"
 
 
 # =============================================================================
-# STANDALONE BOOTSTRAP
+# NO STANDALONE BOOTSTRAP.  CLONE THE REPO.
 #
-# If no docker-compose.yml sits beside this script, assume compose-dev was
-# downloaded standalone (no repo clone). The skewed-emacs image ships its own
-# repo snapshot under /home/emacs-user/skewed-emacs/, so we extract the
-# runtime files (docker-compose.yml, generate-env.sh, mcp/) from the image.
-# To re-bootstrap fresh copies later, delete those files and rerun.
-# Note: runs before the color/log helpers are defined, hence raw printf.
+# There used to be a bootstrap_from_image() here: downloaded standalone with
+# no clone, it would create a container from the skewed-emacs image and
+# docker-cp docker-compose.yml, generate-env.sh and mcp/ back out of the
+# repo snapshot baked inside it.
+#
+# Removed 2026-08-15 (Dave: "no more tricks with extracting yards from
+# images").  It only ever existed because the stack machinery lived in the
+# skewed-emacs repo and therefore in its image; once the yard is its own
+# repo, the honest instruction is the obvious one:
+#
+#     git clone <basilisk>  &&  cd basilisk  &&  ./basilisk up
+#
+# That also removes a genuinely confusing coupling -- the image is a crew
+# member's quarters, not a delivery vehicle for the shipyard -- and one
+# whole class of staleness, where a bootstrapped directory kept running
+# whatever the image happened to carry.
+#
+# Anything running from a checkout has docker-compose.yml beside it, so
+# there is nothing to detect and nothing to fetch.
 # =============================================================================
-bootstrap_from_image() {
-    _bfi_image="gornskew/${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}"
 
-    if ! command -v docker > /dev/null 2>&1 || ! docker info > /dev/null 2>&1; then
-        printf '%s\n' "[ERROR] No docker-compose.yml found beside compose-dev (standalone mode)," >&2
-        printf '%s\n' "        and docker is not available to bootstrap it from ${_bfi_image}." >&2
-        printf '%s\n' "        Install/start docker, or clone the full repo instead:" >&2
-        printf '%s\n' "        https://github.com/gornskew/skewed-emacs" >&2
-        exit 1
-    fi
-
-    printf '%s\n' "[INFO] No docker-compose.yml beside compose-dev - standalone mode."
-    printf '%s\n' "[INFO] Bootstrapping runtime files from image ${_bfi_image} ..."
-
-    if ! docker image inspect "$_bfi_image" > /dev/null 2>&1; then
-        docker pull "$_bfi_image" || {
-            printf '%s\n' "[ERROR] Could not pull ${_bfi_image}" >&2
-            exit 1
-        }
-    fi
-
-    _bfi_cid="$(docker create "$_bfi_image")" || exit 1
-    for _bfi_item in docker-compose.yml generate-env.sh mcp; do
-        if [ ! -e "${SCRIPT_DIR}/${_bfi_item}" ]; then
-            docker cp "${_bfi_cid}:/home/emacs-user/skewed-emacs/${_bfi_item}" \
-                "${SCRIPT_DIR}/${_bfi_item}" || {
-                docker rm -f "$_bfi_cid" > /dev/null 2>&1
-                printf '%s\n' "[ERROR] Could not extract ${_bfi_item} from image" >&2
-                exit 1
-            }
-        fi
-    done
-    docker rm -f "$_bfi_cid" > /dev/null 2>&1
-    chmod +x "${SCRIPT_DIR}/generate-env.sh" "${SCRIPT_DIR}/mcp/mcp-exec" 2>/dev/null || true
-    printf '%s\n' "[INFO] Bootstrap complete: docker-compose.yml, generate-env.sh, mcp/"
-}
-
-[ -f "./docker-compose.yml" ] || bootstrap_from_image
-
-# Standalone mode (no clone beside compose-dev): generate-env.sh has no git
-# branch to detect and falls back to master, while the runtime files came
-# from ${EMACS_IMAGE_BRANCH:-devo}. Pin the branch on EVERY run - not just
-# the bootstrap run - so restarts in the same directory do not drift back.
-if [ ! -d "${SCRIPT_DIR}/.git" ]; then
-    CURRENT_BRANCH="${CURRENT_BRANCH:-${EMACS_IMAGE_BRANCH:-devo}}"
-    export CURRENT_BRANCH
+if [ ! -f "${SCRIPT_DIR}/docker-compose.yml" ]; then
+    printf '%s\n' "[ERROR] No docker-compose.yml beside this script." >&2
+    printf '%s\n' "        Basilisk runs from a clone of its own repo:" >&2
+    printf '%s\n' "            git clone <basilisk> && cd basilisk && ./basilisk up" >&2
+    exit 1
 fi
+
 _collect_compose_files
 
 # =============================================================================
@@ -719,18 +693,20 @@ merge_mcp_configs() {
     # other skews them when the running image predates a discovery
     # change (bit us 2026-08-09: gendl-ccl vanished from the dashboard
     # Swank list on a stale image + fresh sparse overlay).
-    # Sources differ on purpose.  The *-services-generated.el files are
-    # YARD OUTPUT and now live in generated/; services-discovery.el is
-    # Emacs CONFIGURATION and stays in the Captain's dot-files tree.  That
-    # split is the whole point of the basilisk move -- see MIGRATION.md.
-    # The old dot-files path is still searched for the generated files so
-    # a checkout that has not been regenerated since the move keeps working.
-    # ORDER MATTERS: legacy path first, generated/ last, so that when both
-    # exist the canonical copy is applied second and wins.  A stale file
-    # left in dot-files from an earlier install must not overwrite fresh
-    # yard output.
-    for _overlay in "${SCRIPT_DIR}/dot-files/emacs.d/etc/"*-services-generated.el \
-                    "${SCRIPT_DIR}/generated/"*-services-generated.el \
+    # Sources differ on purpose.  services-generated.el files are YARD
+    # OUTPUT and live in generated/; services-discovery.el is Emacs
+    # CONFIGURATION and stays in the Captain's dot-files tree.  That split
+    # is the whole point of the basilisk move -- see MIGRATION.md.
+    #
+    # The glob is *services-generated.el, NOT *-services-generated.el, and
+    # the missing dash is load-bearing.  It has to match the unprefixed
+    # BASE file as well as the <host>-stack- prefixed overlays.  Until the
+    # rip, the base file reached the container baked into the skewed-emacs
+    # image, so only overlays needed copying; now that the yard has left
+    # that repo the image no longer carries it, and a dashed glob would
+    # silently ship a container that knows about cyclops and the GDL units
+    # but not about skewed-emacs, gendl-sbcl or autoheal.
+    for _overlay in "${SCRIPT_DIR}/generated/"*services-generated.el \
                     "${SCRIPT_DIR}/dot-files/emacs.d/etc/services-discovery.el"; do
         [ -f "$_overlay" ] || continue
         log_info "Copying overlay: $(basename "$_overlay")"
