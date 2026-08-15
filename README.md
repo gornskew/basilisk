@@ -42,8 +42,12 @@ species, is recommended.
 
 Pilot and Comm ship as **runtimes**, not development seats: they run the
 system they were built for and carry no compiler, which is what puts them
-a few yards short of an Engineer. Both are planned for delivery on
-Allegro CL at this juncture; other Common Lisps are not ruled out.
+a few yards short of an Engineer.
+
+Every binary product builds and tests on **Allegro CL** — the supported
+platform, and where the support relationship actually is. Shipping on
+another Common Lisp is not ruled out, but an additional delivery target
+does not displace the reference one.
 
 ## Status
 
