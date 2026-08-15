@@ -443,22 +443,30 @@ Returns the install script content as a string."
     (push "#" lines)
     (push (format "# Install script for %s" label) lines)
     (push "#" lines)
-    (push "# This copies pre-generated configs to skewed-emacs." lines)
+    (push "# This copies pre-generated configs into the Basilisk checkout." lines)
     (push "# Docker Compose will automatically merge the .yml files." lines)
-    (push "# MCP configs are merged automatically by compose-dev up." lines)
+    (push "# MCP configs are merged automatically by ./basilisk up." lines)
     (push "" lines)
     (push "set -e" lines)
     (push "" lines)
+    ;; The yard moved out of skewed-emacs, so overlays install into
+    ;; basilisk now.  BASILISK_DIR is overridable for the transition: a
+    ;; box still running the stack from a skewed-emacs checkout can say
+    ;; BASILISK_DIR=../skewed-emacs ./install without editing this
+    ;; GENERATED file -- which is what hand-editing it amounts to, and
+    ;; the edit is lost on the next regeneration.
     (push "SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"" lines)
-    (push "TARGET_DIR=\"$SCRIPT_DIR/../skewed-emacs\"" lines)
+    (push "TARGET_DIR=\"${BASILISK_DIR:-$SCRIPT_DIR/../basilisk}\"" lines)
     (push "" lines)
     (push (format "echo \"Installing %s...\"" label) lines)
+    (push "echo \"  from: $SCRIPT_DIR\"" lines)
+    (push "echo \"  into: $TARGET_DIR\"" lines)
     (push "echo \"\"" lines)
     (push "" lines)
     (push "# Check if target directory exists" lines)
     (push "if [ ! -d \"$TARGET_DIR\" ]; then" lines)
     (push "    echo \"Error: Target directory $TARGET_DIR does not exist\"" lines)
-    (push "    echo \"Please clone skewed-emacs first.\"" lines)
+    (push "    echo \"Clone basilisk beside this repo, or set BASILISK_DIR.\"" lines)
     (push "    exit 1" lines)
     (push "fi" lines)
     (push "" lines)

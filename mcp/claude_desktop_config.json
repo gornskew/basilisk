@@ -3,7 +3,7 @@
     "genworks-gdl-enterprise-non-smp": {
       "command": "wsl",
       "args": [
-        "/home/dcooper8/projects/skewed-emacs/mcp/mcp-exec",
+        "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
         "genworks-gdl-enterprise-non-smp",
         "--backend-host",
@@ -15,7 +15,7 @@
     "genworks-gdl-enterprise-smp": {
       "command": "wsl",
       "args": [
-        "/home/dcooper8/projects/skewed-emacs/mcp/mcp-exec",
+        "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
         "genworks-gdl-enterprise-smp",
         "--backend-host",
@@ -27,7 +27,7 @@
     "cyclops": {
       "command": "wsl",
       "args": [
-        "/home/dcooper8/projects/skewed-emacs/mcp/mcp-exec",
+        "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
         "cyclops",
         "--backend-host",
@@ -39,7 +39,7 @@
     "skewed-emacs": {
       "command": "wsl",
       "args": [
-        "/home/dcooper8/projects/skewed-emacs/mcp/mcp-exec",
+        "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
         "skewed-emacs",
         "--backend-host",
@@ -53,7 +53,7 @@
     "gendl-ccl": {
       "command": "wsl",
       "args": [
-        "/home/dcooper8/projects/skewed-emacs/mcp/mcp-exec",
+        "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
         "gendl-ccl",
         "--backend-host",
@@ -67,7 +67,7 @@
     "gendl-sbcl": {
       "command": "wsl",
       "args": [
-        "/home/dcooper8/projects/skewed-emacs/mcp/mcp-exec",
+        "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
         "gendl-sbcl",
         "--backend-host",
