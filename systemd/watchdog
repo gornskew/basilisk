@@ -1,0 +1,139 @@
+#!/bin/sh
+# basilisk watchdog -- recover a wedged ship, or a wedged fleet.
+#
+# Invoked by basilisk-watchdog.timer.  Run by hand any time to see what it
+# thinks:  ./systemd/watchdog --dry-run
+#
+# WHAT THIS IS FOR, and what it deliberately is NOT
+# =================================================
+# autoheal already restarts any single container that flunks its Docker
+# healthcheck, and it does that within seconds.  This does not duplicate
+# that and must not fight it.  It covers the two failures autoheal cannot
+# see:
+#
+#   SHIP GONE      containers missing entirely -- the compose project is
+#                  partly or wholly down, so there is nothing for a
+#                  healthcheck to fail.  Recovery: bring it up.
+#
+#   FLEET WEDGED   containers present and nominally running, but the
+#                  Captain's lisply endpoint does not answer.  That is the
+#                  documented event-loop wedge (skewed-emacs/CLAUDE.md):
+#                  an unbounded child process blocks the single Emacs
+#                  event loop, so timers, healthcheck probes and the
+#                  lisply httpd all starve at once.  autoheal restarts the
+#                  container, but if the wedge recurs on start, the loop
+#                  never converges.  Recovery: down, then up.
+#
+# RESTRAINT IS THE POINT.  A watchdog that restarts a working stack is
+# worse than no watchdog:
+#   - it must see the SAME fault on two consecutive runs before acting,
+#     which gives autoheal its chance and rides out a slow start;
+#   - it backs off for BACKOFF_SECS after acting, so a genuinely broken
+#     box gets a restart every half hour, not every five minutes;
+#   - it does nothing at all if the stack was never started (no state).
+
+set -eu
+
+BASILISK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+STATE_DIR="${BASILISK_WATCHDOG_STATE_DIR:-/var/tmp}"
+STATE="${STATE_DIR}/basilisk-watchdog.state"
+BACKOFF_SECS="${BASILISK_WATCHDOG_BACKOFF:-1800}"
+CAPTAIN="${BASILISK_WATCHDOG_CAPTAIN:-skewed-emacs}"
+CAPTAIN_PROBE="${BASILISK_WATCHDOG_PROBE:-http://localhost:7080/lisply/ping-lisp}"
+
+DRY=0
+[ "${1:-}" = "--dry-run" ] && DRY=1
+
+log() { printf '%s basilisk-watchdog: %s\n' "$(date -Is)" "$*"; }
+
+cd "$BASILISK_DIR"
+
+# ---- observe ---------------------------------------------------------------
+
+# Services this stack is supposed to be running, straight from compose so
+# it needs no list of its own to drift.
+expected=$(docker compose config --services 2>/dev/null || true)
+if [ -z "$expected" ]; then
+    log "cannot read compose config in $BASILISK_DIR; nothing to do"
+    exit 0
+fi
+
+missing=""
+for svc in $expected; do
+    cid=$(docker compose ps -q "$svc" 2>/dev/null || true)
+    if [ -z "$cid" ]; then
+        missing="$missing $svc"
+        continue
+    fi
+    running=$(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null || echo false)
+    [ "$running" = "true" ] || missing="$missing $svc"
+done
+
+# Never-started stacks are not this tool's business -- if every service is
+# absent, the box is deliberately down or has not booted yet.
+n_expected=$(printf '%s\n' $expected | wc -l)
+n_missing=$(printf '%s\n' $missing | grep -c . || true)
+if [ "$n_missing" -ge "$n_expected" ]; then
+    log "all services absent; stack is down by choice or not yet started -- standing by"
+    rm -f "$STATE"
+    exit 0
+fi
+
+captain_wedged=0
+if [ -z "$missing" ]; then
+    if ! docker exec "$CAPTAIN" curl -fsS --max-time 8 "$CAPTAIN_PROBE" >/dev/null 2>&1; then
+        captain_wedged=1
+    fi
+fi
+
+if [ -z "$missing" ] && [ "$captain_wedged" -eq 0 ]; then
+    rm -f "$STATE"
+    exit 0
+fi
+
+if [ -n "$missing" ]; then
+    fault="ship"; detail="missing:$missing"
+else
+    fault="fleet"; detail="captain ${CAPTAIN} not answering ${CAPTAIN_PROBE}"
+fi
+
+# ---- confirm before acting -------------------------------------------------
+
+prev_fault=""; prev_reset=0
+if [ -f "$STATE" ]; then
+    # shellcheck disable=SC1090
+    . "$STATE" 2>/dev/null || true
+    prev_fault="${LAST_FAULT:-}"; prev_reset="${LAST_RESET:-0}"
+fi
+now=$(date +%s)
+
+if [ "$prev_fault" != "$fault" ]; then
+    log "observed ${fault} fault (${detail}); waiting for a second look before acting"
+    printf 'LAST_FAULT=%s\nLAST_RESET=%s\n' "$fault" "$prev_reset" > "$STATE"
+    exit 0
+fi
+
+since=$((now - prev_reset))
+if [ "$since" -lt "$BACKOFF_SECS" ]; then
+    log "${fault} fault persists (${detail}) but last recovery was ${since}s ago; backing off"
+    exit 0
+fi
+
+# ---- act -------------------------------------------------------------------
+
+if [ "$DRY" -eq 1 ]; then
+    log "DRY RUN: would recover ${fault} (${detail})"
+    exit 0
+fi
+
+if [ "$fault" = "ship" ]; then
+    log "recovering ship: ${detail} -- ./basilisk up -d"
+    ./basilisk up -d || log "up failed"
+else
+    log "recovering fleet: ${detail} -- ./basilisk down then up -d"
+    ./basilisk down || log "down failed"
+    ./basilisk up -d || log "up failed"
+fi
+
+printf 'LAST_FAULT=%s\nLAST_RESET=%s\n' "$fault" "$now" > "$STATE"
+log "recovery attempted; next recovery no sooner than ${BACKOFF_SECS}s from now"

@@ -1,154 +1,96 @@
 #!/bin/sh
-# Install skewed-emacs as a systemd service on the current machine.
+# Install Basilisk as systemd units on this machine.
 #
-# Substitutes %%USER%% with the invoking user and derives SKEWED_DIR
-# from the script's own location (../ relative to systemd/).
+#   cd /path/to/basilisk && sh systemd/install
 #
-# Usage (run as the user who will own the service, with sudo available):
+# Installs THREE units, all generated from the templates beside this
+# script by substituting the invoking user and this clone's path:
 #
-#   cd /path/to/skewed-emacs
-#   sh systemd/install
+#   basilisk.service           the stack; starts on boot, restarts on failure
+#   basilisk-watchdog.service  recovery for a wedged ship or fleet
+#   basilisk-watchdog.timer    runs the watchdog every 5 minutes
 #
-# Pick a non-full image variant for the service (injected as an
-# Environment= line; compose-dev init then pins it in .env):
+# ONE UNIT, NOT ONE PER HOST.  Until 2026-08-15 every *-stack repo shipped
+# its own near-identical copy of the service file, and the whole difference
+# between all five was the image variant plus a description string.  Host
+# specifics now arrive as DATA: each stack's ./install writes
+# systemd/host.env into this clone, and the unit reads it.  Nothing about a
+# particular box belongs in these templates.
 #
-#   SKEWED_VARIANT=default sh systemd/install
+# Also retires the legacy skewed-emacs.service, which pointed at a
+# compose-dev that no longer exists in the skewed-emacs repo.
 #
-# Or, to override user/dir explicitly:
-#
-#   SKEWED_USER=dave SKEWED_DIR=/home/dave/projects/skewed-emacs \
-#     sh systemd/install
+# Overrides:  BASILISK_USER=  BASILISK_DIR=  SYSTEMD_DIR=
 
-set -e
+set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# TEMPLATE override lets stack repos install their host-specific unit
-# (variant-pinned) under the same service name, replacing any legacy
-# install:  TEMPLATE=/path/to/stack/systemd/skewed-emacs.service \
-#             sh systemd/install
-TEMPLATE="${TEMPLATE:-${SCRIPT_DIR}/skewed-emacs.service}"
-SERVICE_NAME="skewed-emacs"
+BASILISK_DIR="${BASILISK_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+BASILISK_USER="${BASILISK_USER:-$(logname 2>/dev/null || echo "${USER:-$(id -un)}")}"
 SYSTEMD_DIR="${SYSTEMD_DIR:-/etc/systemd/system}"
+LEGACY="skewed-emacs.service"
 
-# ---- Stack-vs-factory clash guard -------------------------------------------
-# A unit carrying an EMACS_IMAGE_VARIANT pin was installed by a *-stack
-# repo (host-specific IaC).  Installing the unpinned factory template
-# over it would silently drop the host's variant pin -- refuse unless
-# forced.  Stack-template installs (pinned templates) may always
-# replace: that takeover is the intended direction.
-EXISTING_UNIT="${SYSTEMD_DIR}/${SERVICE_NAME}.service"
-if [ -f "${EXISTING_UNIT}" ] \
-   && grep -q "EMACS_IMAGE_VARIANT" "${EXISTING_UNIT}" \
-   && ! grep -q "EMACS_IMAGE_VARIANT" "${TEMPLATE}" \
-   && [ -z "${SKEWED_VARIANT:-}" ] \
-   && [ "${FORCE:-0}" != "1" ]; then
-    existing_pin=$(sed -n 's/^Environment=EMACS_IMAGE_VARIANT=//p' "${EXISTING_UNIT}" | head -1)
-    echo "ERROR: ${EXISTING_UNIT} is a stack-installed unit (variant pin: ${existing_pin:-unknown})."
-    echo "       Installing the factory template would drop this host's pin."
-    echo "       Use the stack repo's installer instead:  sh <host>-stack/systemd/install"
-    echo "       Or override deliberately:  FORCE=1 sh systemd/install"
-    exit 1
-fi
-
-# Optional image-variant pin for the factory template (stack templates
-# carry their own pin; SKEWED_VARIANT is refused there to avoid two
-# Environment= lines fighting).
-if [ -n "${SKEWED_VARIANT:-}" ]; then
-    case "${SKEWED_VARIANT}" in
-        lite|default|tui|aituis|gui|full|gui-aituis) ;;
-        *) echo "ERROR: SKEWED_VARIANT must be one of: lite default tui aituis gui full gui-aituis"; exit 1 ;;
-    esac
-    if grep -q "EMACS_IMAGE_VARIANT" "${TEMPLATE}"; then
-        echo "ERROR: template ${TEMPLATE} already pins EMACS_IMAGE_VARIANT; unset SKEWED_VARIANT"
-        exit 1
-    fi
-fi
-
-# ---- Resolve user and skewed-emacs directory --------------------------------
-
-SKEWED_USER="${SKEWED_USER:-$(logname 2>/dev/null || echo "${USER:-$(id -un)}" )}"
-SKEWED_DIR="${SKEWED_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
-
-echo "=== Skewed Emacs systemd deploy ==="
-echo "  User       : ${SKEWED_USER}"
-echo "  Skewed dir : ${SKEWED_DIR}"
-echo "  Service    : ${SYSTEMD_DIR}/${SERVICE_NAME}.service"
+echo "=== Basilisk systemd install ==="
+echo "  User         : ${BASILISK_USER}"
+echo "  Basilisk dir : ${BASILISK_DIR}"
+echo "  Unit dir     : ${SYSTEMD_DIR}"
 echo ""
 
-# ---- Preflight checks -------------------------------------------------------
+# ---- preflight --------------------------------------------------------------
 
-if [ ! -f "${TEMPLATE}" ]; then
-    echo "ERROR: Template not found: ${TEMPLATE}"; exit 1
-fi
+[ -x "${BASILISK_DIR}/basilisk" ] || {
+    echo "ERROR: no executable ${BASILISK_DIR}/basilisk"
+    echo "       Basilisk runs from a clone of its own repo; see README.md."
+    exit 1
+}
+id "${BASILISK_USER}" >/dev/null 2>&1 || { echo "ERROR: no such user ${BASILISK_USER}"; exit 1; }
+groups "${BASILISK_USER}" 2>/dev/null | grep -qw docker || {
+    echo "WARNING: ${BASILISK_USER} is not in the docker group."
+    echo "         Add with: sudo usermod -aG docker ${BASILISK_USER}"
+}
+[ -x "${SCRIPT_DIR}/watchdog" ] || chmod +x "${SCRIPT_DIR}/watchdog" 2>/dev/null || true
 
-if [ ! -x "${SKEWED_DIR}/compose-dev" ]; then
-    echo "ERROR: compose-dev not found/executable at ${SKEWED_DIR}/compose-dev"; exit 1
-fi
+# ---- install units ----------------------------------------------------------
 
-if ! id "${SKEWED_USER}" > /dev/null 2>&1; then
-    echo "ERROR: User ${SKEWED_USER} does not exist"; exit 1
-fi
+for unit in basilisk.service basilisk-watchdog.service basilisk-watchdog.timer; do
+    [ -f "${SCRIPT_DIR}/${unit}" ] || { echo "ERROR: missing template ${unit}"; exit 1; }
+    sed -e "s|%%USER%%|${BASILISK_USER}|g" \
+        -e "s|%%BASILISK_DIR%%|${BASILISK_DIR}|g" \
+        "${SCRIPT_DIR}/${unit}" \
+      | sudo tee "${SYSTEMD_DIR}/${unit}" > /dev/null
+    echo "Wrote ${SYSTEMD_DIR}/${unit}"
+done
 
-if ! groups "${SKEWED_USER}" 2>/dev/null | grep -qw docker; then
-    echo "WARNING: ${SKEWED_USER} is not in the docker group."
-    echo "         Add with: usermod -aG docker ${SKEWED_USER}"
-fi
-
-# ---- Substitute template and install ----------------------------------------
-
-UNIT_CONTENT=$(sed \
-    -e "s|%%USER%%|${SKEWED_USER}|g" \
-    -e "s|/home/%%USER%%/projects/skewed-emacs|${SKEWED_DIR}|g" \
-    "${TEMPLATE}")
-
-if [ -n "${SKEWED_VARIANT:-}" ]; then
-    UNIT_CONTENT=$(printf '%s\n' "${UNIT_CONTENT}" | sed \
-        "s|^Environment=HOME=.*|&\nEnvironment=EMACS_IMAGE_VARIANT=${SKEWED_VARIANT}|")
-    echo "Pinning image variant in unit: ${SKEWED_VARIANT}"
-fi
-
-if [ -f "${SYSTEMD_DIR}/${SERVICE_NAME}.service" ]; then
-    echo "--- Existing service (will be replaced) ---"
-    cat "${SYSTEMD_DIR}/${SERVICE_NAME}.service"
+if [ -f "${BASILISK_DIR}/systemd/host.env" ]; then
     echo ""
-fi
-
-printf '%s\n' "${UNIT_CONTENT}" | sudo tee "${SYSTEMD_DIR}/${SERVICE_NAME}.service" > /dev/null
-echo "Wrote ${SYSTEMD_DIR}/${SERVICE_NAME}.service"
-
-sudo systemctl daemon-reload
-sudo systemctl enable "${SERVICE_NAME}"
-echo "Enabled ${SERVICE_NAME} (starts on boot)"
-
-# ---- Optionally start now ---------------------------------------------------
-
-if systemctl is-active --quiet "${SERVICE_NAME}" 2>/dev/null; then
-    echo ""
-    echo "Service is already running. To apply changes:"
-    echo "  sudo systemctl restart ${SERVICE_NAME}"
+    echo "Host injection in effect (${BASILISK_DIR}/systemd/host.env):"
+    sed 's/^/    /' "${BASILISK_DIR}/systemd/host.env"
 else
     echo ""
-    printf "Start %s now? [y/N] " "${SERVICE_NAME}"
-    read -r answer
-    case "$answer" in
-        [Yy]*)
-            sudo systemctl start "${SERVICE_NAME}"
-            echo "Waiting for containers..."
-            sleep 10
-            sudo systemctl status "${SERVICE_NAME}" --no-pager || true
-            echo ""
-            echo "Verify enterprise container health:"
-            echo "  docker exec genworks-gdl-enterprise-smp curl -sf http://localhost:9098/lisply/ping-lisp"
-            ;;
-        *)
-            echo "Start when ready: sudo systemctl start ${SERVICE_NAME}"
-            ;;
-    esac
+    echo "No systemd/host.env in this clone -- the stack will start on image"
+    echo "defaults.  A host stack's ./install writes one; run it if this box"
+    echo "should pin an image variant."
 fi
 
+# ---- retire the legacy unit -------------------------------------------------
+
+if [ -f "${SYSTEMD_DIR}/${LEGACY}" ]; then
+    echo ""
+    echo "Retiring legacy ${LEGACY} (it points at a compose-dev that no"
+    echo "longer exists in the skewed-emacs repo)."
+    sudo systemctl disable --now "${LEGACY}" >/dev/null 2>&1 || true
+    sudo mv "${SYSTEMD_DIR}/${LEGACY}" "${SYSTEMD_DIR}/${LEGACY}.retired-$(date +%Y%m%d)"
+    echo "  moved aside to ${LEGACY}.retired-$(date +%Y%m%d)"
+fi
+
+# ---- enable -----------------------------------------------------------------
+
+sudo systemctl daemon-reload
+sudo systemctl enable basilisk.service >/dev/null
+sudo systemctl enable basilisk-watchdog.timer >/dev/null
 echo ""
-echo "=== Done ==="
-echo "Useful commands:"
-echo "  sudo systemctl status ${SERVICE_NAME}"
-echo "  sudo journalctl -u ${SERVICE_NAME} -f"
-echo "  sudo systemctl stop|restart ${SERVICE_NAME}"
+echo "Enabled basilisk.service (starts on boot) and basilisk-watchdog.timer."
+echo ""
+echo "Start now with:      sudo systemctl start basilisk"
+echo "Watch recovery with: journalctl -u basilisk-watchdog -f"
+echo "Check the watchdog:  ${BASILISK_DIR}/systemd/watchdog --dry-run"

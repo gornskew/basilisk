@@ -1,0 +1,21 @@
+# Companion to basilisk.service.  Covers the two failures autoheal cannot
+# see: containers missing entirely, and a Captain whose lisply endpoint has
+# stopped answering.  See ./watchdog for the restraint rules.
+[Unit]
+Description=Basilisk watchdog (recover a wedged ship or fleet)
+Documentation=https://gitlab.genworks.com/gornskew/basilisk
+After=docker.service basilisk.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=%%USER%%
+Group=docker
+WorkingDirectory=%%BASILISK_DIR%%
+Environment=HOME=/home/%%USER%%
+EnvironmentFile=-%%BASILISK_DIR%%/systemd/host.env
+ExecStart=%%BASILISK_DIR%%/systemd/watchdog
+# A recovery is a down+up of the whole stack; give it room.
+TimeoutStartSec=600
+StandardOutput=journal
+StandardError=journal
