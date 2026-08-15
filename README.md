@@ -40,6 +40,11 @@ monolithic KBE server deployment. All combos are possible, but having a
 Captain, and having that Captain be of the skewed-emacs or a derived
 species, is recommended.
 
+Pilot and Comm ship as **runtimes**, not development seats: they run the
+system they were built for and carry no compiler, which is what puts them
+a few yards short of an Engineer. Both are planned for delivery on
+Allegro CL at this juncture; other Common Lisps are not ruled out.
+
 ## Status
 
 **Scaffold.** The framework still lives in `skewed-emacs/` and is fully
