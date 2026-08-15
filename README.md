@@ -1,15 +1,24 @@
 # Basilisk
 
-**The docker compose stack formerly known as the "skewed-emacs stack."**
+**An open-source, AI-enabled engineering workstation, defined entirely
+in code and able to run on any physical hardware minimally sufficient to
+carry it.** (The docker compose stack formerly known as the
+"skewed-emacs stack.")
 
-Basilisk is a container composition framework: it turns a bare box into a
-crewed vessel — an Emacs console, one or more Common Lisp engines, a
-reverse proxy at the conn, a watchdog — wired together with immediate
-connectivity for HTTP, SLIME/Swank and MCP.
+Basilisk is a container composition framework — infrastructure as code
+aimed at a target most IaC tooling never had in mind: a live symbolic
+computing environment a human and an AI agent can both work in. It turns
+a bare box into a crewed vessel — an Emacs console, one or more Common
+Lisp engines, a reverse proxy at the conn, a watchdog — wired together
+with immediate connectivity for HTTP, SLIME/Swank and MCP.
 
-It is also the open-source foundation under the Gornskew Enterprises
-product line, whose paid binaries ride in it: **Cyclops** (the reverse
-proxy at the conn) and **Eyes Only** (the status board).
+It is also a class of starship, and this repository is the yard that
+lays them down: the roster is a file, so any yard with that file builds
+the same ship, anywhere you care to put one.
+
+It is the open-source foundation under the Gornskew Enterprises product
+line, whose paid binaries ride in it: **Cyclops** (the reverse proxy at
+the conn, $99) and **Eyes Only** (the status board, $69).
 
 ## Why this repo exists
 
@@ -51,12 +60,19 @@ does not displace the reference one.
 
 ## Status
 
-**Scaffold.** The framework still lives in `skewed-emacs/` and is fully
-working there. Nothing has moved yet.
+**Migrated and running** (2026-08-15). The yard moved here from
+`skewed-emacs/` and was ripped out there: that repo is the Captain only —
+no compose file, no `compose-dev`, no generator, and deliberately no
+supported way to start a stack from it. `narad` runs from this clone,
+verified across adopt, restart and full stop/start cycles.
+
+Still open: the `mcp/` per-file split; `sally`, `shelly` and `balaram`
+not yet cut over (pull + `./install` + restart at deploy time); a
+cold-boot test of `basilisk.service`.
 
 See [MIGRATION.md](MIGRATION.md) for the file-by-file manifest of what
-moves here, what stays, what breaks in the process, and the one genuinely
-hard problem (`bootstrap_from_image`).
+moved, what stayed, what broke on the way, and the one genuinely hard
+problem (`bootstrap_from_image`).
 
 ## Origin of record
 

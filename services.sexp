@@ -1,4 +1,4 @@
-;;; services.sexp - Single Source of Truth for skewed-emacs stack
+;;; services.sexp - Single Source of Truth for the Basilisk stack
 ;;; -*- mode: lisp-data; -*-
 ;;;
 ;;; This file defines the base services for the stack.
