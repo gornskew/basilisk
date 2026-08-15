@@ -67,40 +67,6 @@
   :request-timeout-ms 30000)
  ;; :exec-path-wsl removed - now derived from SKEWED_CLONE_PATH env var at merge time
 
- :skewed-search-config
- (:index-path "~/.emacs.d/sideloaded/lisply-backend/skewed-search-index.sexp"
-  :preextract-snippets t
-  :preextract-max-lines 24
-  :preextract-max-chars 1200
-  :sources ((:name "gendl"
-             :entries ((:root "gendl"
-                        :repo "gendl"
-                        :repo-url "https://gitlab.common-lisp.net/gendl/gendl"
-                        :repo-root "gendl")))
-            (:name "skewed-emacs"
-             :entries ((:root "skewed-emacs"
-                        :repo "skewed-emacs"
-                        :repo-url "https://github.com/gornskew/skewed-emacs"
-                        :repo-root "skewed-emacs")))
-
-	    (:name "training"
-             :entries ((:root "training"
-                        :repo "training"
-                        :repo-url "https://github.com/gornskew/training"
-                        :repo-root "training")
-                       )))
-
-  :ignore-dirs (".git" "node_modules" "dist" "build" "vendor" "target" ".cache" "logs" "tmp" "docker")
-	
-  :exclude-paths ("**/elpa/**" )
-  :extensions (:default (".lisp" ".lsp" ".cl" ".gdl" ".gendl" ".asd" ".isc"
-				 ".md" ".markdown" ".org" ".txt" ".rst"
-				 ".el" ".js" ".ts" ".json" ".yml" ".yaml" ".html" ".css")
-               :lisp (".lisp" ".lsp" ".cl" ".asd" ".el")
-               :gendl (".gendl")
-               :gdl (".gdl" ".gendl" ".lisp" ".lsp" ".cl")
-               :markdown (".md" ".markdown" ".org" ".rst")))
-
  :services
  (
   (:name "skewed-emacs"
