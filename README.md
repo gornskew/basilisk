@@ -25,20 +25,20 @@ the structural answer to it:
 | repo | what it is | ship metaphor |
 |---|---|---|
 | `basilisk` | the compose framework, the fitting catalogue, the base stack definition | **the shipyard** |
-| `skewed-emacs` | an Emacs configuration and the image carrying it | **the Cap'n** — one fitting among several |
+| `skewed-emacs` | an Emacs configuration and the image carrying it | **the Captain** — one fitting among several |
 | `cyclops` | reverse proxy, paid binary | **the Pilot** |
-| `eyes-only` | status board, paid binary | **the board** |
+| `eyes-only` | status board, paid binary | **the Communications Officer** (Comm) — duties include running the board that any ship can project on its bridge viewscreen or other display |
 
-A Basilisk-class ship carries a Cap'n *by definition of the class* — the
-generator refuses a roster without one. But `skewed-emacs` is that post's
-**default fitting, not its definition**. The catalogue already references
-`cyclops` and the `genworks-gdl` units purely by image name, with no repo
-coupling; `:captain` was simply the one post whose fitting happened to
-live in the same repo as the catalogue naming it.
+A Basilisk-class ship carries a Captain by default. The generator can
+warn, but does not refuse, a roster without one. `skewed-emacs` is that
+post's **default fitting**; the catalogue references fittings by image
+name, not repo name.
 
-A deployment with a Pilot and no crew of ours aboard is therefore not a
-Basilisk at all. It is a Cyclops appliance — a different vessel, which is
-a better story for a product than "a Basilisk with bits missing."
+A deployment with only a Pilot is a standalone Cyclops deployment; a
+deployment with only a ship's engineer (gendl-ccl) is a standalone
+monolithic KBE server deployment. All combos are possible, but having a
+Captain, and having that Captain be of the skewed-emacs or a derived
+species, is recommended.
 
 ## Status
 
