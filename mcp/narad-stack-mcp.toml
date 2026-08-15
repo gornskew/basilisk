@@ -1,0 +1,40 @@
+# DO NOT EDIT - Generated from services.sexp
+
+[mcp_servers.cyclops]
+command = "node"
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "cyclops", "--backend-host", "cyclops", "--http-port", "80"]
+
+[mcp_servers.cyclops.tools.cyclops__ping_lisp]
+approval_mode = "approve"
+
+[mcp_servers.cyclops.tools.cyclops__http_request]
+approval_mode = "approve"
+
+[mcp_servers.cyclops.tools.cyclops__lisp_eval]
+approval_mode = "approve"
+
+[mcp_servers.genworks-gdl-enterprise-smp]
+command = "node"
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "genworks-gdl-enterprise-smp", "--backend-host", "genworks-gdl-enterprise-smp", "--http-port", "9098"]
+
+[mcp_servers.genworks-gdl-enterprise-smp.tools.genworks-gdl-enterprise-smp__ping_lisp]
+approval_mode = "approve"
+
+[mcp_servers.genworks-gdl-enterprise-smp.tools.genworks-gdl-enterprise-smp__http_request]
+approval_mode = "approve"
+
+[mcp_servers.genworks-gdl-enterprise-smp.tools.genworks-gdl-enterprise-smp__lisp_eval]
+approval_mode = "approve"
+
+[mcp_servers.genworks-gdl-enterprise-non-smp]
+command = "node"
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "genworks-gdl-enterprise-non-smp", "--backend-host", "genworks-gdl-enterprise-non-smp", "--http-port", "9088"]
+
+[mcp_servers.genworks-gdl-enterprise-non-smp.tools.genworks-gdl-enterprise-non-smp__ping_lisp]
+approval_mode = "approve"
+
+[mcp_servers.genworks-gdl-enterprise-non-smp.tools.genworks-gdl-enterprise-non-smp__http_request]
+approval_mode = "approve"
+
+[mcp_servers.genworks-gdl-enterprise-non-smp.tools.genworks-gdl-enterprise-non-smp__lisp_eval]
+approval_mode = "approve"

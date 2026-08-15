@@ -180,6 +180,78 @@ Also note the error message at `compose-dev:66` points at
 instruction. It will want to name this repo — at its **gitlab** URL,
 since the github mirror does not exist yet — once the yard lives here.
 
+## STATUS 2026-08-15: phase 1 done — machinery populated and verified
+
+The yard is now **copied** into this repo and proven to work from here.
+Nothing has been removed from `skewed-emacs`, which is still fully
+functional and untouched.
+
+**Sequencing (Dave):** *"Once basilisk is populated with ostensibly
+working machinery, I think we just rip any stack-related stuff right out
+of skewed-emacs and direct the reader of any READMEs to basilisk as the
+slipperiest path to getting a skewed-emacs container spun up."*
+
+Copy-then-verify-then-rip, rather than the `git mv` this document
+originally proposed. It is the safer order and it is also the only one
+that actually works across two separate repositories: at no point is the
+stack unbootable, and the removal step becomes trivial once the
+replacement is known good.
+
+**Branch:** this repo tracks `devo`, for parity with `skewed-emacs` and
+`lisply-mcp`. (`eyes-only` stays on master/main "in raw-dogging
+tradition until anybody actually starts buying this stuff".)
+
+### Acceptance test: passed
+
+Regenerated all five host stacks plus the base from **this** repo's
+`generate-configs.el`:
+
+| output | result |
+|---|---|
+| sally / shelly / balaram / elsie / narad overlay compose | **byte-identical** |
+| base `docker-compose.yml` | **byte-identical** |
+| `skewed-emacs` working tree | untouched, clean |
+
+### Two changes the move required
+
+1. **`skewed-gen-fittings-file` now resolves beside the loaded generator**
+   instead of being hardcoded to `/projects/skewed-emacs/fittings.sexp`,
+   and is `setq`'d at load time rather than left to `defvar`.
+
+   The `defvar` part is not pedantry — it bit immediately. A `defvar`
+   default is evaluated only on the first load in a session and then left
+   alone (exactly the property eyes-only's `parameters.lisp` depends on
+   to survive hot reloads). With two copies of the generator side by side
+   during the move, a session that had loaded skewed-emacs's copy kept
+   pointing at **skewed-emacs's catalogue** after loading this one, and
+   generated from the wrong repo with nothing in the output to say so.
+   Caught by asserting the resolved path rather than trusting it.
+
+2. **Base-name handling.** `basilisk` joins `skewed-emacs` as a name that
+   means "this is a base, not a host overlay" — so it generates an
+   unprefixed `docker-compose.yml`, and does not get an overlay `install`
+   script (a base repo is what you run the stack *from*, not something
+   you install into another checkout).
+
+### Entanglements found while doing it, not visible from the survey
+
+- **`compose-dev` uses `SCRIPT_DIR="$(pwd)"`, not the script's own
+  location.** It must be run from the directory holding
+  `docker-compose.yml`, `generate-env.sh`, `mcp/` and `dot-files/`. That
+  is fine once the yard lives here, but it means `./basilisk` is not
+  runnable from an arbitrary directory, and the bare-one-liner story
+  needs to account for it.
+- **The generator writes into `dot-files/`.** `services-generated.el` is
+  yard *output* but lands in the Captain's configuration tree
+  (`dot-files/emacs.d/etc/`), which this document assigns to
+  `skewed-emacs`. Both repos now contain a copy. **Unresolved:** either
+  the yard owns that path (and skewed-emacs's copy becomes stale), or
+  generation targets a location the Captain's config reads from. Decide
+  before the rip, because it determines what `dot-files/` means.
+- **`compose-dev` also reads `mcp/` and expects `.git` beside it**, which
+  is why `mcp/` came across wholesale rather than per-file. The per-file
+  split proposed above is still the right end state and is still pending.
+
 ## Suggested order
 
 1. Land this manifest (done — you are reading it).
