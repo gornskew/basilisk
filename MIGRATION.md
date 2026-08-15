@@ -235,12 +235,11 @@ Regenerated all five host stacks plus the base from **this** repo's
 
 ### Entanglements found while doing it, not visible from the survey
 
-- **`compose-dev` uses `SCRIPT_DIR="$(pwd)"`, not the script's own
-  location.** It must be run from the directory holding
-  `docker-compose.yml`, `generate-env.sh`, `mcp/` and `dot-files/`. That
-  is fine once the yard lives here, but it means `./basilisk` is not
-  runnable from an arbitrary directory, and the bare-one-liner story
-  needs to account for it.
+- ~~`compose-dev` uses `SCRIPT_DIR="$(pwd)"`, not the script's own
+  location.~~ **WRONG — corrected.** Line 13 is `cd "${0%/*}"`, so the
+  script changes to its own directory *before* taking `pwd`. `SCRIPT_DIR`
+  is therefore the script's own location and `./basilisk` IS runnable
+  from anywhere. The bare-one-liner story is unaffected.
 - **The generator writes into `dot-files/`.** `services-generated.el` is
   yard *output* but lands in the Captain's configuration tree
   (`dot-files/emacs.d/etc/`), which this document assigns to
@@ -374,6 +373,60 @@ actually booted against a mount.
 
 `mcp/` came across wholesale and its per-file split is **its own
 conversation** (Dave, 2026-08-15), not part of this migration.
+
+## Does `./basilisk up` disturb the running stack? — analysed, not guessed
+
+Short answer: **it will fail, not take over.** But do not run it as-is.
+
+| fact | value |
+|---|---|
+| running stack's compose project | `skewed-emacs` |
+| its working dir | `/home/dcooper8/projects/skewed-emacs` |
+| its compose files | base + `narad-stack-compose.yml` |
+| `COMPOSE_PROJECT_NAME` set anywhere? | **no** — not in compose-dev, generate-env.sh or any `.env` |
+| so project name comes from | the directory basename → **`basilisk`** |
+| `container_name:` in base compose | explicit: `skewed-emacs`, `gendl-ccl`, `gendl-sbcl`, `autoheal` |
+| network | explicit `name: skewed-network` — shared, not project-scoped |
+
+Because the project name differs, compose sees no existing containers of
+its own. It then tries to create a container literally named
+`skewed-emacs` — and **container names are global to the daemon, not
+scoped to a project.** The result is `Conflict. The container name
+"/skewed-emacs" is already in use`, and compose aborts.
+
+So the running stack survives. `run_compose down` lives in
+`stop_services()`, not on the `up` path, and would be project-scoped
+anyway.
+
+**Three reasons not to try it regardless:**
+
+1. `/projects/basilisk` holds only `docker-compose.yml`. The narad
+   overlay is not installed here, so even a successful boot would be the
+   *base* fleet — no Pilot, no Guild units. Not narad's actual stack.
+2. There is no `.env` here; the run would generate one, mutating the
+   checkout as a side effect of a test.
+3. The shared `skewed-network` is referenced by explicit name, so both
+   projects contend for the same network object.
+
+### The real test is a deliberate cutover, and it drops the MCP link
+
+Not a parallel boot. The sequence is:
+
+1. Install the narad overlay into `/projects/basilisk` (run
+   `narad-stack/install` against it) so the file set matches what
+   `/projects/skewed-emacs` currently has.
+2. `cd /projects/skewed-emacs && ./compose-dev down`.
+3. `cd /projects/basilisk && ./basilisk up`.
+4. Verify: containers healthy, dashboard lists the right services, SLIME
+   discovery intact, `mcp__skewed-emacs` answering again.
+
+Step 2 stops the `skewed-emacs` container, which is the one carrying the
+lisply endpoint an agent session talks through — so **whoever runs this
+loses their MCP connection for the duration** and gets it back when the
+stack returns (mcp-exec respawns; ~2 min end-to-end per
+skewed-emacs/CLAUDE.md). That is an argument for Dave driving it from a
+terminal rather than an agent driving it through the thing it is
+restarting.
 
 ## Suggested order
 
