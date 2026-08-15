@@ -377,6 +377,113 @@ start_services() {
     return "$_ss_rc"
 }
 
+# =============================================================================
+# HOST CLAUDE CODE MCP REGISTRY
+#
+# There are TWO MCP client registries on a dev box and only one of them was
+# ever generated:
+#
+#   mcp/claude_desktop_config.json  -- Claude Desktop.  Generated output;
+#                                      the merge above rewrites it, so it
+#                                      follows the checkout automatically.
+#   ~/.claude.json                  -- host-side Claude Code.  Hand-
+#                                      maintained; nothing regenerated it.
+#
+# When the stack machinery moved from skewed-emacs to basilisk (2026-08-15)
+# the Desktop config followed for free and ~/.claude.json did not.  It kept
+# working only because the move was a COPY -- both mcp/mcp-exec files still
+# existed.  Deleting the old checkout would have broken every host agent
+# session, and not at deletion time: at the next session start, as servers
+# that quietly fail to launch.  Checking one registry looks like checking
+# both, which is exactly why this is now automatic.
+#
+# Deliberately conservative.  It only rewrites entries whose command already
+# points at some */mcp/mcp-exec, it writes nothing when nothing is stale
+# (the normal case), and it replaces the file atomically after a backup --
+# that file also holds live Claude Code state, so it is never rewritten
+# wholesale from a stale read.
+# =============================================================================
+refresh_host_claude_mcp() {
+    _hcm_file="${HOME}/.claude.json"
+    [ -f "$_hcm_file" ] || return 0
+
+    _hcm_exec="${SCRIPT_DIR}/mcp/mcp-exec"
+    [ -x "$_hcm_exec" ] || return 0
+
+    if ! command -v python3 > /dev/null 2>&1; then
+        log_warning "python3 not found; cannot check ~/.claude.json MCP paths"
+        log_warning "If host Claude Code MCP stops resolving, point its"
+        log_warning "mcpServers commands at ${_hcm_exec}"
+        return 0
+    fi
+
+    _hcm_out=$(CLAUDE_JSON="$_hcm_file" MCP_EXEC="$_hcm_exec" python3 - <<'PYEOF'
+import json, os, shutil, sys, tempfile
+
+path   = os.environ["CLAUDE_JSON"]
+target = os.environ["MCP_EXEC"]
+
+try:
+    with open(path) as fh:
+        raw = fh.read()
+    data = json.loads(raw)
+except Exception as exc:                      # unreadable or mid-write
+    print("SKIP %s" % exc)
+    sys.exit(0)
+
+servers = data.get("mcpServers")
+if not isinstance(servers, dict):
+    sys.exit(0)
+
+changed = []
+for name, cfg in servers.items():
+    if not isinstance(cfg, dict):
+        continue
+    cmd = cfg.get("command")
+    # Only ever retarget something that is already an mcp-exec launcher.
+    if isinstance(cmd, str) and cmd.endswith("/mcp/mcp-exec") and cmd != target:
+        cfg["command"] = target
+        changed.append(name)
+
+if not changed:
+    sys.exit(0)                               # normal case: write nothing
+
+shutil.copyfile(path, path + ".bak")
+d = os.path.dirname(path) or "."
+fd, tmp = tempfile.mkstemp(dir=d, prefix=".claude.json.")
+try:
+    with os.fdopen(fd, "w") as fh:
+        json.dump(data, fh, indent=2)
+        fh.write("\n")
+    shutil.copymode(path, tmp)
+    os.replace(tmp, path)                     # atomic
+except Exception:
+    try:
+        os.unlink(tmp)
+    except OSError:
+        pass
+    raise
+
+print("CHANGED %d %s" % (len(changed), ",".join(sorted(changed))))
+PYEOF
+) || {
+        log_warning "Could not update ~/.claude.json MCP paths"
+        return 0
+    }
+
+    case "$_hcm_out" in
+        CHANGED*)
+            log_success "Host Claude Code MCP registry retargeted at ${_hcm_exec}"
+            log_info "  ~/.claude.json updated (backup: ~/.claude.json.bak): ${_hcm_out#CHANGED }"
+            log_info "  Takes effect in the NEXT agent session, not this one."
+            ;;
+        SKIP*)
+            log_warning "Could not read ~/.claude.json (${_hcm_out#SKIP }); MCP paths unchecked"
+            ;;
+    esac
+    return 0
+}
+
 stop_services() {
     log_info "Stopping all services"
     run_compose down
@@ -656,6 +763,8 @@ merge_mcp_configs() {
             log_warning "(an older skewed-emacs image may not generate ${_cdc_src};"
             log_warning " try './compose-dev up --pull' to fetch the latest image)"
         fi
+
+        refresh_host_claude_mcp
     else
         log_warning "MCP configuration merge failed (daemon answered but merge errored)"
         log_warning "Retry with: ./compose-dev up"
