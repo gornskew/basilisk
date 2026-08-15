@@ -309,11 +309,66 @@ Note `/etc` is typically unwritable by the non-root user these images run
 as — irrelevant here, and in fact the point: the mount is `:mode "ro"`
 and the host owns the content.
 
-**Not yet implemented.** It touches the yard (generation target),
-`compose-dev` (drop the copy), the base `services.sexp` (the mount) and
-`services-discovery.el` (lookup order). Worth doing as one deliberate
-change with a live stack boot afterwards, since a mistake takes out
-dashboard and SLIME discovery on every container at once.
+### Step one done: generation now also writes `generated/`
+
+`generate-configs.el` writes the services elisp to **both**
+`generated/` (new home) and `dot-files/emacs.d/etc/` (old home) during
+the transition. Purely additive — all six compose files regenerate
+byte-identical, and every existing consumer still works. `generated/`
+now exists in basilisk and all five stack checkouts.
+
+### THE MOUNT HAS A HOLE, found before cutting
+
+The obvious next move — declare the `/etc/basilisk/` mount once in the
+base `services.sexp` `:defaults :volumes` — **does not work**, and it
+fails at the worst possible place.
+
+An overlay compose defines only the services that stack deviates on.
+Sally's defines `cyclops` and `gendl-ccl`. The other three —
+`skewed-emacs`, `gendl-sbcl`, `autoheal` — come from the **base** compose
+alone. Docker compose merges long-syntax volumes by container path, so
+the base's mount wins for any service the overlay does not redefine.
+
+Which means on sally, `skewed-emacs` would mount **basilisk's** generated
+directory rather than sally's — and `skewed-emacs` is precisely the
+container that runs `services-discovery.el`. The Captain would read base
+topology and never see sally's Pilot. That is a regression against
+today's copy-based mechanism, not an improvement.
+
+Related fact that closes off the easy escapes: overlays are *installed
+into* the base checkout (the overlay's generated `install` script copies
+its `.yml` and mcp configs across), and `compose-dev` globs `./*.yml`
+from that one directory. So "which stack am I" is determined by **which
+overlay was installed**, and `generate-env.sh` emits no stack identifier
+at all — only `PROJECTS_DIR`.
+
+### Three ways out, in order of preference
+
+**(c) Repoint the existing copy — recommended, and it fully satisfies the
+ask.** Leave the mount out entirely. Change `compose-dev:608-616` to copy
+from `generated/` instead of `dot-files/emacs.d/etc/`. Yard output leaves
+the Captain's tree, `dot-files/` goes back to meaning only "the Emacs
+configuration", the rip gets its clean edge — and nothing about compose,
+mounts, `.env` or discovery changes at all. Near-zero risk. It keeps the
+copy step, so it does not fix the staleness window, but that window is a
+refinement rather than the problem Dave named.
+
+**(a) Per-stack env var, later.** `BASILISK_GENERATED` in `.env`, written
+per stack, with the base `:defaults` mount reading
+`${BASILISK_GENERATED:-${PROJECTS_DIR}/basilisk/generated}`. One mount
+definition, correct for base-defined services, removes the copy and the
+staleness window. Cost: reintroduces a `.env` dependency that the
+`{{STACK}}` decision deliberately avoided — though that decision was
+about the *catalogue*, and a per-host path is genuinely `.env`'s job.
+Wants `generate-env.sh` to learn which overlay is installed.
+
+**(b) Overlays redeclare every base service to carry the mount.**
+Rejected on sight: that is exactly the restatement the symbolic rosters
+just deleted.
+
+**Not yet implemented beyond step one.** (c) is a small, contained change
+and is the obvious next commit; (a) is the follow-on once a stack has
+actually booted against a mount.
 
 ### Deferred: the `mcp/` split
 

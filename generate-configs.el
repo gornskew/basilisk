@@ -846,14 +846,39 @@ Examples:
         (message "Generated: %s" codex-toml))
     ) ;; end when has-mcp-services
 
-    ;; Generate Elisp services file (base or overlay, using prefix)
+    ;; Generate Elisp services file (base or overlay, using prefix).
+    ;;
+    ;; Written to TWO places during the skewed-emacs -> basilisk move:
+    ;;
+    ;;   generated/                 -- the new home.  Yard output belongs in
+    ;;                                 the yard, and this directory is what
+    ;;                                 gets bind-mounted to /etc/basilisk/
+    ;;                                 inside every container, following the
+    ;;                                 /etc/cyclops/cyclops.sexp convention.
+    ;;                                 Mounting each stack's OWN generated/
+    ;;                                 at one fixed path is also what answers
+    ;;                                 "which stack am I" inside a container.
+    ;;
+    ;;   dot-files/emacs.d/etc/     -- the old home, kept writing for now.
+    ;;                                 compose-dev still copies from here into
+    ;;                                 running containers, and services-
+    ;;                                 discovery.el still falls back to it, so
+    ;;                                 dropping it before the mount is proven
+    ;;                                 would take out dashboard and SLIME
+    ;;                                 discovery everywhere at once.
+    ;;
+    ;; Remove the dot-files write, and compose-dev's copy step, once a stack
+    ;; has booted against /etc/basilisk/ -- not before.
     (let* ((elisp-name (if (string-empty-p skewed-gen-output-prefix)
                            "services-generated.el"
                          (format "%sservices-generated.el" skewed-gen-output-prefix)))
-           (elisp-file (expand-file-name elisp-name elisp-dir)))
-      (with-temp-file elisp-file
-        (insert (skewed--generate-elisp config)))
-      (message "Generated: %s" elisp-file))
+           (generated-dir (expand-file-name "generated/" skewed-gen-output-dir))
+           (elisp-body (skewed--generate-elisp config)))
+      (make-directory generated-dir t)
+      (dolist (target (list (expand-file-name elisp-name generated-dir)
+                            (expand-file-name elisp-name elisp-dir)))
+        (with-temp-file target (insert elisp-body))
+        (message "Generated: %s" target)))
 
     ;; Generate install script -- for host OVERLAYS only.  A base repo is
     ;; the thing you run the stack FROM, not something you install into
