@@ -491,16 +491,24 @@ Returns the install script content as a string."
 
     ;; Services discovery
     (push "# Copy services discovery (dashboard + swank)" lines)
+    ;; Services topology is YARD OUTPUT and now travels in generated/,
+    ;; not in the Captain's dot-files tree.  Falls back to the old path so
+    ;; an overlay checkout that has not been regenerated since the move
+    ;; still installs correctly.
     (push "echo \"Installing services discovery...\"" lines)
-    (push "mkdir -p \"$TARGET_DIR/dot-files/emacs.d/etc\"" lines)
+    (push "mkdir -p \"$TARGET_DIR/generated\"" lines)
+    ;; Legacy path first, generated/ last: when both exist the canonical
+    ;; copy is applied second and wins.
     (if is-base
         (progn
-          (push "for f in \"$SCRIPT_DIR/dot-files/emacs.d/etc/\"*services-generated.el; do" lines)
-          (push "    [ -f \"$f\" ] && cp \"$f\" \"$TARGET_DIR/dot-files/emacs.d/etc/\"" lines)
+          (push "for f in \"$SCRIPT_DIR/dot-files/emacs.d/etc/\"*services-generated.el \\" lines)
+          (push "         \"$SCRIPT_DIR/generated/\"*services-generated.el; do" lines)
+          (push "    [ -f \"$f\" ] && cp \"$f\" \"$TARGET_DIR/generated/\"" lines)
           (push "done" lines))
-      (push "for svc_file in \"$SCRIPT_DIR/dot-files/emacs.d/etc/\"*-services-generated.el; do" lines)
+      (push "for svc_file in \"$SCRIPT_DIR/dot-files/emacs.d/etc/\"*-services-generated.el \\" lines)
+      (push "                \"$SCRIPT_DIR/generated/\"*-services-generated.el; do" lines)
       (push "    if [ -f \"$svc_file\" ]; then" lines)
-      (push "        cp \"$svc_file\" \"$TARGET_DIR/dot-files/emacs.d/etc/\"" lines)
+      (push "        cp \"$svc_file\" \"$TARGET_DIR/generated/\"" lines)
       (push "    fi" lines)
       (push "done" lines))
     (push "" lines)

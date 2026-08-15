@@ -612,7 +612,18 @@ merge_mcp_configs() {
     # other skews them when the running image predates a discovery
     # change (bit us 2026-08-09: gendl-ccl vanished from the dashboard
     # Swank list on a stale image + fresh sparse overlay).
+    # Sources differ on purpose.  The *-services-generated.el files are
+    # YARD OUTPUT and now live in generated/; services-discovery.el is
+    # Emacs CONFIGURATION and stays in the Captain's dot-files tree.  That
+    # split is the whole point of the basilisk move -- see MIGRATION.md.
+    # The old dot-files path is still searched for the generated files so
+    # a checkout that has not been regenerated since the move keeps working.
+    # ORDER MATTERS: legacy path first, generated/ last, so that when both
+    # exist the canonical copy is applied second and wins.  A stale file
+    # left in dot-files from an earlier install must not overwrite fresh
+    # yard output.
     for _overlay in "${SCRIPT_DIR}/dot-files/emacs.d/etc/"*-services-generated.el \
+                    "${SCRIPT_DIR}/generated/"*-services-generated.el \
                     "${SCRIPT_DIR}/dot-files/emacs.d/etc/services-discovery.el"; do
         [ -f "$_overlay" ] || continue
         log_info "Copying overlay: $(basename "$_overlay")"
