@@ -130,7 +130,19 @@
         (push (format "  %s:" name) lines)
         (when image
           (push (format "    image: %s" image) lines))
-        (push (format "    container_name: %s" name) lines)
+        ;; N INSTANCES ON ONE HOST.  These two look redundant and are not.
+        ;;
+        ;; container_name is GLOBAL to the docker daemon, so it is the one
+        ;; thing that genuinely collides between instances; it carries
+        ;; ${BASILISK_PREFIX}, empty by default so a lone stack is named
+        ;; exactly as before.
+        ;;
+        ;; hostname is per-NETWORK, and each instance gets its own network,
+        ;; so it stays canonical -- every instance's Captain answers to
+        ;; "skewed-emacs" inside its own fleet.  That is what lets
+        ;; `run_compose exec skewed-emacs`, in-network DNS, and mcp-exec's
+        ;; --backend-host keep working unchanged in every instance.
+        (push (format "    container_name: ${BASILISK_PREFIX:-}%s" name) lines)
         (push (format "    hostname: %s" name) lines)
         (when user (push (format "    user: %s" user) lines))
         (push (format "    restart: %s" restart) lines)

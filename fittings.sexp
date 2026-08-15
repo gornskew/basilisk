@@ -77,7 +77,7 @@
      :lisp-impl "AllegroCL-Runtime"
      :image "gornskew/cyclops:master"
      :ports ((:name "http" :container 80 :host ${CYCLOPS_HOST_PORT:-19069})
-             (:name "utility" :container 9191 :host 19191))
+             (:name "utility" :container 9191 :host ${CYCLOPS_UTILITY_HOST_PORT:-19191}))
      :volumes ((:source "${CYCLOPS_CONFIG:-${PROJECTS_DIR}/{{STACK}}-stack/cyclops-{{STACK}}.sexp}"
                 :target "/etc/cyclops/cyclops.sexp"
                 :mode "ro"))
@@ -98,7 +98,7 @@
      :type "common-lisp"
      :lisp-impl "AllegroCL-SMP-Enterprise"
      :image "genworks/gdl:devo-enterprise-smp-licensed"
-     :ports ((:name "http" :container 9098 :host 9098)
+     :ports ((:name "http" :container 9098 :host ${GDL_SMP_HOST_PORT:-9098})
              (:name "swank" :container 4218))
      :mcp t
      :volumes ((:source "${PROJECTS_DIR}/{{STACK}}-stack/gdl-services-init.cl"

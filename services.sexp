@@ -75,7 +75,7 @@
    :mcp t
    :image "gornskew/${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}"
    :ports ((:name "http" :container 7080)
-           (:name "webterm" :container 6942 :host 6942 :external t))
+           (:name "webterm" :container 6942 :host ${TTYD_HOST_PORT:-6942} :external t))
    :environment (("WEBTERM" . "${WEBTERM:-ttyd}")
                  ("WEBTERM_PORT" . "6942")
                  ("TERM" . "xterm-256color")
@@ -104,7 +104,7 @@
    :type "common-lisp"
    :lisp-impl "CCL"
    :image "gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl"
-   :ports ((:name "http" :host 19080 :container 9080)
+   :ports ((:name "http" :host ${GENDL_CCL_HOST_PORT:-19080} :container 9080)
            (:name "swank" :container 4200))
    ;;:environment (("HTTP_HOST" . "::"))
    :mcp t
@@ -114,7 +114,7 @@
    :type "common-lisp"
    :lisp-impl "SBCL"
    :image "gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl"
-   :ports ((:name "http" :host 29080 :container 9090)
+   :ports ((:name "http" :host ${GENDL_SBCL_HOST_PORT:-29080} :container 9090)
            (:name "swank" :container 4210))
    ;;:environment (("HTTP_HOST" . "::"))
    :mcp t

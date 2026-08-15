@@ -15,13 +15,13 @@ services:
 
   skewed-emacs:
     image: gornskew/${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}
-    container_name: skewed-emacs
+    container_name: ${BASILISK_PREFIX:-}skewed-emacs
     hostname: skewed-emacs
     restart: unless-stopped
     stdin_open: true
     tty: true
     ports:
-      - "6942:6942"
+      - "${TTYD_HOST_PORT:-6942}:6942"
     environment:
       - HTTP_PORT=7080
       - START_HTTP=true
@@ -55,16 +55,16 @@ services:
 
   gendl-ccl:
     image: gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl
-    container_name: gendl-ccl
+    container_name: ${BASILISK_PREFIX:-}gendl-ccl
     hostname: gendl-ccl
     restart: unless-stopped
     stdin_open: true
     tty: true
     ports:
-      - "19080:9080"
+      - "${GENDL_CCL_HOST_PORT:-19080}:9080"
     environment:
       - HTTP_PORT=9080
-      - HTTP_HOST_PORT=19080
+      - HTTP_HOST_PORT=${GENDL_CCL_HOST_PORT:-19080}
       - START_HTTP=true
       - SWANK_PORT=4200
       - START_SWANK=true
@@ -86,16 +86,16 @@ services:
 
   gendl-sbcl:
     image: gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl
-    container_name: gendl-sbcl
+    container_name: ${BASILISK_PREFIX:-}gendl-sbcl
     hostname: gendl-sbcl
     restart: unless-stopped
     stdin_open: true
     tty: true
     ports:
-      - "29080:9090"
+      - "${GENDL_SBCL_HOST_PORT:-29080}:9090"
     environment:
       - HTTP_PORT=9090
-      - HTTP_HOST_PORT=29080
+      - HTTP_HOST_PORT=${GENDL_SBCL_HOST_PORT:-29080}
       - START_HTTP=true
       - SWANK_PORT=4210
       - START_SWANK=true
@@ -117,7 +117,7 @@ services:
 
   autoheal:
     image: willfarrell/autoheal:latest
-    container_name: autoheal
+    container_name: ${BASILISK_PREFIX:-}autoheal
     hostname: autoheal
     restart: unless-stopped
     stdin_open: true

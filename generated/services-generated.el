@@ -26,7 +26,7 @@
      :mcp t
      :http-host "gendl-ccl"
      :http-port 9080
-     :http-host-port 19080
+     :http-host-port ${GENDL_CCL_HOST_PORT:-19080}
      :swank-host "gendl-ccl"
      :swank-port 4200
     )
@@ -36,7 +36,7 @@
      :mcp t
      :http-host "gendl-sbcl"
      :http-port 9090
-     :http-host-port 29080
+     :http-host-port ${GENDL_SBCL_HOST_PORT:-29080}
      :swank-host "gendl-sbcl"
      :swank-port 4210
     )

@@ -79,9 +79,15 @@ if [ "$n_missing" -ge "$n_expected" ]; then
     exit 0
 fi
 
+# Resolve the Captain through compose rather than by container name: with
+# several instances on a box the names carry an instance prefix, but the
+# SERVICE name is canonical inside every one of them, and compose scopes
+# the lookup to this directory's project automatically.
 captain_wedged=0
 if [ -z "$missing" ]; then
-    if ! docker exec "$CAPTAIN" curl -fsS --max-time 8 "$CAPTAIN_PROBE" >/dev/null 2>&1; then
+    captain_cid=$(docker compose ps -q "$CAPTAIN" 2>/dev/null || true)
+    if [ -z "$captain_cid" ] \
+       || ! docker exec "$captain_cid" curl -fsS --max-time 8 "$CAPTAIN_PROBE" >/dev/null 2>&1; then
         captain_wedged=1
     fi
 fi

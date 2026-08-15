@@ -27,7 +27,7 @@
      :mcp t
      :http-host "genworks-gdl-enterprise-smp"
      :http-port 9098
-     :http-host-port 9098
+     :http-host-port ${GDL_SMP_HOST_PORT:-9098}
      :swank-host "genworks-gdl-enterprise-smp"
      :swank-port 4218
     )
