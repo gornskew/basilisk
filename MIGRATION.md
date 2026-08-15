@@ -244,13 +244,81 @@ Regenerated all five host stacks plus the base from **this** repo's
 - **The generator writes into `dot-files/`.** `services-generated.el` is
   yard *output* but lands in the Captain's configuration tree
   (`dot-files/emacs.d/etc/`), which this document assigns to
-  `skewed-emacs`. Both repos now contain a copy. **Unresolved:** either
-  the yard owns that path (and skewed-emacs's copy becomes stale), or
-  generation targets a location the Captain's config reads from. Decide
-  before the rip, because it determines what `dot-files/` means.
+  `skewed-emacs`. **Resolved in principle — see the next section.**
 - **`compose-dev` also reads `mcp/` and expects `.git` beside it**, which
   is why `mcp/` came across wholesale rather than per-file. The per-file
   split proposed above is still the right end state and is still pending.
+
+## Generated topology moves to `/etc/basilisk/` — the container metadata area
+
+Dave, 2026-08-15: *"services-generated definitely needs to start going
+somewhere out of the skewed-emacs tree, to some kind of container
+metadata area if we have a pattern or api for that."*
+
+**We have two, and one of them fits exactly.**
+
+### The existing patterns
+
+1. **`/tmp/skewed-crew-identity`** — `compose-dev`'s
+   `mint_crew_identities()` writes `NAME=` / `SPECIES=` / `ROLE=` into
+   every container over `docker exec`, and `metrics.lisp` reads it in
+   preference to minting its own. Live right now in this container:
+   `NAME=Drelilk SPECIES=skewed-emacs ROLE=captain`.
+   Per-container, minted at boot, pushed in.
+2. **`/etc/<product>/<file>`** — read-only bind mounts from host to
+   container: `/etc/cyclops/cyclops.sexp`,
+   `/etc/cyclops-checkout/production-marker`,
+   `/etc/royalties/production-marker`.
+   Generated on the host, mounted in, never copied.
+
+Generated stack topology is **pattern 2**. It is produced on the host at
+config-generation time, identical for every container in a stack, and
+read-only to the consumer. Nothing about it wants a per-container mint.
+
+### The proposal
+
+- **Target inside containers: `/etc/basilisk/`.** Directly analogous to
+  `/etc/cyclops/`, and in the yard's own namespace rather than the
+  Captain's.
+- **Source on the host: a `generated/` directory in the stack's own
+  checkout**, holding `services-generated.el` plus any
+  `<host>-services-generated.el` overlay.
+- **Delivery: a read-only bind mount in the base `services.sexp`
+  `:defaults :volumes`,** so every service in every stack gets it without
+  each one declaring it.
+- **Consumer change:** `services-discovery.el` — which stays with the
+  Captain, since it is Emacs configuration — gains `/etc/basilisk/` as
+  the FIRST candidate for its generated-dir, keeping its current
+  location as a fallback for the transition.
+
+### What that buys, beyond tidiness
+
+- **It resolves the `dot-files/` question outright.** Yard output stops
+  landing in the Captain's configuration tree, so `dot-files/` goes back
+  to meaning only "the Emacs configuration", and the rip has a clean
+  edge to cut along.
+- **It deletes a copy step.** `compose-dev:608-616` currently copies
+  `*-services-generated.el` and `services-discovery.el` into the running
+  container. A mount removes the copy, and with it the staleness window
+  where a container runs topology from a previous generation.
+- **It is the same shape the Pilot already uses,** so there is one
+  convention for "config generated on the host, read in the container"
+  rather than two.
+
+Note `/etc` is typically unwritable by the non-root user these images run
+as — irrelevant here, and in fact the point: the mount is `:mode "ro"`
+and the host owns the content.
+
+**Not yet implemented.** It touches the yard (generation target),
+`compose-dev` (drop the copy), the base `services.sexp` (the mount) and
+`services-discovery.el` (lookup order). Worth doing as one deliberate
+change with a live stack boot afterwards, since a mistake takes out
+dashboard and SLIME discovery on every container at once.
+
+### Deferred: the `mcp/` split
+
+`mcp/` came across wholesale and its per-file split is **its own
+conversation** (Dave, 2026-08-15), not part of this migration.
 
 ## Suggested order
 
