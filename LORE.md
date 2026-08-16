@@ -5,6 +5,7 @@ Three documents carry this fiction, and they are deliberately layered:
 | document | owns | audience |
 |---|---|---|
 | `BASILISK.md` | what the stack is called and who is aboard | anyone running the stack |
+| `GLOSSARY.md` | the quick lookup, both directions | anyone reading or writing either vocabulary |
 | `eyes-only/THEMES.md` | how the *board* renders the story | anyone writing a skin |
 | **this file** | the world underneath both | anyone generating crew, writing logs, or extending the fiction |
 
