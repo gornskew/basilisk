@@ -154,38 +154,3 @@ it lives in THEMES.md and one copy is enough.
 
 ## Where Basilisk sits in the lineup
 
-**Gornskew Enterprises** ships three things:
-
-| product | terms | what it is |
-|---|---|---|
-| **Basilisk** (with `skewed-emacs` and `lisply-mcp`) | open source, AGPL | the stack, the editor config, and the MCP middleware — the whole crewed vessel |
-| **Cyclops** | $99, binary, closed source | the reverse proxy, on an Allegro CL runtime |
-| **Eyes Only** | $69, binary + base skins, closed source | the board that watches the fleet, plus a skins marketplace |
-
-The seam between the last two is one the code already has rather than
-one the marketing invented: Cyclops exposes `/_cyclops/vitals` and
-carries no UI at all; Eyes Only probes it.  A customer who wants
-telemetry *UI* for Cyclops buys Eyes Only, and core Cyclops stays
-uncluttered by it.
-
-The yard and the crew are free; the drones are what Gornskew sells.
-
-### Eyes Only ships closed, like Cyclops
-
-Eyes Only is closed source, sold the same way Cyclops is — a binary the
-customer plugs in, carrying the base skins — with a **skins
-marketplace** alongside it that Gornskew seeds.
-
-One consequence is structural rather than commercial, and worth stating
-here because it shapes the code:
-
-- **The marketplace needs skins to live outside the image.**  A skin is
-  one client-side `eyes-only-<name>.css` (THEMES.md, *Mechanics*), and
-  the theme *discovery* change already means the menu is built from what
-  is present rather than a hardcoded list — so a marketplace is closer
-  than it looks.  What a sealed binary breaks is the assumption that
-  skins arrive by rebuilding: a customer cannot rebuild, so the image
-  must read skins from a customer-writable directory, and the CSS custom
-  properties skins target (`--rank-*`, `--ink`, `THEME_BASE`,
-  `DARK_ONLY`/`LIGHT_ONLY`, the `CONCEITS` table) stop being internal
-  details and become a **public contract with a version**.
