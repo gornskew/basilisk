@@ -1,5 +1,14 @@
 ;;; fittings.sexp - the Basilisk fitting catalogue
 ;;; -*- mode: lisp-data; -*-
+
+;; Copyright © 2026 Gornskew Enterprises
+;;
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU Affero General Public License as
+;; published by the Free Software Foundation, either version 3 of the
+;; License, or (at your option) any later version.  Distributed WITHOUT
+;; ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
+
 ;;;
 ;;; Every ship in this fleet is a BASILISK-CLASS ship.  They differ not by
 ;;; class but by COMPLEMENT -- who is aboard.  This file is the one place

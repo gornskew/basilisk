@@ -82,6 +82,14 @@
          (lines '()))
     
     ;; Header
+    (push "# Copyright © 2026 Gornskew Enterprises" lines)
+    (push "#" lines)
+    (push "# This program is free software: you can redistribute it and/or modify" lines)
+    (push "# it under the terms of the GNU Affero General Public License as" lines)
+    (push "# published by the Free Software Foundation, either version 3 of the" lines)
+    (push "# License, or (at your option) any later version.  Distributed WITHOUT" lines)
+    (push "# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>." lines)
+    (push "" lines)
     (push "# DO NOT EDIT - Generated from services.sexp" lines)
     (push "# Regenerate with: (skewed-generate-all-configs)" lines)
     (push "" lines)
@@ -405,15 +413,17 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
     ;; The header is EMITTED, not hand-added.  It was hand-added before
     ;; 2026-08-15 and every regeneration silently stripped it again --
     ;; harmless while regenerating was rare, not harmless now that symbolic
-    ;; rosters make it routine, in a repo whose sibling products ship closed.
+    ;; rosters make it routine.  It said "proprietary / trade secret" until
+    ;; 2026-08-16, when basilisk got a LICENSE and the banner started
+    ;; contradicting it; the emitted notice now matches the repo.
     (push "" lines)
     (push ";; Copyright © 2026 Gornskew Enterprises" lines)
     (push ";;" lines)
-    (push ";; The software, data and information contained herein are proprietary" lines)
-    (push ";; to, and comprise valuable trade secrets of, Gornskew Enterprises." lines)
-    (push ";; They may be stored and used only in accordance with a written" lines)
-    (push ";; license agreement from Gornskew Enterprises, and may not be" lines)
-    (push ";; redistributed." lines)
+    (push ";; This program is free software: you can redistribute it and/or modify" lines)
+    (push ";; it under the terms of the GNU Affero General Public License as" lines)
+    (push ";; published by the Free Software Foundation, either version 3 of the" lines)
+    (push ";; License, or (at your option) any later version.  Distributed WITHOUT" lines)
+    (push ";; ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>." lines)
     (push "" lines)
     (push ";;; DO NOT EDIT - Regenerate with: (skewed-generate-all-configs)" lines)
     (push "" lines)
@@ -956,6 +966,13 @@ Examples:
       (let ((codex-toml (expand-file-name 
                          (format "%smcp.toml" skewed-gen-output-prefix) mcp-dir)))
         (with-temp-file codex-toml
+          (insert "# Copyright © 2026 Gornskew Enterprises\n")
+          (insert "#\n")
+          (insert "# This program is free software: you can redistribute it and/or modify\n")
+          (insert "# it under the terms of the GNU Affero General Public License as\n")
+          (insert "# published by the Free Software Foundation, either version 3 of the\n")
+          (insert "# License, or (at your option) any later version.  Distributed WITHOUT\n")
+          (insert "# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.\n\n")
           (insert "# DO NOT EDIT - Generated from services.sexp\n\n")
           (insert (skewed--generate-mcp-toml config)))
         (message "Generated: %s" codex-toml))

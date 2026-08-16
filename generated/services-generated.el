@@ -2,11 +2,11 @@
 
 ;; Copyright © 2026 Gornskew Enterprises
 ;;
-;; The software, data and information contained herein are proprietary
-;; to, and comprise valuable trade secrets of, Gornskew Enterprises.
-;; They may be stored and used only in accordance with a written
-;; license agreement from Gornskew Enterprises, and may not be
-;; redistributed.
+;; This program is free software: you can redistribute it and/or modify
+;; it under the terms of the GNU Affero General Public License as
+;; published by the Free Software Foundation, either version 3 of the
+;; License, or (at your option) any later version.  Distributed WITHOUT
+;; ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
 
 ;;; DO NOT EDIT - Regenerate with: (skewed-generate-all-configs)
 

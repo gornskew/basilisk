@@ -310,6 +310,17 @@ Once a client is connected,
 [`mcp/opening-prompt.md`](mcp/opening-prompt.md) is a suitable
 ready-made first message.
 
+## License
+
+Copyright © 2026 Gornskew Enterprises.
+
+Basilisk is free software, released under the **GNU Affero General
+Public License, version 3 or later** — the full text is in
+[LICENSE](LICENSE). The images a Basilisk stack pulls carry their own
+terms: the Gendl variants are AGPL likewise, while the licensed
+`genworks/gdl` enterprise images are commercial and governed by their
+own agreement.
+
 ## Origin of record
 
 The origin of record for this repository is maintained by **Gornskew
