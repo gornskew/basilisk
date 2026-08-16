@@ -125,21 +125,17 @@ into your existing configuration file by hand.
 
 The generated `claude_desktop_config.json` contains the absolute path to
 your **Basilisk** clone, determined at `./basilisk up` time from where you
-run the command, so a non-default clone location works automatically.
-
-This is also the failure mode to watch for after the 2026-08-15 repo
-split. A config generated before the split points at
-`…/skewed-emacs/mcp/mcp-exec`, which no longer exists; the servers then
-fail to start with nothing obviously wrong in Claude Desktop's UI. If MCP
-went quiet around an upgrade, check that path first and re-copy the
-freshly generated file.
+run the command, so a non-default clone location works automatically. If
+you move the clone, regenerate and re-copy: a config pointing at a
+`mcp-exec` that is no longer there fails quietly, with nothing obviously
+wrong in Claude Desktop's UI.
 
 ## Troubleshooting
 
 **MCP servers not connecting:**
 - Ensure the stack is running (`docker ps` should show the containers)
 - Check that the paths in `claude_desktop_config.json` match your Basilisk
-  clone location — see the note above about pre-split configs
+  clone location
 - Restart Claude Desktop after copying the config
 
 **`mcp/claude_desktop_config.json` missing or stale:**

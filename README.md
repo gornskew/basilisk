@@ -53,14 +53,11 @@ systems argument. Neither restates the other.
 
 ## Why this repo exists
 
-`skewed-emacs` was one name doing three jobs — an Emacs configuration, a
-container image carrying that configuration, and the compose framework
-that runs a fleet of containers around it. "Restart skewed-emacs" was
-genuinely ambiguous between *the editor* and *the whole fleet on this
-box*, and those are very different requests.
-
-The skewed-emacs README has named that problem for a while. This repo is
-the structural answer to it:
+One name cannot do three jobs. An Emacs configuration, a container image
+carrying it, and the compose framework that runs a fleet around it are
+three different things, and "restart skewed-emacs" is ambiguous between
+*the editor* and *the whole fleet on this box* — very different
+requests. So they are three repos:
 
 | repo | what it is | ship metaphor |
 |---|---|---|
@@ -108,13 +105,10 @@ Your `~/projects/` directory is mounted at `/projects` in the containers
 and created if missing. The only intentional side effect on the host is
 that `eskew` and `egskew` become available in your shell.
 
-There is deliberately no way to start a stack from a `skewed-emacs`
-clone, and no no-clone bootstrap path. `basilisk` downloaded on its own
-used to create a container from the skewed-emacs image and extract the
-compose machinery out of the repo snapshot baked inside it. That is gone
-(2026-08-15): now that the shipyard is its own repo, cloning it is both
-simpler and honest. An image is a crew member's quarters, not a delivery
-vehicle for the shipyard.
+Cloning the yard is the only way to bring a ship up: there is no
+bootstrap path that extracts the compose machinery out of an image. An
+image is a crew member's quarters, not a delivery vehicle for the
+shipyard.
 
 ### Custom projects directory
 
@@ -236,26 +230,12 @@ Once a client is connected,
 [`mcp/opening-prompt.md`](mcp/opening-prompt.md) is a ready-made first
 message.
 
-## Status
-
-**Migrated and running** (2026-08-15). The yard moved here from
-`skewed-emacs/` and was ripped out there: that repo is the Captain only —
-no compose file, no `compose-dev`, no generator, and deliberately no
-supported way to start a stack from it. `narad` runs from this clone,
-verified across adopt, restart and full stop/start cycles.
-
-Still open: the `mcp/` per-file split; `sally`, `shelly` and `balaram`
-not yet cut over (pull + `./install` + restart at deploy time); a
-cold-boot test of `basilisk.service`.
-
-See [MIGRATION.md](MIGRATION.md) for the file-by-file manifest of what
-moved, what stayed, what broke on the way, and the one genuinely hard
-problem (`bootstrap_from_image`).
-
 ## Origin of record
 
 This repo lives at **`gitlab.genworks.com:gornskew/basilisk`** — that is
 the origin of record. It is mirrored to
 [github.com/gornskew/basilisk](https://github.com/gornskew/basilisk)
-(live as of 2026-08-15), which is the one to link to from public docs
-and the one most people will clone.
+which is the one to link to from public docs and the one most people
+will clone.
+
+`attic/` holds mothballed documents — history, not instructions.
