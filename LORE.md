@@ -148,9 +148,43 @@ Three facts about the word do real work and should never be sanded off:
   idiom of every navy that ever named a ship; `basilisk up` is three
   syllables at a prompt.
 
-Tonnage is RAM, and the hull silhouette follows it: scout under 2GB,
-cruiser 2–9GB, heavy 10GB+ (`THEMES.md`, *Ship & Crew Iconography*).
-A ship is a **box**; a crew member is a **container**.
+### Three levels, and the one we kept getting wrong
+
+Corrected 2026-08-16 (Dave): *"a host is a galaxy that ships can fly
+around in."*
+
+| level | in-world | in the world |
+|---|---|---|
+| host / VM | **galaxy** | balaram, sally, shelly, elsie, narad |
+| compose stack | **ship** | one `basilisk up` |
+| container | **crew member** | one post, one officer |
+
+The canon said "a ship is a box" for as long as one host ran one
+stack, and the shorthand cost nothing. **Multi-instance is what broke
+it**: the moment `BASILISK_INSTANCE=alpha ./basilisk up` could put a
+second ship on the same machine, host and ship stopped being the same
+object, and the documents did not follow. A galaxy also plainly does
+not exist to serve the ships in it — balaram runs a great deal besides
+Basilisk — which is precisely why a galaxy is the right shape and a
+berth or a station is not.
+
+Two consequences, neither cosmetic:
+
+- **Tonnage is not the galaxy's RAM.** `THEMES.md` picks the hull
+  class from the *host's* memory (scout under 2GB, cruiser 2–9GB,
+  heavy 10GB+). Under the correction that measures the galaxy, not the
+  ship. A ship's tonnage is what it actually carries — and the roster
+  already says: `fittings.sexp`'s `:crew-levels` (`:standard`,
+  `:piloted`, `:guild`) are named points in roster-space, which is a
+  truer hull class than a number scraped off the host. This is also
+  future.org's *"Basilisk hull classes: give the stack overlays a
+  rating"*, arriving from the other direction.
+- **A yard period needs re-deciding.** `THEMES.md` calls a host reboot
+  a yard period, ending every tour on the box. That was coherent when
+  the box *was* the ship. Now it is a galaxy-wide event that relieves
+  the complements of every ship flying there at once — which wants
+  either a new name or an explicit note that it is the one event
+  operating at galaxy scale.
 
 ### The engineering conceit, which is also the business
 
@@ -373,7 +407,14 @@ containers, roles come from real images, and the board renders real
 processes as crew. What follows is what is **not** live yet, in the
 order it should land.
 
-### 0. Species must see the image tag (a defect, not a feature)
+### 0. Species must see the image tag (a spec change, not a bug)
+
+Worth being precise about, because an earlier draft of this file called
+it a defect and it is not one: collapsing tags was correct as designed,
+under a canon where `gendl` was one species. The spec changed on
+2026-08-16 — *"gendl-ccl and gendl-sbcl are two different images, two
+different species of gendl family creatures"* — and the code now
+implements a rule nobody holds any more.
 
 `_crew_species_from_image()` matches `*/gendl:*` and `genworks/gdl:*`,
 which discards the tag and collapses four images into two species.
