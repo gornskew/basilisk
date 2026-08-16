@@ -142,6 +142,35 @@ git pull
 ./basilisk up --pull
 ```
 
+### Config files are mounted one file at a time — pull, THEN restart
+
+A stack mounts several individual files rather than whole directories:
+`cyclops-<host>.sexp` onto `/etc/cyclops/cyclops.sexp`, each
+`gdl-services-init.cl` onto its engine's home. Docker binds a single file
+by **inode**, and `git pull` replaces a changed file with a new one. So a
+container that was running across the pull keeps reading the file that
+existed when it started — the old content, from a path that now holds
+different bytes.
+
+Nothing announces this. The stack is healthy, the file on disk is
+correct, and a hot reload cheerfully re-reads the stale inode:
+
+```bash
+git pull                     # cyclops-sally.sexp gets a new inode
+curl -X POST .../_cyclops/reload-config   # re-reads the OLD one, reports ok
+```
+
+Pull first, then restart the stack (`sudo systemctl restart basilisk`, or
+`./basilisk down && ./basilisk up`) so the mounts re-resolve. Restarting
+before the pull is the same as not restarting at all. Whole-directory
+mounts — everything under `/projects` — are unaffected, so a change to an
+app's source lands immediately while a change to its init file does not.
+
+When you verify, check the **thing you changed**, not a summary statistic
+near it: a rule count is unmoved by an edit to an existing rule, so
+`/_cyclops/routes` grepped for the actual rule is the test, and
+`docker exec <container> cat <mounted-file>` settles any doubt.
+
 ### Supplemental service overlays (commercial GDL)
 
 A base stack includes three Lisp environments: **skewed-emacs** (Emacs
