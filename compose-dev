@@ -1215,7 +1215,7 @@ install_shell_functions() {
 # carry the instance prefix, so reach another instance's Emacs with:
 #     BASILISK_PREFIX=alpha- eskew
 # Unset, this is exactly the historical "skewed-emacs".
-_skew_captain() { printf '%s%s' "${BASILISK_PREFIX:-}" "${BASILISK_CAPTAIN:-skewed-emacs}"; }
+_skew_captain() { printf '%s%s' "${BASILISK_PREFIX:-}" "${BASILISK_CAPTAIN:-captain}"; }
 
 _skew_captain_aboard() {
     command -v docker >/dev/null 2>&1 || return 1
