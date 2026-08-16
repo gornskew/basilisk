@@ -1,6 +1,16 @@
 # ==============================================================================
-# .dockerignore - Controls what gets sent to Docker build context
-# NOTE: Intentionally mirrors .gitignore for consistency
+# .gitignore for the Basilisk repo.
+#
+# This header used to read ".dockerignore - Controls what gets sent to
+# Docker build context / Intentionally mirrors .gitignore", copied in
+# from skewed-emacs during the split.  It was never true here: basilisk
+# builds no image -- no Dockerfile, no .dockerignore -- it orchestrates
+# other people's.  In skewed-emacs the claim IS true, and structurally
+# so: .dockerignore there is a tracked symlink to .gitignore.
+#
+# The practical consequence, and the reason this is worth a paragraph:
+# a rule here answers to git ALONE.  Do not keep a line "for the docker
+# build" -- see the .git/ note at the bottom.  Corrected 2026-08-16.
 # ==============================================================================
 
 # ==============================================================================
@@ -42,6 +52,17 @@
 mcp/*mcp*
 !mcp/merge-mcp-configs.el
 !mcp/mcp-*
+# mcp.toml is TRACKED, like mcp-container.json and mcp-windows.json
+# beside it -- but it is the one base config with no dash in its name,
+# so `!mcp/mcp-*' above sails straight past it and `mcp/*mcp*' claims
+# it.  That is the same tracked-and-ignored contradiction as the
+# claude_desktop_config.json note below, sitting one regeneration away
+# from biting: generate-configs.el writes mcp.toml into this directory
+# whenever the BASE configs are generated (empty output prefix), and
+# from that moment the clone is permanently dirty and `repos deploy'
+# stops pulling basilisk on every host without saying so.  Found by
+# audit 2026-08-16, before it fired.
+!mcp/mcp.toml
 # Written back into this clone by every `./basilisk up' (the merge output
 # for Claude Desktop).  It was ALSO committed, and a tracked file ignores
 # .gitignore entirely -- so every start left the clone dirty, and
@@ -74,6 +95,8 @@ generated/*-stack-services-generated.el
 # Build artifacts & caches
 # ==============================================================================
 # (.git/ was listed here and removed 2026-08-16: git never tracks its own
-# directory, so the rule could only ever be noise.  It matters for the
-# .dockerignore this file mirrors -- keep it THERE, not here.)
+# directory, so the rule could only ever be noise.  It earns its place in
+# a .dockerignore -- but this repo has none, and this file mirrors
+# nothing, so there is no "keep it THERE" to point at.  It is simply
+# gone.  See the header.)
 tmp/
