@@ -37,14 +37,14 @@
   (:post :captain
    :in-base t
    :description "The ship's console, and the longest-lived process aboard."
-   :services ((:name "skewed-emacs"))
+   :services ((:name "captain"))
    ;; :in-stack is the ONLY sanctioned routing for the :emacs kind --
    ;; emacs lisply has no token gate, so it never rides a public path.
    ;; Off-ship, the Captain is sampled through that stack's own gendl-ccl
    ;; proxy (publish-emacs-metrics!), which is gated.
    :probe (:tile "heap skewed-emacs"
            :in-stack (:kind :emacs
-                      :url "http://skewed-emacs:7080/lisply/lisp-eval"
+                      :url "http://captain:7080/lisply/lisp-eval"
                       :alert-mb 2000)
            :remote (:kind :metrics
                     :path "/eyes-only-metrics/skewed-emacs"
@@ -53,7 +53,7 @@
   (:post :ship-engineers
    :in-base t
    :description "Two small, competent, collegial engineering departments."
-   :services ((:name "gendl-ccl") (:name "gendl-sbcl"))
+   :services ((:name "jr-eng-human") (:name "jr-eng-cyborg"))
    ;; One probe, not two: gendl-ccl carries the metrics publisher;
    ;; gendl-sbcl publishes nothing, so there is no tile to ask for.
    ;; No :in-stack form either -- a board self-samples its own image
@@ -66,13 +66,14 @@
   (:post :medic
    :in-base t
    :description "Watches for the wedged and revives them."
-   :services ((:name "autoheal")))
+   :services ((:name "medic")))
 
   ;; ---- Optional.  A Pilot can be taken out while the ship sails on.
   (:post :pilot
    :description "At the conn: every packet enters through the Cyclops."
    :services
-   ((:name "cyclops"
+   ((:name "pilot"
+     :post :pilot
      :type "reverse-proxy"
      :lisp-impl "AllegroCL-Runtime"
      :image "gornskew/cyclops:master"
@@ -94,7 +95,8 @@
                     :path "/eyes-only-metrics/gdl-enterprise"
                     :alert-mb 512))
    :services
-   ((:name "genworks-gdl-enterprise-smp"
+   ((:name "guild-master-cyborg"
+     :post :guild-master-cyborg
      :type "common-lisp"
      :lisp-impl "AllegroCL-SMP-Enterprise"
      :image "genworks/gdl:devo-enterprise-smp-licensed"
@@ -106,7 +108,8 @@
                 :mode "ro"))
      :healthcheck (:endpoint "/lisply/ping-lisp" :interval "30s"))
 
-    (:name "genworks-gdl-enterprise-non-smp"
+    (:name "guild-master-human"
+     :post :guild-master-human
      :type "common-lisp"
      :lisp-impl "AllegroCL-Enterprise"
      :image "genworks/gdl:devo-enterprise-non-smp-licensed"

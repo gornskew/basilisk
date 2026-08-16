@@ -13,10 +13,12 @@ networks:
 
 services:
 
-  skewed-emacs:
+  captain:
     image: gornskew/${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}
-    container_name: ${BASILISK_PREFIX:-}skewed-emacs
-    hostname: skewed-emacs
+    container_name: ${BASILISK_PREFIX:-}captain
+    hostname: captain
+    labels:
+      basilisk.post: "captain"
     restart: unless-stopped
     stdin_open: true
     tty: true
@@ -53,10 +55,12 @@ services:
       retries: 3
       start_period: 15s
 
-  gendl-ccl:
+  jr-eng-human:
     image: gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl
-    container_name: ${BASILISK_PREFIX:-}gendl-ccl
-    hostname: gendl-ccl
+    container_name: ${BASILISK_PREFIX:-}jr-eng-human
+    hostname: jr-eng-human
+    labels:
+      basilisk.post: "jr-eng-human"
     restart: unless-stopped
     stdin_open: true
     tty: true
@@ -84,10 +88,12 @@ services:
       retries: 3
       start_period: 15s
 
-  gendl-sbcl:
+  jr-eng-cyborg:
     image: gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl
-    container_name: ${BASILISK_PREFIX:-}gendl-sbcl
-    hostname: gendl-sbcl
+    container_name: ${BASILISK_PREFIX:-}jr-eng-cyborg
+    hostname: jr-eng-cyborg
+    labels:
+      basilisk.post: "jr-eng-cyborg"
     restart: unless-stopped
     stdin_open: true
     tty: true
@@ -115,10 +121,12 @@ services:
       retries: 3
       start_period: 15s
 
-  autoheal:
+  medic:
     image: willfarrell/autoheal:latest
-    container_name: ${BASILISK_PREFIX:-}autoheal
-    hostname: autoheal
+    container_name: ${BASILISK_PREFIX:-}medic
+    hostname: medic
+    labels:
+      basilisk.post: "medic"
     restart: unless-stopped
     stdin_open: true
     tty: true

@@ -69,7 +69,13 @@
 
  :services
  (
-  (:name "skewed-emacs"
+  ;; NAMES ARE POSTINGS, not species (Dave, 2026-08-16).  :name becomes
+  ;; the compose service name, the container_name and the hostname; the
+  ;; SPECIES lives in :image and is derived from it, and the officer's
+  ;; PERSONAL name is minted into the container at up-time.  Three
+  ;; namespaces, three different sources -- see basilisk/LORE.md §I.
+  (:name "captain"
+   :post :captain
    :type "emacs-lisp"
    :lisp-impl "Emacs"
    :mcp t
@@ -100,7 +106,8 @@
 
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "30s"))
 
-  (:name "gendl-ccl"
+  (:name "jr-eng-human"
+   :post :jr-eng-human
    :type "common-lisp"
    :lisp-impl "CCL"
    :image "gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl"
@@ -110,7 +117,8 @@
    :mcp t
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "72s"))
 
-  (:name "gendl-sbcl"
+  (:name "jr-eng-cyborg"
+   :post :jr-eng-cyborg
    :type "common-lisp"
    :lisp-impl "SBCL"
    :image "gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl"
@@ -125,7 +133,8 @@
   ;; unhealthy; nothing restarts them without an actor.  A blocked
   ;; Emacs cannot self-heal, so recovery must come from outside.
   ;; autoheal restarts ANY container that flunks its healthcheck.
-  (:name "autoheal"
+  (:name "medic"
+   :post :medic
    :type "utility"
    :image "willfarrell/autoheal:latest"
    :environment (("AUTOHEAL_CONTAINER_LABEL" . "all")

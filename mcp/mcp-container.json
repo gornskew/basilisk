@@ -1,42 +1,42 @@
 // DO NOT EDIT - Generated from services.sexp
 {
   "mcpServers": {
-    "skewed-emacs": {
+    "captain": {
       "command": "node",
       "args": [
         "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js",
         "--server-name",
-        "skewed-emacs",
+        "captain",
         "--backend-host",
-        "skewed-emacs",
+        "captain",
         "--http-port",
         "7080",
         "--request-timeout-ms",
         "30000"
       ]
     },
-    "gendl-ccl": {
+    "jr-eng-human": {
       "command": "node",
       "args": [
         "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js",
         "--server-name",
-        "gendl-ccl",
+        "jr-eng-human",
         "--backend-host",
-        "gendl-ccl",
+        "jr-eng-human",
         "--http-port",
         "9080",
         "--request-timeout-ms",
         "30000"
       ]
     },
-    "gendl-sbcl": {
+    "jr-eng-cyborg": {
       "command": "node",
       "args": [
         "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js",
         "--server-name",
-        "gendl-sbcl",
+        "jr-eng-cyborg",
         "--backend-host",
-        "gendl-sbcl",
+        "jr-eng-cyborg",
         "--http-port",
         "9090",
         "--request-timeout-ms",

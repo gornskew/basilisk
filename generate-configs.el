@@ -144,6 +144,26 @@
         ;; --backend-host keep working unchanged in every instance.
         (push (format "    container_name: ${BASILISK_PREFIX:-}%s" name) lines)
         (push (format "    hostname: %s" name) lines)
+        ;; DECLARED TAXONOMY, as labels (Dave, 2026-08-16).  A service
+        ;; must say which :post it stands and may optionally name its
+        ;; :species; omitted, the species defaults from the post.
+        ;; Emitting both as labels is what lets mint_crew_identities and
+        ;; `docker ps -f label=...` read the taxonomy instead of
+        ;; pattern-matching a hostname -- and it keeps the override
+        ;; honest, since a post filled by an unusual species says so
+        ;; here rather than being silently mis-derived.
+        (let* ((raw-post (skewed--get-prop svc :post))
+               (raw-species (skewed--get-prop svc :species))
+               (post (if (keywordp raw-post)
+                         (substring (symbol-name raw-post) 1) raw-post))
+               (species (if (keywordp raw-species)
+                            (substring (symbol-name raw-species) 1) raw-species)))
+          (when (or post species)
+            (push "    labels:" lines)
+            (when post
+              (push (format "      basilisk.post: \"%s\"" post) lines))
+            (when species
+              (push (format "      basilisk.species: \"%s\"" species) lines))))
         (when user (push (format "    user: %s" user) lines))
         (push (format "    restart: %s" restart) lines)
         (push "    stdin_open: true" lines)

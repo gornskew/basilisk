@@ -13,34 +13,34 @@
 (defvar skewed-generated-services nil)
 (setq skewed-generated-services
   '(
-    (:name "skewed-emacs"
+    (:name "captain"
      :type "emacs-lisp"
      :lisp-impl "Emacs"
      :mcp t
-     :http-host "skewed-emacs"
+     :http-host "captain"
      :http-port 7080
     )
-    (:name "gendl-ccl"
+    (:name "jr-eng-human"
      :type "common-lisp"
      :lisp-impl "CCL"
      :mcp t
-     :http-host "gendl-ccl"
+     :http-host "jr-eng-human"
      :http-port 9080
      :http-host-port ${GENDL_CCL_HOST_PORT:-19080}
-     :swank-host "gendl-ccl"
+     :swank-host "jr-eng-human"
      :swank-port 4200
     )
-    (:name "gendl-sbcl"
+    (:name "jr-eng-cyborg"
      :type "common-lisp"
      :lisp-impl "SBCL"
      :mcp t
-     :http-host "gendl-sbcl"
+     :http-host "jr-eng-cyborg"
      :http-port 9090
      :http-host-port ${GENDL_SBCL_HOST_PORT:-29080}
-     :swank-host "gendl-sbcl"
+     :swank-host "jr-eng-cyborg"
      :swank-port 4210
     )
-    (:name "autoheal"
+    (:name "medic"
      :type "utility"
     )
    ))

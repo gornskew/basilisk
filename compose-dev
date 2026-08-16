@@ -527,13 +527,50 @@ _crew_species_from_image() {
 # to exactly one role today (one Captain-shaped thing, one Pilot-
 # shaped thing, ...).  Unknown species still participate (generic
 # crew), so nothing needs to opt in.
-_crew_role_for_species() {
+# Role comes from the POSTING, not the species (Dave, 2026-08-16).
+#
+# Deriving role from the image was only ever a guess made in the absence
+# of a declared posting, and the canon makes it provably wrong: a
+# Genworks GDL Engineer with Cyclops loaded into it stands in as the
+# Pilot -- same species, different role -- so any species->role table
+# mislabels it.  The hostname now DECLARES the posting, so the role is
+# read rather than inferred.
+#
+# The reverse direction is the useful one and lives in the SSoT already:
+# each posting declares its DEFAULT species as its :image.  Filling a
+# posting with something else is a supported oddity, not a broken state.
+#
+# Trailing -N is tolerated so a ship can carry more than one of a post
+# (jr-eng-cyborg-2 is still an engineer).
+# Each post has a DEFAULT species (Dave, 2026-08-16).  This is the
+# useful direction of the mapping that used to run species->role: a post
+# says what usually stands it, and a service that wants something else
+# declares :species in the SSoT.  Species strictly means IMAGE TYPE, so
+# these are image identities, not adjectives.
+_crew_default_species_for_post() {
     case "$1" in
-        skewed-emacs)        echo "captain" ;;
-        cyclops)              echo "pilot" ;;
-        gendl|genworks-gdl)   echo "engineer" ;;
-        autohealer)           echo "doctor" ;;
-        *)                    echo "crew" ;;
+        captain*)                 echo "skewed-emacs" ;;
+        pilot*)                   echo "cyclops" ;;
+        medic*)                   echo "autohealer" ;;
+        comms*)                   echo "eyes-only" ;;
+        jr-eng-human*)            echo "gendl-ccl" ;;
+        jr-eng-cyborg*)           echo "gendl-sbcl" ;;
+        guild-master-cyborg*)     echo "genworks-gdl-enterprise-smp" ;;
+        guild-master-human*)      echo "genworks-gdl-enterprise-non-smp" ;;
+        guild-journeyman-cyborg*) echo "genworks-gdl-pro-smp" ;;
+        guild-journeyman-human*)  echo "genworks-gdl-pro-non-smp" ;;
+        *)                        echo "unknown" ;;
+    esac
+}
+
+_crew_role_for_posting() {
+    case "$1" in
+        captain|captain-[0-9]*)   echo "captain" ;;
+        pilot|pilot-[0-9]*)       echo "pilot" ;;
+        medic|medic-[0-9]*)       echo "doctor" ;;
+        comms|comms-[0-9]*)       echo "comm" ;;
+        jr-eng-*|sr-eng-*|guild-*) echo "engineer" ;;
+        *)                        echo "crew" ;;
     esac
 }
 
@@ -638,8 +675,36 @@ _ci_image="$(docker inspect --format \
             "{{.Config.Image}}" \
             "$_ci_id" 2>/dev/null)"
 
-        _ci_species="$(_crew_species_from_image "$_ci_image")"
-        _ci_role="$(_crew_role_for_species "$_ci_species")"
+        # Posting is the container's hostname, which the generator set
+        # from the SSoT :name.  Fall back to the container name with any
+        # BASILISK_PREFIX stripped, for containers created before this.
+        _ci_posting="$(docker inspect --format "{{.Config.Hostname}}" \
+            "$_ci_id" 2>/dev/null)"
+        [ -n "$_ci_posting" ] || _ci_posting="${_ci_name#${BASILISK_PREFIX:-}}"
+
+        # Species resolution, most-declared first: an explicit
+        # basilisk.species label beats what the image looks like, which
+        # beats the post's default.  The label exists so an odd filling
+        # -- a Guild engineer standing in at the conn -- states itself
+        # instead of being mis-derived.
+        _ci_species="$(docker inspect \
+            --format '{{index .Config.Labels "basilisk.species"}}' \
+            "$_ci_id" 2>/dev/null)"
+        if [ -z "$_ci_species" ]; then
+            _ci_species="$(_crew_species_from_image "$_ci_image")"
+        fi
+        if [ -z "$_ci_species" ] || [ "$_ci_species" = "unknown" ]; then
+            _ci_species="$(_crew_default_species_for_post "$_ci_posting")"
+        fi
+
+        # Post likewise: the declared label wins, the hostname is the
+        # fallback for containers created before labels existed.
+        _ci_post="$(docker inspect \
+            --format '{{index .Config.Labels "basilisk.post"}}' \
+            "$_ci_id" 2>/dev/null)"
+        [ -n "$_ci_post" ] && _ci_posting="$_ci_post"
+
+        _ci_role="$(_crew_role_for_posting "$_ci_posting")"
         _ci_manned="$(_crew_manned_for_species "$_ci_species")"
         _crew_unique_name "$_ci_species"
         _ci_mint_name="$_crew_unique_name_result"
@@ -677,15 +742,15 @@ merge_mcp_configs() {
     log_info "Preparing MCP configurations (JSON + TOML)..."
 
     case " ${VALIDATED_OK:-} " in
-        *" skewed-emacs "*) ;;
+        *" captain "*) ;;
         *)
-            # skewed-emacs was not validated this run (single-service up,
+            # The Captain was not validated this run (single-service up,
             # failed validation, or already running from before): probe the
             # daemon once directly instead of looping blind.
-            if ! run_compose exec -T skewed-emacs emacsclient --eval t \
+            if ! run_compose exec -T captain emacsclient --eval t \
                 > /dev/null 2>&1
             then
-                log_warning "skewed-emacs daemon not available; skipping MCP config merge"
+                log_warning "Captain daemon not available; skipping MCP config merge"
                 return 1
             fi
             ;;
@@ -696,7 +761,7 @@ merge_mcp_configs() {
     # create time (a recreate reintroduces them; host-side chown cannot
     # reach container-fs dirs).  The merge writes config.toml into both,
     # so repair ownership first; harmless no-op on full images.
-    run_compose exec -T -u root skewed-emacs sh -c \
+    run_compose exec -T -u root captain sh -c \
         "chown -R emacs-user /home/emacs-user/.codex /home/emacs-user/.grok" \
         > /dev/null 2>&1 || true
 
@@ -709,7 +774,7 @@ merge_mcp_configs() {
         [ -f "$_overlay" ] || continue
         log_info "Copying overlay: $(basename "$_overlay")"
         run_compose cp "$_overlay" \
-            skewed-emacs:/home/emacs-user/skewed-emacs/mcp/ 2>/dev/null || true
+            captain:/home/emacs-user/skewed-emacs/mcp/ 2>/dev/null || true
     done
 
     # Step 1b: Copy overlay services-generated Emacs files, PLUS
@@ -737,11 +802,11 @@ merge_mcp_configs() {
         [ -f "$_overlay" ] || continue
         log_info "Copying overlay: $(basename "$_overlay")"
         run_compose cp "$_overlay" \
-            skewed-emacs:/home/emacs-user/skewed-emacs/dot-files/emacs.d/etc/ 2>/dev/null || true
+            captain:/home/emacs-user/skewed-emacs/dot-files/emacs.d/etc/ 2>/dev/null || true
     done
 
     # Step 2: Merge inside container -- one shot; the daemon is ready.
-    if run_compose exec -T skewed-emacs emacsclient --eval \
+    if run_compose exec -T captain emacsclient --eval \
         "(progn (setenv \"SKEWED_CLONE_PATH\" \"${SCRIPT_DIR}\")
                 (load-file \"/home/emacs-user/skewed-emacs/mcp/merge-mcp-configs.el\")
                 (skewed-merge-all-mcp-configs \"/home/emacs-user/skewed-emacs/mcp\"))" \
@@ -757,7 +822,7 @@ merge_mcp_configs() {
         else
             _cdc_src="/tmp/merged-mcp-host.json"
         fi
-        if run_compose cp "skewed-emacs:${_cdc_src}" \
+        if run_compose cp "captain:${_cdc_src}" \
             "${SCRIPT_DIR}/mcp/claude_desktop_config.json" 2>/dev/null; then
             log_success "Claude Desktop config ready: mcp/claude_desktop_config.json (see docs/CLAUDE_DESKTOP.md)"
         else
@@ -1023,7 +1088,7 @@ show_status() {
 
 connect_emacs() {
     log_info "Connecting to Emacs via emacsclient"
-    run_compose exec skewed-emacs emacsclient -t
+    run_compose exec captain emacsclient -t
 }
 
 pull_images() {
@@ -1211,7 +1276,7 @@ SNIPPET
 }
 
 refresh_emacs_runtime_config() {
-    _refresh_result="$(run_compose exec -T skewed-emacs emacsclient --eval \
+    _refresh_result="$(run_compose exec -T captain emacsclient --eval \
         "(progn
             (defvar skewed-runtime-services-refresh-armed nil)
             (defvar skewed-runtime-services-refresh-done nil)
