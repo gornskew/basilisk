@@ -765,16 +765,38 @@ merge_mcp_configs() {
         "chown -R emacs-user /home/emacs-user/.codex /home/emacs-user/.grok" \
         > /dev/null 2>&1 || true
 
-    # Step 1: Copy overlay MCP config files into container
-    for _overlay in \
+    # Step 1: Stage the YARD's mcp/ into the Captain.
+    #
+    # mcp/ left the skewed-emacs repo when it was spun off to basilisk,
+    # so the image no longer carries /home/emacs-user/skewed-emacs/mcp
+    # and neither the base configs nor merge-mcp-configs.el are aboard.
+    # This used to copy overlays into that now-absent directory with
+    # `|| true`, so every copy failed silently and the merge then died
+    # on a missing load-file -- surfacing only as "daemon answered but
+    # merge errored" (found on a real deploy, 2026-08-16).  The yard owns
+    # these files now, so the yard hands them over at up-time.
+    #
+    # Same failure shape as the mcp/entrypoint.sh incident: a split moved
+    # files by concept without checking every consumer.
+    _mcp_stage="/tmp/basilisk-mcp"
+    run_compose exec -T captain mkdir -p "$_mcp_stage" > /dev/null 2>&1 || {
+        log_warning "could not create $_mcp_stage in the Captain; skipping MCP merge"
+        return 1
+    }
+
+    for _mcpfile in \
+        "${SCRIPT_DIR}/mcp/merge-mcp-configs.el" \
+        "${SCRIPT_DIR}/mcp/mcp-container.json" \
+        "${SCRIPT_DIR}/mcp/mcp-windows.json" \
+        "${SCRIPT_DIR}/mcp/mcp.toml" \
         "${SCRIPT_DIR}/mcp/"*-mcp-windows.json \
         "${SCRIPT_DIR}/mcp/"*-mcp-container.json \
         "${SCRIPT_DIR}/mcp/"*-mcp.toml
     do
-        [ -f "$_overlay" ] || continue
-        log_info "Copying overlay: $(basename "$_overlay")"
-        run_compose cp "$_overlay" \
-            captain:/home/emacs-user/skewed-emacs/mcp/ 2>/dev/null || true
+        [ -f "$_mcpfile" ] || continue
+        log_info "Staging: $(basename "$_mcpfile")"
+        run_compose cp "$_mcpfile" "captain:${_mcp_stage}/" 2>/dev/null \
+            || log_warning "  could not stage $(basename "$_mcpfile")"
     done
 
     # Step 1b: Copy overlay services-generated Emacs files, PLUS
@@ -808,8 +830,8 @@ merge_mcp_configs() {
     # Step 2: Merge inside container -- one shot; the daemon is ready.
     if run_compose exec -T captain emacsclient --eval \
         "(progn (setenv \"SKEWED_CLONE_PATH\" \"${SCRIPT_DIR}\")
-                (load-file \"/home/emacs-user/skewed-emacs/mcp/merge-mcp-configs.el\")
-                (skewed-merge-all-mcp-configs \"/home/emacs-user/skewed-emacs/mcp\"))" \
+                (load-file \"${_mcp_stage}/merge-mcp-configs.el\")
+                (skewed-merge-all-mcp-configs \"${_mcp_stage}\"))" \
         > /dev/null 2>&1
     then
         log_success "MCP configurations merged for container CLI, Windows, Codex, and Grok"
