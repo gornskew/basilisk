@@ -537,6 +537,25 @@ _crew_role_for_species() {
     esac
 }
 
+# Manned or drone -- DERIVED, and the table encodes exactly one thing:
+# is there a compiler aboard?  A drone stands a watch and runs the one
+# system it was built for; anything manned can fabricate something new.
+#
+# Orthogonal to both role and price, which is the whole point (LORE.md
+# section I): the Medic is a drone AND free, while Cyclops is a drone
+# that costs $99.  Note also that ROLE is the invariant, not the byte
+# count -- CCL's save-application carries a compiler whether or not you
+# want it, and that promotes nobody.
+_crew_manned_for_species() {
+    case "$1" in
+        skewed-emacs)         echo "manned" ;;   # a console is where a person sits
+        gendl|genworks-gdl)   echo "manned" ;;   # Engineers carry compilers
+        cyclops)              echo "drone" ;;
+        autohealer)           echo "drone" ;;
+        *)                    echo "unknown" ;;
+    esac
+}
+
 # Name-pool syllables per species -- kept in sync BY HAND with
 # eyes-only-metrics.lisp's *CREW-NAME-POOLS* (that Lisp copy is now the
 # fallback path only; this shell copy is authoritative whenever
@@ -621,14 +640,21 @@ _ci_image="$(docker inspect --format \
 
         _ci_species="$(_crew_species_from_image "$_ci_image")"
         _ci_role="$(_crew_role_for_species "$_ci_species")"
+        _ci_manned="$(_crew_manned_for_species "$_ci_species")"
         _crew_unique_name "$_ci_species"
         _ci_mint_name="$_crew_unique_name_result"
 
+        # MANNED= is appended LAST, and NAME= stays first, on purpose:
+        # every reader is key-based except skewed-emacs's dashboard,
+        # which reads line 1 and requires the NAME= prefix.  Readers
+        # that predate this field ignore it (cyclops utility.lisp and
+        # eyes-only metrics.lisp both scan for their own keys), so the
+        # addition is backward-compatible by construction.
         if docker exec "$_ci_name" sh -c \
-            "printf 'NAME=%s\nSPECIES=%s\nROLE=%s\n' '$_ci_mint_name' '$_ci_species' '$_ci_role' > /tmp/skewed-crew-identity" \
+            "printf 'NAME=%s\nSPECIES=%s\nROLE=%s\nMANNED=%s\n' '$_ci_mint_name' '$_ci_species' '$_ci_role' '$_ci_manned' > /tmp/skewed-crew-identity" \
             2>/dev/null
         then
-            log_success "  ${_ci_name}: crew identity minted -- ${_ci_mint_name} (${_ci_role}, ${_ci_species})"
+            log_success "  ${_ci_name}: crew identity minted -- ${_ci_mint_name} (${_ci_role}, ${_ci_species}, ${_ci_manned})"
         else
             log_warning "  ${_ci_name}: could not write crew identity (no shell/writable rootfs?)"
         fi
