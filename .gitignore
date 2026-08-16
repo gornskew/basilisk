@@ -42,6 +42,13 @@
 mcp/*mcp*
 !mcp/merge-mcp-configs.el
 !mcp/mcp-*
+# Written back into this clone by every `./basilisk up' (the merge output
+# for Claude Desktop).  It was ALSO committed, and a tracked file ignores
+# .gitignore entirely -- so every start left the clone dirty, and
+# `repos deploy' then refused to pull basilisk on sally and shelly,
+# silently, for as long as that lasted.  Untracked 2026-08-16; if it ever
+# needs to be tracked again, it wants a .example suffix and a generated
+# sibling, not a rule that cannot fire.
 mcp/claude_desktop_config.json
 mcp/opening-prompt-local.md
 
@@ -66,5 +73,7 @@ generated/*-stack-services-generated.el
 # ==============================================================================
 # Build artifacts & caches
 # ==============================================================================
-.git/
+# (.git/ was listed here and removed 2026-08-16: git never tracks its own
+# directory, so the rule could only ever be noise.  It matters for the
+# .dockerignore this file mirrors -- keep it THERE, not here.)
 tmp/
