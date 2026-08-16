@@ -934,13 +934,18 @@ crew_muster() {
     log_info "Crew muster:"
     _cm_have_pilot=0
     for _cm_svc in $_cm_services; do
-        case "$_cm_svc" in
-            skewed-emacs)      _cm_post="Captain " ;;
-            cyclops)           _cm_post="Pilot   " ; _cm_have_pilot=1 ;;
-            gendl-*|genworks-gdl-*) _cm_post="Engineer" ;;
-            eyes-only)         _cm_post="Comm    " ;;
-            autoheal)          _cm_post="Medic   " ;;
-            *)                 _cm_post="Crew    " ;;
+        # Roles come from _crew_role_for_posting -- the SAME derivation
+        # minting uses.  This case used to carry its own species->role
+        # copy keyed on the old service names, which silently mustered
+        # every renamed post as "Crew" (caught on a real deploy,
+        # 2026-08-16).  Two tables, one truth: don't reintroduce it.
+        case "$(_crew_role_for_posting "$_cm_svc")" in
+            captain)  _cm_post="Captain " ;;
+            pilot)    _cm_post="Pilot   " ; _cm_have_pilot=1 ;;
+            engineer) _cm_post="Engineer" ;;
+            comm)     _cm_post="Comm    " ;;
+            doctor)   _cm_post="Medic   " ;;
+            *)        _cm_post="Crew    " ;;
         esac
         _cm_ports=$(docker ps --filter "name=^${BASILISK_PREFIX:-}${_cm_svc}\$" \
                               --format '{{.Ports}}' 2>/dev/null \
