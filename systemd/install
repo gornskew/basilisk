@@ -3,12 +3,19 @@
 #
 #   cd /path/to/basilisk && sh systemd/install
 #
-# Installs THREE units, all generated from the templates beside this
+# Installs FOUR units, all generated from the templates beside this
 # script by substituting the invoking user and this clone's path:
 #
-#   basilisk.service           the stack; starts on boot, restarts on failure
+#   basilisk.service           the stack; restarts on failure
+#   basilisk.timer             starts the stack 20s AFTER boot completes
 #   basilisk-watchdog.service  recovery for a wedged ship or fleet
 #   basilisk-watchdog.timer    runs the watchdog every 5 minutes
+#
+# The stack is started by basilisk.timer, NOT by WantedBy=multi-user.target.
+# A Type=oneshot unit in the boot target makes systemd wait for the whole
+# container stack before declaring boot done -- 10.128s of a 12.078s boot on
+# narad, past WSL's 10000ms WaitForBootProcess limit, so every boot logged
+# "/sbin/init failed to start within 10000ms".  See basilisk.timer.
 #
 # ONE UNIT, NOT ONE PER HOST.  Until 2026-08-15 every *-stack repo shipped
 # its own near-identical copy of the service file, and the whole difference
@@ -52,7 +59,7 @@ groups "${BASILISK_USER}" 2>/dev/null | grep -qw docker || {
 
 # ---- install units ----------------------------------------------------------
 
-for unit in basilisk.service basilisk-watchdog.service basilisk-watchdog.timer; do
+for unit in basilisk.service basilisk.timer basilisk-watchdog.service basilisk-watchdog.timer; do
     [ -f "${SCRIPT_DIR}/${unit}" ] || { echo "ERROR: missing template ${unit}"; exit 1; }
     sed -e "s|%%USER%%|${BASILISK_USER}|g" \
         -e "s|%%BASILISK_DIR%%|${BASILISK_DIR}|g" \
@@ -86,10 +93,21 @@ fi
 # ---- enable -----------------------------------------------------------------
 
 sudo systemctl daemon-reload
-sudo systemctl enable basilisk.service >/dev/null
+
+# Migration for boxes installed before 2026-08-16, when the stack was pulled
+# in by multi-user.target directly.  Disabling only moves the .wants symlink;
+# it does not stop a running stack, and it is a no-op on a fresh box.
+if systemctl is-enabled basilisk.service >/dev/null 2>&1; then
+    echo "Taking basilisk.service off the boot critical path (now timer-started)."
+    sudo systemctl disable basilisk.service >/dev/null 2>&1 || true
+fi
+
+sudo systemctl enable basilisk.timer >/dev/null
 sudo systemctl enable basilisk-watchdog.timer >/dev/null
 echo ""
-echo "Enabled basilisk.service (starts on boot) and basilisk-watchdog.timer."
+echo "Enabled basilisk.timer (starts the stack 20s after boot) and"
+echo "basilisk-watchdog.timer.  basilisk.service is installed but not"
+echo "boot-enabled -- the timer starts it, so boot is not blocked on Docker."
 echo ""
 echo "Start now with:      sudo systemctl start basilisk"
 echo "Watch recovery with: journalctl -u basilisk-watchdog -f"
