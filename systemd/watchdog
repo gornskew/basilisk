@@ -38,7 +38,17 @@ BASILISK_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 STATE_DIR="${BASILISK_WATCHDOG_STATE_DIR:-/var/tmp}"
 STATE="${STATE_DIR}/basilisk-watchdog.state"
 BACKOFF_SECS="${BASILISK_WATCHDOG_BACKOFF:-1800}"
-CAPTAIN="${BASILISK_WATCHDOG_CAPTAIN:-skewed-emacs}"
+# The compose SERVICE name of the Captain.  This said "skewed-emacs" until
+# 2026-08-16, which was the pre-Basilisk service name; the 2026-08-15 rename
+# to "captain" did not reach this default.  The consequence was silent and
+# expensive: `docker compose ps -q skewed-emacs` fails on every stack in the
+# fleet, so captain_wedged was set on EVERY run where no container was
+# actually missing, and the watchdog tore the whole stack down and back up
+# every BACKOFF_SECS (30 min) forever, on a fault that never existed.
+#
+# Defaulted through BASILISK_CAPTAIN so this agrees with mcp/mcp-exec, which
+# resolves the same service the same way.  One name, one default.
+CAPTAIN="${BASILISK_WATCHDOG_CAPTAIN:-${BASILISK_CAPTAIN:-captain}}"
 CAPTAIN_PROBE="${BASILISK_WATCHDOG_PROBE:-http://localhost:7080/lisply/ping-lisp}"
 
 DRY=0
