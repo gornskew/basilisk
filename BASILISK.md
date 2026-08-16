@@ -45,8 +45,8 @@ complement, wires it, and validates it, and THEMES.md already says
 
 So the stack **is** the hull class, and two sentences become one:
 
-> `narad` is a Basilisk-class ship.
-> `narad` runs Basilisk.
+> this box is a Basilisk-class ship.
+> this box runs Basilisk.
 
 Three things recommend the specific word:
 
@@ -112,9 +112,7 @@ Franz Inc. and the people behind it.  Allegro is also where "no compiler
 aboard" is literal rather than aspirational: the runtime license and the
 image give you exactly that.
 
-Shipping on another CL is not ruled out, and Eyes Only may well be
-CCL-shippable sooner rather than later — CCL carries no runtime royalty,
-which is a live consideration at a $69 price point.  But an *additional*
+Shipping on another CL is not ruled out, but an *additional*
 delivery target does not displace the *reference* one.  The Allegro build
 stays the one that is supported and the one everything else is validated
 against; a second target is measured against it, not instead of it.
@@ -129,11 +127,11 @@ The invariant is the ROLE, not the vendor and not the byte count: Pilot
 and Comm are shipped to run one system, not to develop new ones.
 
 So Comm is not a passenger on an Engineer.  Cyclops already ships this
-way (`:lisp-impl "AllegroCL-Runtime"`), and Eyes Only is headed there as
-the $69 binary.  That it currently arrives on sally by `ql:quickload`
-into `gendl-ccl` is a convenience of the pre-binary era, not what the
-post is: it is the one crew member still billeted in someone else's
-quarters because its own have not been built yet.
+way (`:lisp-impl "AllegroCL-Runtime"`), and Eyes Only is headed the same
+way.  Where it currently loads into an Engineer instead, that is a
+convenience of the pre-binary era rather than what the post is: it is
+the one crew member still billeted in someone else's quarters because
+its own have not been built yet.
 
 Neither Comm nor any future runtime post appears in `fittings.sexp` yet
 — a `:post` needs an image to name, and Eyes Only does not have one
@@ -168,32 +166,19 @@ The seam between the last two is one the code already has rather than
 one the marketing invented: Cyclops exposes `/_cyclops/vitals` and
 carries no UI at all; Eyes Only probes it.  A customer who wants
 telemetry *UI* for Cyclops buys Eyes Only, and core Cyclops stays
-uncluttered by it (Dave, 2026-08-14).
+uncluttered by it.
 
-Basilisk being the free tier is the point of the shape: the fleet is
-what you give away, and what you sell is the eyes.
+The yard and the crew are free; the drones are what Gornskew sells.
 
 ### Eyes Only ships closed, like Cyclops
 
-Decided 2026-08-15: Eyes Only stays **closed source for now**, sold the
-same way Cyclops is — a $69 binary the customer plugs in, carrying the
-base skins — with a **skins marketplace** alongside it that Gornskew
-seeds.  An earlier plan for an open core under a bespoke "Eyes Only
-License" is dropped; the source headers already say proprietary, and now
-the packaging agrees with them.
+Eyes Only is closed source, sold the same way Cyclops is — a binary the
+customer plugs in, carrying the base skins — with a **skins
+marketplace** alongside it that Gornskew seeds.
 
-Two consequences worth carrying, because they are structural rather than
-marketing:
+One consequence is structural rather than commercial, and worth stating
+here because it shapes the code:
 
-- **A binary means a Lisp image, and Eyes Only is a GWL application.**
-  It is built from `define-object` and talks to `gwl:with-all-servers`,
-  so the artifact shipped to a customer is a Gendl/GDL image with Eyes
-  Only inside it.  That makes the licensing question about the *engine*,
-  not the app: stock Gendl is AGPL, and an AGPL engine in the same image
-  as a closed product is a combined work.  Shipping closed therefore
-  requires the engine under commercial terms — which Genworks, as the
-  copyright holder, is entitled to grant.  The runtime choice follows
-  from that grant, not the other way round; see the org item.
 - **The marketplace needs skins to live outside the image.**  A skin is
   one client-side `eyes-only-<name>.css` (THEMES.md, *Mechanics*), and
   the theme *discovery* change already means the menu is built from what

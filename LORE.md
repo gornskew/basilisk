@@ -177,8 +177,8 @@ Two consequences, neither cosmetic:
   already says: `fittings.sexp`'s `:crew-levels` (`:standard`,
   `:piloted`, `:guild`) are named points in roster-space, which is a
   truer hull class than a number scraped off the host. This is also
-  future.org's *"Basilisk hull classes: give the stack overlays a
-  rating"*, arriving from the other direction.
+  the open question of how to give the stack overlays a
+  rating, arriving from the other direction.
 - **A yard period needs re-deciding.** `THEMES.md` calls a host reboot
   a yard period, ending every tour on the box. That was coherent when
   the box *was* the ship. Now it is a galaxy-wide event that relieves
@@ -478,9 +478,8 @@ One record per officer, appended at mint and closed at death:
  :log "...")                   ; the officer's log, written at close
 ```
 
-This is also the existing future.org item *"eyes-only: crew muster roll
-— log every crew member who comes and goes"*, which this design
-absorbs.
+This absorbs the standing intent to log every crew member who comes and
+goes.
 
 ### 3. Backstories
 
@@ -577,8 +576,8 @@ sells the whole idea of the page.
   board renders the prose. Not decided.
 - **Do the web properties get a conceit?** `THEMES.md` records this as
   open — genworks.com and the Kṛṣṇa properties currently have none.
-- **Hull ratings for overlays.** future.org carries *"Basilisk hull
-  classes: give the stack overlays a rating"*; tonnage-from-RAM already
+- **Hull ratings for overlays.** Stack overlays want a class rating;
+  tonnage-from-RAM already
   exists on the board and wants reconciling with what an overlay
   declares.
 - **Does an officer ever transfer?** Currently, no: identity dies with
