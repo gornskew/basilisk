@@ -181,6 +181,11 @@ files. It installs identically, and additionally writes
 `basilisk/systemd/host.env`, the image-variant and host-port pins read
 by `basilisk.service`.
 
+**A stack overlay maps to a host, and the directory name is how.** One
+machine, one `<hostname>-stack/`, named for the box it configures —
+deploy tooling finds a host's overlay by that name and no other, so the
+name is load-bearing rather than descriptive.
+
 #### Standalone deployments: only your own services
 
 An overlay can only **add**. `./basilisk` loads `docker-compose.yml`
