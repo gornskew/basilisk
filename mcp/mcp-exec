@@ -9,7 +9,10 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE_DIR="${SCRIPT_DIR}/.."
-SERVICE_NAME="skewed-emacs"
+# The Captain's POSTING, not its species: every backend is reached by
+# exec'ing the MCP wrapper inside the Captain, whatever backend
+# --backend-host then names.  Overridable for the same reasons eskew is.
+SERVICE_NAME="${BASILISK_CAPTAIN:-captain}"
 LOG_FILE="/tmp/mcp-exec.log"
 LOCK_DIR="/tmp/mcp-exec.lock"
 LOCK_PID_FILE="${LOCK_DIR}/pid"
