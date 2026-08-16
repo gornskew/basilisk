@@ -1211,6 +1211,16 @@ main() {
 }$_arg" ;;
         esac
     done
+    # No switch and nothing in the environment: fall back to this
+    # clone's host pin, the same file systemd reads as an
+    # EnvironmentFile.  Without this the two start paths disagree --
+    # `systemctl start basilisk' honours the pin while `./basilisk up'
+    # silently takes the compose default, which is `full', so a ship
+    # pinned to `lite' flies heavy whenever anyone starts it by hand.
+    if [ -z "${EMACS_IMAGE_VARIANT:-}" ] && [ -f "$SCRIPT_DIR/systemd/host.env" ]; then
+        EMACS_IMAGE_VARIANT=$(sed -n 's/^EMACS_IMAGE_VARIANT=//p' \
+                                  "$SCRIPT_DIR/systemd/host.env" | tail -1)
+    fi
     if [ -n "${EMACS_IMAGE_VARIANT:-}" ]; then
         export EMACS_IMAGE_VARIANT
         log_info "skewed-emacs image variant: ${EMACS_IMAGE_VARIANT}"

@@ -46,6 +46,15 @@ mcp/claude_desktop_config.json
 mcp/opening-prompt-local.md
 
 # ==============================================================================
+# Per-host state, written by <host>-stack/install into THIS clone
+# ==============================================================================
+# host.env carries the image-variant pin for the machine this clone runs
+# on.  Tracking it puts one ship's pin in every ship's repo: it arrived
+# here saying EMACS_IMAGE_VARIANT=full from narad-stack/install, so a
+# clone pinned to lite gets a heavy Captain back on the next pull.
+systemd/host.env
+
+# ==============================================================================
 # Build artifacts & caches
 # ==============================================================================
 .git/
