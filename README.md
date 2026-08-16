@@ -254,6 +254,8 @@ problem (`bootstrap_from_image`).
 
 ## Origin of record
 
-This repo lives at **`gitlab.genworks.com:gornskew/basilisk`**. A mirror
-to `github.com/gornskew/basilisk` will follow once the dust settles;
-until then, clone from gitlab — the github URL does not resolve yet.
+This repo lives at **`gitlab.genworks.com:gornskew/basilisk`** — that is
+the origin of record. It is mirrored to
+[github.com/gornskew/basilisk](https://github.com/gornskew/basilisk)
+(live as of 2026-08-15), which is the one to link to from public docs
+and the one most people will clone.
