@@ -3,9 +3,9 @@
 
 ## A Class of Space Vessel
 
-A Balilisk is a class of ridged bio-hull inter-stellar (not
-inter-galactic) space vessel which are fabricated in various
-tonnages. `basilisk up ...` is the general replicator recipe for
+A Basilisk is a class of ridged bio-hull inter-stellar (not
+inter-galactic) space vessel, fabricated in various tonnages.
+`basilisk up ...` is the general replicator recipe for
 bio-replicator-fabricating, outfitting, and mustering these ridged
 hulls.
 
@@ -19,14 +19,14 @@ Corpses which may be reänimated (dumped lisp images). And so on.
 ## Who and/or What Is Typically Aboard These Vessels
 
 
-| container | post | in-world |
-|---|---|---|
+| post | in-world |
+|---|---|
 | **Captain** | the ship's console, and the one process that outlives the others' restarts |
 | **Pilot** | at the helm: think of the ship navigating through the sea of packets |
 | **Engineers** | the KBE engines — designing ships from aboard one |
 | **Comm** | the Communications Officer: runs the board any ship can project on its bridge viewscreen or other display |
 | **Medic** | rated `:doctor`; so-called "healer" that watches for the wedged and revives or dispatches them |
-| anything else an overlay adds | **Crew** | unknown species still muster in, by design |
+| **Crew** | anything else an overlay adds — unknown species still muster in, by design |
 
 ## Which _Species_ typically fills each _Posting_? 
 

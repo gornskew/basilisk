@@ -102,7 +102,10 @@ entirely without curiosity.
 
 Typical species: _Gornskew Eyes-Only_
 
-Names are FLAG -- fill in
+Names are lilting and nasal, and nearly always resolve on a hum — an
+-m or an -n — so a Comms name trails off rather than stops. Alone in
+the fleet, they sound like they are still transmitting after the
+speaker has finished.
 
 Comms are typically drones of some sort, and a lot of their job
 revolves around running the ship's _bridge viewscreen_.
@@ -112,20 +115,22 @@ the point of being annoying.
 
 
 
-## V. Tours, watches, and death
+## Tours, Watches, and Death
 
 Ships can undergo _relief in place_, _yard periods_, and other
-maintenenace and administrative events. 
+maintenance and administrative events.
 
 
 ### End of Tour and/or Death
 
-A tour ends with one of the following events occuring:
+A tour ends with one of the following events occurring:
 
+| cause | what happened |
+|---|---|
 | _relieved_ | relief in place; the complement was swapped, the hull held station |
-| _yard period_ | ship is drydocked; crew either dead or reässigned  |
-| _dead_ | this crew member died in the line of duty  |
-| _lost_ | simply lost, unknown dead of alive |
+| _yard period_ | ship is drydocked; crew either dead or reässigned |
+| _dead_ | this crew member died in the line of duty |
+| _lost_ | simply lost, unknown whether dead or alive |
 
 If the _dead_ state comes on in a graceful way, the crew's corpse can
 sometimes be freeze-dried before final death, for potential later
