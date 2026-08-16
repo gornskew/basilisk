@@ -1,0 +1,71 @@
+#!/bin/sh
+# Splice the yard's generated MCP servers into Claude Code's registry.
+#
+# Claude Desktop's config is a whole file you copy into place:
+#
+#     cp mcp/claude_desktop_config.json <your Claude Desktop area>
+#
+# Claude CODE's is not, and this is the trap: ~/.claude.json holds
+# machineID, userID, seen-notification state, migration flags and per
+# project history alongside mcpServers.  Copying a generated file over
+# it would work exactly once and quietly discard all of that.  So this
+# replaces ONE key and leaves the other thirty alone.
+#
+# Source is mcp/claude-code-mcp.json, written by `basilisk up`.  Always
+# the host form -- Claude Code runs inside WSL, so the wsl.exe wrapper
+# in the Desktop config would be wrong here.
+#
+# Usage:  mcp/install-claude-code-config [path-to-.claude.json]
+# Restart Claude Code afterwards; the registry is read at startup.
+
+set -e
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+SRC="${SCRIPT_DIR}/claude-code-mcp.json"
+DEST="${1:-${HOME}/.claude.json}"
+
+[ -f "$SRC" ] || {
+    printf 'no %s -- bring a ship up first (./basilisk up)\n' "$SRC" >&2
+    exit 1
+}
+command -v python3 >/dev/null 2>&1 || {
+    printf 'python3 is required to merge JSON safely\n' >&2
+    exit 1
+}
+
+python3 - "$SRC" "$DEST" <<'PY'
+import json, sys, collections, shutil, os
+
+src, dest = sys.argv[1], sys.argv[2]
+
+with open(src) as f:
+    servers = json.load(f).get("mcpServers", {})
+if not servers:
+    sys.exit("source has no mcpServers; refusing to install an empty registry")
+
+if os.path.exists(dest):
+    with open(dest) as f:
+        cfg = json.load(f, object_pairs_hook=collections.OrderedDict)
+    backup = dest + ".bak-basilisk"
+    shutil.copy2(dest, backup)
+else:
+    cfg, backup = collections.OrderedDict(), None
+
+before = sorted((cfg.get("mcpServers") or {}).keys())
+cfg["mcpServers"] = servers
+
+tmp = dest + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(cfg, f, indent=2)
+with open(tmp) as f:        # parse it back before it becomes the real file
+    json.load(f)
+os.replace(tmp, dest)
+
+print("registry: %s" % dest)
+if backup:
+    print("backup:   %s" % backup)
+if before:
+    print("was:      %s" % ", ".join(before))
+print("now:      %s" % ", ".join(servers))
+print("\nRestart Claude Code to pick these up.")
+PY

@@ -1,77 +1,77 @@
 {
   "mcpServers": {
-    "genworks-gdl-enterprise-non-smp": {
+    "guild-master-human": {
       "command": "wsl",
       "args": [
         "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
-        "genworks-gdl-enterprise-non-smp",
+        "guild-master-human",
         "--backend-host",
-        "genworks-gdl-enterprise-non-smp",
+        "guild-master-human",
         "--http-port",
         "9088"
       ]
     },
-    "genworks-gdl-enterprise-smp": {
+    "guild-master-cyborg": {
       "command": "wsl",
       "args": [
         "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
-        "genworks-gdl-enterprise-smp",
+        "guild-master-cyborg",
         "--backend-host",
-        "genworks-gdl-enterprise-smp",
+        "guild-master-cyborg",
         "--http-port",
         "9098"
       ]
     },
-    "cyclops": {
+    "pilot": {
       "command": "wsl",
       "args": [
         "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
-        "cyclops",
+        "pilot",
         "--backend-host",
-        "cyclops",
+        "pilot",
         "--http-port",
         "80"
       ]
     },
-    "skewed-emacs": {
+    "captain": {
       "command": "wsl",
       "args": [
         "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
-        "skewed-emacs",
+        "captain",
         "--backend-host",
-        "skewed-emacs",
+        "captain",
         "--http-port",
         "7080",
         "--request-timeout-ms",
         "30000"
       ]
     },
-    "gendl-ccl": {
+    "jr-eng-human": {
       "command": "wsl",
       "args": [
         "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
-        "gendl-ccl",
+        "jr-eng-human",
         "--backend-host",
-        "gendl-ccl",
+        "jr-eng-human",
         "--http-port",
         "9080",
         "--request-timeout-ms",
         "30000"
       ]
     },
-    "gendl-sbcl": {
+    "jr-eng-cyborg": {
       "command": "wsl",
       "args": [
         "/home/dcooper8/projects/basilisk/mcp/mcp-exec",
         "--server-name",
-        "gendl-sbcl",
+        "jr-eng-cyborg",
         "--backend-host",
-        "gendl-sbcl",
+        "jr-eng-cyborg",
         "--http-port",
         "9090",
         "--request-timeout-ms",

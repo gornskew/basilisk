@@ -844,6 +844,18 @@ merge_mcp_configs() {
         else
             _cdc_src="/tmp/merged-mcp-host.json"
         fi
+        # Claude CODE's registry is a different file from Claude
+        # Desktop's, and cannot be copied over: ~/.claude.json carries
+        # machineID, userID, seen-notification state and migration flags
+        # alongside mcpServers.  So the yard also drops the host-form
+        # config here, and mcp/install-claude-code-config splices just
+        # its mcpServers key into ~/.claude.json.  Always the host form,
+        # never the windows one -- Claude Code runs inside WSL, where
+        # the wsl.exe wrapper the Desktop config needs would be wrong.
+        run_compose cp "captain:/tmp/merged-mcp-host.json" \
+            "${SCRIPT_DIR}/mcp/claude-code-mcp.json" 2>/dev/null \
+            || log_warning "could not stage mcp/claude-code-mcp.json"
+
         if run_compose cp "captain:${_cdc_src}" \
             "${SCRIPT_DIR}/mcp/claude_desktop_config.json" 2>/dev/null; then
             log_success "Claude Desktop config ready: mcp/claude_desktop_config.json (see docs/CLAUDE_DESKTOP.md)"
