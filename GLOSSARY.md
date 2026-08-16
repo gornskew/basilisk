@@ -21,6 +21,7 @@ These are real, load-bearing, and used in the code and the docs.
 | **crew member** | one container, standing one post |
 | **posting** | the container hostname: `captain`, `jr-eng-cyborg`, `pilot` |
 | **the yard** | a Basilisk repository — where hulls are laid down |
+| **the bridge viewscreen** | the Eyes Only board — the display itself, as opposed to **Comm**, the posting that runs it |
 | **watch change** | a restart: the ship holds station, the watch turns over |
 | **yard period** | the galaxy itself went down or was rebuilt |
 | **fittings** | `fittings.sexp` — what each post means in container terms |
