@@ -821,6 +821,52 @@ _vs_recreate() {
     fi
 }
 
+# =============================================================================
+# CREW MUSTER -- what the roster expects vs what is actually aboard
+#
+# fittings.sexp has carried both halves of this for a while: :roster says
+# which posts a crew-level implies, and :warnings carries the sentence to
+# print when one of them is absent.  Nothing ever CHECKED it at runtime,
+# so a ship could report every service healthy while serving nothing at
+# all.  Sally did exactly that on 2026-08-15 -- validation passed, five
+# containers green, and the Pilot publishing a dev port instead of :80,
+# which no layer mentioned because no layer was looking.
+#
+# So this prints the manifest every time: post, service, and the ports it
+# actually publishes.  Making the ingress port visible at startup is most
+# of the value; a wrong one is obvious the moment you can see it.
+# =============================================================================
+crew_muster() {
+    _cm_services=$(run_compose config --services 2>/dev/null | tr -d '\r' | sort)
+    [ -n "$_cm_services" ] || return 0
+
+    log_info "Crew muster:"
+    _cm_have_pilot=0
+    for _cm_svc in $_cm_services; do
+        case "$_cm_svc" in
+            skewed-emacs)      _cm_post="Captain " ;;
+            cyclops)           _cm_post="Pilot   " ; _cm_have_pilot=1 ;;
+            gendl-*|genworks-gdl-*) _cm_post="Engineer" ;;
+            eyes-only)         _cm_post="Comm    " ;;
+            autoheal)          _cm_post="Medic   " ;;
+            *)                 _cm_post="Crew    " ;;
+        esac
+        _cm_ports=$(docker ps --filter "name=^${BASILISK_PREFIX:-}${_cm_svc}\$" \
+                              --format '{{.Ports}}' 2>/dev/null \
+                        | tr ',' '\n' | sed -n 's/.*0\.0\.0\.0:\([0-9]*\)->\([0-9]*\).*/\1->\2/p' \
+                        | sort -u | tr '\n' ' ')
+        printf '  %s %-24s %s\n' "$_cm_post" "$_cm_svc" "${_cm_ports:-(no published ports)}"
+    done
+
+    # An absent post is legal -- every post is optional, :captain included --
+    # but it has a consequence, and fittings.sexp already words it.
+    if [ "$_cm_have_pilot" -eq 0 ]; then
+        log_warning "no Pilot aboard: nothing fronts HTTP; publish ports directly"
+        log_warning "  (if this ship is meant to have one, its overlay is missing:"
+        log_warning "   run <host>-stack/install, which copies <host>-stack-compose.yml here)"
+    fi
+}
+
 validate_services() {
     _vs_budget_default="${HEALTH_WAIT_SECS:-30}"
     _vs_retries_max="${HEALTH_MAX_RESTARTS:-2}"
@@ -922,6 +968,7 @@ validate_services() {
 
     if [ -z "$VALIDATED_FAILED" ]; then
         log_success "All services validated in ${_vs_total}s"
+        crew_muster
         return 0
     fi
 
