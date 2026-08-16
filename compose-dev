@@ -1217,9 +1217,17 @@ main() {
     # `systemctl start basilisk' honours the pin while `./basilisk up'
     # silently takes the compose default, which is `full', so a ship
     # pinned to `lite' flies heavy whenever anyone starts it by hand.
-    if [ -z "${EMACS_IMAGE_VARIANT:-}" ] && [ -f "$SCRIPT_DIR/systemd/host.env" ]; then
-        EMACS_IMAGE_VARIANT=$(sed -n 's/^EMACS_IMAGE_VARIANT=//p' \
-                                  "$SCRIPT_DIR/systemd/host.env" | tail -1)
+    if [ -f "$SCRIPT_DIR/systemd/host.env" ]; then
+        # Every KEY=VALUE in host.env, not just the variant: it is this
+        # clone's host pin file, and a production ingress pins its
+        # published port there too.  Only fills values that are not
+        # already set, so a flag or an inherited variable still wins.
+        while IFS='=' read -r _k _v; do
+            case "$_k" in ''|\#*) continue ;; esac
+            if [ -z "$(eval "echo \${$_k:-}")" ]; then
+                export "$_k=$_v"
+            fi
+        done < "$SCRIPT_DIR/systemd/host.env"
     fi
     if [ -n "${EMACS_IMAGE_VARIANT:-}" ]; then
         export EMACS_IMAGE_VARIANT

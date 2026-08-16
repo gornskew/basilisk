@@ -117,14 +117,19 @@ BASILISK_PORT_OFFSET=$BASILISK_PORT_OFFSET
 # Network name (one bridge per instance)
 DOCKER_NETWORK_NAME=$NETWORK_NAME
 
-# Published host ports, offset by BASILISK_PORT_OFFSET
-TTYD_HOST_PORT=$(_off 6942)
-GENDL_CCL_HOST_PORT=$(_off 19080)
-GENDL_SBCL_HOST_PORT=$(_off 29080)
-CYCLOPS_HOST_PORT=$(_off 19069)
-CYCLOPS_UTILITY_HOST_PORT=$(_off 19191)
-GDL_SMP_HOST_PORT=$(_off 9098)
-GDL_NON_SMP_HOST_PORT=$(_off 9088)
+# Published host ports, offset by BASILISK_PORT_OFFSET.  An inherited
+# value wins, same precedence as EMACS_IMAGE_VARIANT above, because
+# these defaults are DEV ports: a ship whose Pilot fronts the public
+# internet publishes :80, and regenerating .env must not quietly move
+# it to 19069 and take the site off the air.  Host pins ride in
+# systemd/host.env, which ./basilisk exports before calling this.
+TTYD_HOST_PORT=${TTYD_HOST_PORT:-$(_off 6942)}
+GENDL_CCL_HOST_PORT=${GENDL_CCL_HOST_PORT:-$(_off 19080)}
+GENDL_SBCL_HOST_PORT=${GENDL_SBCL_HOST_PORT:-$(_off 29080)}
+CYCLOPS_HOST_PORT=${CYCLOPS_HOST_PORT:-$(_off 19069)}
+CYCLOPS_UTILITY_HOST_PORT=${CYCLOPS_UTILITY_HOST_PORT:-$(_off 19191)}
+GDL_SMP_HOST_PORT=${GDL_SMP_HOST_PORT:-$(_off 9098)}
+GDL_NON_SMP_HOST_PORT=${GDL_NON_SMP_HOST_PORT:-$(_off 9088)}
 
 TERM=xterm-256color
 COLORTERM=truecolor
