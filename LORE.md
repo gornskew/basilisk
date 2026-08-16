@@ -5,14 +5,8 @@ Three documents carry this fiction, and they are deliberately layered:
 | document | owns | audience |
 |---|---|---|
 | `BASILISK.md` | what the stack is called and who is aboard | anyone running the stack |
-| `GLOSSARY.md` | the working vocabulary, kept running | anyone at a prompt |
 | `eyes-only/THEMES.md` | how the *board* renders the story | anyone writing a skin |
 | **this file** | the world underneath both | anyone generating crew, writing logs, or extending the fiction |
-
-`GLOSSARY.md` is the one place a term gets *defined* — `yard glossary`
-prints it — and it is where the fiction reaches the yard-side work: a
-repository is a set of **plans**, a commit **seals** them, unfiled work
-sits **on the slip**, and pushing **files** it with the yard.
 
 The other two are reference. **This one is the substrate** — it exists
 because every crew member has to get a plausible backstory and a
