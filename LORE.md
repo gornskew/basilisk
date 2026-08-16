@@ -24,16 +24,27 @@ the minting that gives that Engineer a name happens in Basilisk's own
 
 ---
 
-## I. The three axes
+## I. The axes
 
-Established 2026-08-16 (Dave). Conflating any two of these is the
-recurring error, in copy and in code alike:
+Established 2026-08-16 (Dave), over the course of one session that
+started with three axes and found four more. Conflating any two of
+these is the recurring error, in copy and in code alike:
 
-| axis | question | values |
-|---|---|---|
-| **role** | what job is being stood? | Captain, Pilot, Engineer, Comm, Medic, Crew |
-| **species** | which image is standing it? | `skewed-emacs`, `cyclops`, `gendl`, `genworks-gdl`, `autohealer`, `unknown` |
-| **manned / drone** | is there a compiler aboard? | manned, drone |
+| axis | question | where it lives | values |
+|---|---|---|---|
+| **family** | what kind of creature? | image repository | gendl, genworks-gdl, skewed-emacs, cyclops, autohealer |
+| **species** | which image exactly? | image repository **and tag** | `gendl-ccl`, `gendl-sbcl`, `genworks-gdl-enterprise-smp`, … |
+| **role** | what kind of job? | derived from species | Captain, Pilot, Engineer, Comm, Medic, Crew |
+| **posting** | which billet, on this ship? | the hostname | `captain`, `jr-eng-human`, `guild-master-cyborg`, `pilot` |
+| **augmentation** | multithreaded? | posting segment | cyborg, human |
+| **guild rank** | what licence tier? | posting segment | master, journeyman, apprentice, novice |
+| **manned / drone** | compiler aboard? | derived from species | manned, drone |
+| **personal name** | *who* is this? | minted into the container | Tellon, Quomir, Huxworth, … |
+
+Read down that "where it lives" column and the design justifies
+itself: family and species come from the image, posting comes from the
+hostname, and the personal name is written inside the container. Three
+different places, so nothing can accidentally rename anybody.
 
 They are independent, and the interesting cases are the ones where they
 come apart:
@@ -53,9 +64,69 @@ come apart:
   shipped to fabricate new ones (`BASILISK.md`, *Runtimes are not
   Engineers*).
 
+- **A family is not a species.** `gendl-ccl` and `gendl-sbcl` are two
+  different images and therefore two different creatures — same family,
+  different species, and they should not sound alike (Dave,
+  2026-08-16). The shipped `_crew_species_from_image()` matches the
+  image *repository* and discards the tag, so both currently mint as
+  `SPECIES=gendl` and draw from one name pool; see §VI.0.
+- **A posting is not a role.** `jr-eng-human` and `jr-eng-cyborg` are
+  two billets of the same role. The role says *engineer*; the posting
+  says *which engineer's chair on which ship*.
+
 Only NAME / SPECIES / ROLE are minted into a container. Manned-ness is
 **derived from species** and always has been implicit; see §VI for the
 one function that should make it explicit.
+
+### The postings
+
+The hostname is the posting, and it carries rank, licence tier and
+augmentation in one readable string. `guild-master-cyborg` tells a
+reader who has seen the glossary once that this is a commissioned Guild
+engineer on the top licence tier, running multithreaded — which is more
+than `genworks-gdl-enterprise-smp` says in nine more characters.
+
+| posting | container today | family |
+|---|---|---|
+| `captain` | `skewed-emacs` | skewed-emacs |
+| `jr-eng-human` | `gendl-ccl` | gendl |
+| `jr-eng-cyborg` | `gendl-sbcl` | gendl |
+| `guild-master-cyborg` | `genworks-gdl-enterprise-smp` | genworks-gdl |
+| `guild-master-human` | `genworks-gdl-enterprise-non-smp` | genworks-gdl |
+| `guild-journeyman-cyborg` | *(GDL Professional, SMP — not yet pulled)* | genworks-gdl |
+| `guild-journeyman-human` | *(GDL Professional, non-SMP — not yet pulled)* | genworks-gdl |
+| `pilot` | `cyclops` | cyclops |
+| `comms` | *(no container until the binary exists)* | eyes-only |
+
+**Ship's engineers versus the Guild.** `jr-eng-*` are the ship's own
+engineers, carried free; `guild-*` are commissioned from outside and
+licensed by tier. `fittings.sexp` already drew exactly this line with
+`(:post :ship-engineers)` and `(:post :guild ... "two commissioned GDL
+units")` — the postings push that vocabulary down from the post to the
+service, which is why no new post or crew-level is needed to hold them.
+
+**Guild rank is the licensing axis**, and it is the only axis with
+money attached. A guild rank *is* a licence tier — what you are
+permitted to do, what tools you are trusted with, and what you may sell
+the output of:
+
+| tier | rank |
+|---|---|
+| Enterprise | **master** |
+| Professional | **journeyman** |
+| Student | **apprentice** |
+| Trial | **novice** |
+
+Genworks happens to have four tiers and a craft guild happens to have
+four rungs, which is the sort of coincidence worth spending rather than
+explaining. `apprentice` and `novice` have no post yet; they cost
+nothing to reserve and the ladder reads wrong without them.
+
+**Augmentation** (`cyborg` / `human`) is the more-augmented of a pair:
+SMP at Guild rank (more cores harnessed), SBCL at ship's-engineer rank
+(the more aggressively optimizing compiler). It attaches to the
+*posting*, not the species — two officers of one family can hold a
+human billet and a cyborg billet.
 
 ---
 
@@ -96,14 +167,23 @@ sentence. Do not weaken it into a metaphor.
 
 ---
 
-## III. The species
+## III. The families and their species
 
-Species comes from the container's **image**, never its service name
-(`_crew_species_from_image()`), so renaming a service in an overlay
-does not change what someone *is*. Each species has its own phonology,
-already live in `_crew_onsets_for()` / `_crew_finals_for()` — the
-names the stack actually mints. The sound is canon; the character
-below is read *out of* the sound rather than bolted onto it.
+Family and species both come from the container's **image**, never its
+service name, so renaming a service in an overlay does not change what
+someone *is*. Each has its own phonology, already live in
+`_crew_onsets_for()` / `_crew_finals_for()` — the names the stack
+actually mints. The sound is canon; the character below is read *out
+of* the sound rather than bolted onto it.
+
+**Family is the shared shape; species is the individual creature.**
+Two species of one family should sound related and not identical — a
+family resemblance in the onsets, a divergence in the finals. Today
+they sound *the same*, because `_crew_species_from_image()` throws the
+image tag away: `gendl-ccl` and `gendl-sbcl` both mint as
+`SPECIES=gendl` and draw one pool, as do the two Guild species. The
+profiles below are written at family level for that reason, and each
+notes where its species must split. Fixing the derivation is §VI.0.
 
 ### `skewed-emacs` — the Captains
 
@@ -141,7 +221,7 @@ Temperament: terse to the point of rudeness, absolutely reliable,
 and entirely without curiosity. Ask a Pilot what it thinks and it will
 tell you what it routed.
 
-### `gendl` — the Engineers (free species)
+### `gendl` — the ship's engineers (two species: `gendl-ccl`, `gendl-sbcl`)
 
 > onsets `Ka Lis Par Quo Sem Tel Nym Ori` · finals `da per lon ta mir vex is und`
 > → *Tellon, Quomir, Lisper, Parvex, Orida*
@@ -158,7 +238,7 @@ answering a question with a better question. An Engineer will rebuild
 something that was working because it could be more elegant, and will
 be right often enough to keep getting away with it.
 
-### `genworks-gdl` — the Engineers (commercial species)
+### `genworks-gdl` — the Guild (species per tier and augmentation)
 
 > onsets `Ad Bex Cor Dal Enn Fir Gal Hux` · finals `mand ton dry well berg worth field ston`
 > → *Huxworth, Bexton, Corfield, Dalberg, Ennwell*
@@ -292,6 +372,34 @@ The fiction is already unusually live: names are minted into real
 containers, roles come from real images, and the board renders real
 processes as crew. What follows is what is **not** live yet, in the
 order it should land.
+
+### 0. Species must see the image tag (a defect, not a feature)
+
+`_crew_species_from_image()` matches `*/gendl:*` and `genworks/gdl:*`,
+which discards the tag and collapses four images into two species.
+Verified on the running fleet:
+
+```
+gendl-ccl                        NAME=Tellon    SPECIES=gendl
+gendl-sbcl                       NAME=Quomir    SPECIES=gendl
+genworks-gdl-enterprise-smp      NAME=Huxworth  SPECIES=genworks-gdl
+genworks-gdl-enterprise-non-smp  NAME=Bexton    SPECIES=genworks-gdl
+```
+
+The label is the small half. The damage is that **name pools are keyed
+by species**, so Tellon and Quomir draw from one set of onsets and
+finals — the single mechanism that makes species audible is switched
+off for exactly the pair where you would most want to hear it.
+
+Fix: derive species from repository *and* tag, then give each species
+its own pool, sharing onsets within a family and diverging on finals so
+the resemblance is audible without the identity blurring. The pools in
+`eyes-only`'s `*CREW-NAME-POOLS*` need the identical split — the
+comment in `compose-dev` already flags that the two copies are synced
+by hand.
+
+Independent of the posting rename: species derivation never reads a
+hostname.
 
 ### 1. Manned-ness, minted (small, and unblocks everything else)
 
