@@ -61,7 +61,7 @@ Three things recommend the specific word:
   the idiom of every navy that ever named a ship, and `basilisk up` is
   three syllables at a prompt.
 
-Names the canon has already spent, and which were therefore unavailable:
+Other terminology the lore may bring into play:
 `muster` (the crew log), `roster` (the server-side crew table), `watch`
 (a `docker restart`), `yard` (a host reboot), `relief` and `tour` (what
 a recreate does to a complement).
@@ -71,14 +71,6 @@ a recreate does to a complement).
 Deliberately narrow.  Basilisk is the name of the *stack* — the thing
 `./basilisk up` brings into being — and nothing else:
 
-| stays as it is | why |
-|---|---|
-| the `skewed-emacs` repository | it houses all three assets; the config is the biggest of them |
-| the `genworks/skewed-emacs` images (and `--lite/--default/--tui/--gui/--full`) | the image is asset (2), the Captain's own hull, not the fleet |
-| the `skewed-emacs` container / hostname | the Captain answers to its own name |
-| the `skewed-emacs-network` Docker network | renaming a live network breaks every running overlay for no gain |
-| `eskew` / `egskew` | they attach to the *emacs*, which is exactly what they say |
-| `services.sexp`, the overlay `.yml` files | generated plumbing; the conceit is presentation |
 
 `./basilisk` is the stack's entry point.  `./compose-dev` remains and
 always will — the same script under its original name, so every script,
