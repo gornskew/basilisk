@@ -54,6 +54,15 @@ mcp/opening-prompt-local.md
 # clone pinned to lite gets a heavy Captain back on the next pull.
 systemd/host.env
 
+# Host overlay yard output, copied in by <host>-stack/install and
+# re-copied by every `./basilisk up'.  The UNPREFIXED
+# generated/services-generated.el is the base file and stays tracked --
+# it is the yard's own output and every ship needs it.  The <host>-stack-
+# prefixed ones belong to whichever machine ran install last, and get
+# rewritten under you on every start, so tracking them just strands one
+# ship's roster in every ship's repo.
+generated/*-stack-services-generated.el
+
 # ==============================================================================
 # Build artifacts & caches
 # ==============================================================================
