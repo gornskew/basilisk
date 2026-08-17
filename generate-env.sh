@@ -56,8 +56,8 @@ fi
 #
 # Set BASILISK_INSTANCE to run more than one stack on the same box.  It is
 # empty by default, which reproduces the historical single-stack settings
-# exactly -- container names unprefixed, network "skewed-network", and every
-# published port on its original number.
+# -- container names unprefixed and every published port on its original
+# number.
 #
 #   BASILISK_INSTANCE=alpha BASILISK_PORT_OFFSET=100 ./basilisk up
 #
@@ -67,9 +67,11 @@ fi
 #   container names  -- GLOBAL to the docker daemon, so this is the one true
 #                       collision.  BASILISK_PREFIX handles it.  In-network
 #                       hostnames stay canonical, so every instance's Captain
-#                       is still "skewed-emacs" to its own fleet.
+#                       is still "captain" to its own fleet.
 #   network name     -- one bridge per instance, or they share a broadcast
-#                       domain and service DNS becomes ambiguous.
+#                       domain and service DNS becomes ambiguous.  Each
+#                       instance is her own SHIP and carries her own minted
+#                       name; see THE SHIP'S NAME below.
 #   published ports  -- a host port can only be claimed once.
 #
 # The offset is applied here, in shell, because compose cannot do arithmetic
@@ -81,11 +83,71 @@ BASILISK_PORT_OFFSET="${BASILISK_PORT_OFFSET:-0}"
 
 if [ -n "$BASILISK_INSTANCE" ]; then
     BASILISK_PREFIX="${BASILISK_INSTANCE}-"
-    NETWORK_NAME="${BASILISK_INSTANCE}-skewed-network"
 else
     BASILISK_PREFIX=""
-    NETWORK_NAME="skewed-network"
 fi
+
+# =============================================================================
+# THE SHIP'S NAME (Dave, 2026-08-17)
+#
+# A ship is minted a name the first time she is fitted out from this
+# clone, and keeps it for life -- per instance: .ship, or
+# .ship-<instance>, beside .env and equally uncommitted.  The docker
+# network IS the ship: the connective tissue every crew member plugs
+# into.  So the network takes the ship's name, which ought to be unique
+# per galaxy (host) -- minting retries against the names docker already
+# knows.  An inherited BASILISK_SHIP (environment or systemd host.env)
+# wins over the minted one, same precedence as every other pin here.
+#
+# The generated compose still falls back to "skewed-network" when
+# DOCKER_NETWORK_NAME is absent, so a ship fitted out by hand before
+# naming sails on unrenamed.  NOTE: on an existing deployment the first
+# regeneration after this change renames the network, and the next
+# `up' is therefore a relief in place -- compose recreates the crew
+# onto the renamed ship.
+# =============================================================================
+_ship_pick() {
+    set -- $1
+    _sp_n=$#
+    _sp_r=$(od -An -N2 -tu2 /dev/urandom | tr -d ' ')
+    _sp_i=$(( (_sp_r % _sp_n) + 1 ))
+    eval "echo \${$_sp_i}"
+}
+
+_mint_ship_name() {
+    # Basilisk-flavored, serpent under the bow: Vorilisk, Skalyss,
+    # Zhurorath, Thessek ...
+    _ms_onsets='Bas Vor Skal Zhur Thess Karn Ssyr Drax Vy Or'
+    _ms_finals='ilisk yss orath ura ek onn ith esk ala und'
+    _ms_known="$(docker network ls --format '{{.Name}}' 2>/dev/null | tr 'A-Z' 'a-z')"
+    _ms_tries=0
+    while :; do
+        _ms_name="$(_ship_pick "$_ms_onsets")$(_ship_pick "$_ms_finals")"
+        _ms_lower="$(printf '%s' "$_ms_name" | tr 'A-Z' 'a-z')"
+        if printf '%s\n' "$_ms_known" | grep -qxF "$_ms_lower"; then
+            _ms_tries=$((_ms_tries + 1))
+            if [ $_ms_tries -ge 20 ]; then
+                _ms_name="${_ms_name}-$(od -An -N1 -tu1 /dev/urandom | tr -d ' ')"
+                break
+            fi
+        else
+            break
+        fi
+    done
+    echo "$_ms_name"
+}
+
+SHIP_FILE=".ship${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
+if [ -n "${BASILISK_SHIP:-}" ]; then
+    :  # inherited pin wins; do not re-mint or overwrite the log entry
+elif [ -f "$SHIP_FILE" ]; then
+    BASILISK_SHIP="$(head -1 "$SHIP_FILE")"
+else
+    BASILISK_SHIP="$(_mint_ship_name)"
+    printf '%s\n' "$BASILISK_SHIP" > "$SHIP_FILE"
+    echo "Minted ship's name: $BASILISK_SHIP (kept in $SHIP_FILE)"
+fi
+NETWORK_NAME="$(printf '%s' "$BASILISK_SHIP" | tr 'A-Z' 'a-z')"
 
 _off() { echo $(( $1 + BASILISK_PORT_OFFSET )); }
 
@@ -114,7 +176,9 @@ BASILISK_INSTANCE=$BASILISK_INSTANCE
 BASILISK_PREFIX=$BASILISK_PREFIX
 BASILISK_PORT_OFFSET=$BASILISK_PORT_OFFSET
 
-# Network name (one bridge per instance)
+# The ship: her minted name, and the network that IS her (one bridge
+# per instance, named for the ship)
+BASILISK_SHIP=$BASILISK_SHIP
 DOCKER_NETWORK_NAME=$NETWORK_NAME
 
 # Published host ports, offset by BASILISK_PORT_OFFSET.  An inherited

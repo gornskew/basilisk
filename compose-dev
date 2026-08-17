@@ -299,7 +299,9 @@ ENVIRONMENT:
         HEALTH_POLL_SECS        probe cadence (default 2)
 
 NETWORK:
-    Services communicate via Docker network 'skewed-emacs-network'
+    Services communicate via one Docker network per instance -- the
+    ship herself, named for her (minted by generate-env.sh into .ship,
+    surfaced as DOCKER_NETWORK_NAME in .env)
     - From host: localhost:<host-port>
     - Inter-container: <service-hostname>:<container-port>
 

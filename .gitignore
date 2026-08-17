@@ -73,6 +73,11 @@ mcp/*mcp*
 mcp/claude_desktop_config.json
 mcp/opening-prompt-local.md
 
+# The ship's minted name (generate-env.sh); per-clone, per-instance
+# identity, like .env -- never another ship's business.
+.ship
+.ship-*
+
 # ==============================================================================
 # Per-host state, written by <host>-stack/install into THIS clone
 # ==============================================================================
