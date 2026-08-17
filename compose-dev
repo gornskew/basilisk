@@ -608,6 +608,16 @@ _crew_role_for_posting() {
 # one gendl pool as they did until 2026-08-17.  Order matters in both
 # case statements -- *non-smp* must precede *smp*, which would
 # otherwise swallow it.
+#
+# COMMS (eyes-only) is here before its container is: Eyes Only has no
+# image yet, so nothing mints one today, but it lands the moment the
+# board ships as a binary with a :post :comms.  Until 2026-08-17 it
+# would have fallen through to the unknown pool and sounded like no
+# one.  LORE.md's Comms section sets the character -- lilting and
+# nasal, resolving on a hum, so a name trails off rather than stopping
+# -- which is deliberately the one corner of the sonic space the other
+# pools leave empty: captain consonant-heavy, gendl liquid, gdl
+# English-gentry, cyclops clipped and sibilant, autoheal vocalic.
 _crew_onsets_for() {
     case "$1" in
         skewed-emacs:*) echo 'Bl Gr Thr Kro Zar Vex Mog Drel' ;;
@@ -617,6 +627,7 @@ _crew_onsets_for() {
         gdl:*non-smp*)  echo 'Ad Bex Cor Dal Enn Fir Gal Hux' ;;
         gdl:*)          echo 'Ost Ven Kal Rhe Sig Tor Wex Yar' ;;
         autoheal:*)     echo 'Om Sal Vel Lum Mir Ana Eir Thea' ;;
+        eyes-only:*)    echo 'Nil Myr Len Vael Sion Nyel Lir Nao' ;;
         *)              echo 'X Yz Qm' ;;
     esac
 }
@@ -629,6 +640,7 @@ _crew_finals_for() {
         gdl:*non-smp*)  echo 'mand ton dry well berg worth field ston' ;;
         gdl:*)          echo 'holm gate forge crest march stead vale bury' ;;
         autoheal:*)     echo 'a une is oon ara elle ios em' ;;
+        eyes-only:*)    echo 'am een ion um ain oem un yn' ;;
         *)              echo 'ar il ot' ;;
     esac
 }
