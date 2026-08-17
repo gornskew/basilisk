@@ -103,13 +103,17 @@ gets delivered elsewhere. The ship navigates **to** each consignment:
 it travels to the source, rather than waiting for the consignment to
 travel to it.
 
-Passengers come in both kinds. A **cyborg** passenger arrives from
-outside with business to transact. A **biological** one is grown for
-the occasion — brought into being to carry someone through what they
-came for, and stood down afterwards. Which is why passengers are
-load-bearing rather than ornamental: an arriving passenger really can
-cause new crew to be constructed, and can just as well be the thing
-that gets constructed.
+Passengers come in both kinds, and **both pass the Captain's watch**. A
+**cyborg** passenger arrives from outside with business to transact,
+clears the transporter room, and is received by the Captain — who
+either deals with it personally or walks it down to an Engineer. A
+**biological** one does not arrive at all: the Captain **invites** it,
+and it is grown for the occasion, brought into being to carry someone
+through what they came for and stood down afterwards.
+
+Which is why passengers are load-bearing rather than ornamental: an
+arriving passenger really can cause new crew to be constructed, and can
+just as well be the thing that gets constructed.
 
 The stock itself comes aboard the same way. An **image** arrives from
 its home planet as materials — reconstituted from its parts on the pad

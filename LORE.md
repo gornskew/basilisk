@@ -182,12 +182,19 @@ pass muster, and then they get a proper audience with the Captain or
 with an Engineer. Sometimes they come aboard in person; sometimes they
 call it in from remote.
 
-Not every passenger arrives, though. A **biological** passenger is
-grown aboard for the occasion — brought into being to carry someone
-through the business they came for, and stood down once it is
-concluded. Short-lived by design and never mustered: it stands no
-watch, draws no post, and is gone by the next relief. A ship can
-therefore be carrying passengers it made itself.
+Not every passenger arrives, though. A **biological** passenger is one
+the **Captain invites**: grown aboard for the occasion, brought into
+being to carry someone through the business they came for, and stood
+down once it is concluded. Short-lived by design and never mustered —
+it stands no watch, draws no post, and is gone by the next relief. A
+ship can therefore be carrying passengers it invited and then made
+itself.
+
+Either way the Captain is in it. The cyborg kind clears the transporter
+room and is received at the Captain's watch; the biological kind exists
+because the Captain called for it. Nobody comes aboard as a passenger
+without passing that watch, which is the second vetting and the reason
+there is one.
 
 Made from what came in on the pad, at that. An **image** arrives from
 its home planet as materials, reconstituted from its parts like any
