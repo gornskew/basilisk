@@ -131,7 +131,11 @@ nothing is decoration.
 
 - **Captains** are almost exclusively from a sometimes horrifying,
   sometimes friendly and gentle, Gnu-Human hybrid presenting species
-  called _skewed-emacs_.
+  called _skewed-emacs_. Note that the species name undersells the
+  posting badly: a Captain is not one tool but a belt of them, and the
+  editor everyone names it after is simply the most famous. Receiving
+  visitors, keeping records, and corresponding off-ship are separate
+  instruments on that belt, and the complement grows.
 
 - **Transporter Chiefs** tend to be of the _cyclops_ drone species.
 

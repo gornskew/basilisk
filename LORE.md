@@ -37,10 +37,19 @@ engineering departments carry one human and one cyborg engineer.
 
 ### the Captain
 
-Typical species: _Gnu Emacs_
+Typical species: _skewed-emacs_
 
 Names are guttural, blunt, consonant-heavy — the oldest-sounding names
 in the fleet, and the only ones that sound like they predate the yard.
+
+**Not merely an editor**, which is the obvious mistake to make about
+the post, and one the species name does nothing to discourage. A
+Captain goes about hung with instruments — a working belt of them,
+each for a different kind of business, of which the editor is only the
+one everybody has heard of. Others keep the ship's records, carry its
+correspondence, and receive whatever comes aboard wanting an audience.
+Several of them he is still learning. He is further along than he lets
+on, and would rather you assumed otherwise.
 
 Temperament: territorial, indifferent to ceremony, and in possession
 of a great deal of undocumented institutional memory.  A Captain who
