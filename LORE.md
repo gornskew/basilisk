@@ -3,9 +3,9 @@
 
 Basilisk ships are spawned from the (replicatable) Basilisk shipyard
 (this repository) and typically crewed with a Captain, at least one
-Ship's Engineer, a Ship's Doctor (or Medic), optionally a Pilot and
-Comms (these are typically drones), and optionally one or more Guild
-Engineers. 
+Ship's Engineer, a Ship's Doctor (or Medic), optionally a Transporter
+Chief and Comms (these are typically drones), and optionally one or
+more Guild Engineers. 
 
 These posting:species mappings are typical, but some species
 of crew member can sometimes stand in for others. 
@@ -86,17 +86,43 @@ death — he has seen the entire complement relieved many times and will
 see it again.
 
 
-### the Pilots
+### the Transporter Chiefs
 
 Typical species: _Gornskew Cyclops_
 
 Names are clipped and sibilant, perhaps like radio callsigns.
 
-Pilots are typically one-eyed **drones**: synthetic rather than
+Chiefs are typically one-eyed **drones**: synthetic rather than
 biological.
+
+Everything and everyone coming aboard transports in through the
+Chief's room, and is vetted there before reaching the ship proper. The
+job is _not_ security — it is knowing who is who and what is what,
+which the departments are bad at precisely because they are busy doing
+their own work. Security is its own role; the Chief has security
+officers under him.
+
+A ship with no Chief aboard is not sealed, merely unscreened: each
+department keeps its own mini-transporter and takes visitors straight
+in, to Engineering or to the Captain.
 
 Temperament: terse to the point of rudeness, absolutely reliable, and
 entirely without curiosity.
+
+
+### the Pilots — a posting with no berth
+
+Typical species: none yet.
+
+A Pilot would stand the **helm**, flying the standing orders the
+Captain sets from the conn. No default ship carries one: the helm goes
+unattended and the conn absorbs the piloting. A ship augmented with a
+Cyclops puts it on Transporter Chief duty instead, that being what a
+Cyclops is actually for — it **receives**, and never goes anywhere.
+
+The posting is kept on the books against a species and a duty that
+genuinely want it. **Navigation** is a third thing again, distinct from
+both the conn and the helm, and its seat is vacant too.
 
 ### the Communications Officer (Comms)
 
@@ -113,6 +139,76 @@ revolves around running the ship's _bridge viewscreen_.
 Temperament: Nurturing, caring, in everyone's business sometimes to
 the point of being annoying.
 
+
+
+## What Comes Aboard
+
+A Basilisk picks up, processes, and delivers. Everything that arrives
+reconstitutes on the transporter pad as one of four things:
+**materials**, raw stock brought aboard to be worked on; **goods**,
+processed or manufactured, whether the finished article or an
+ingredient for the next one; **services**, which is work performed
+rather than cargo handed over, where the Engineer does the thing and
+what leaves is the result; and **passengers**, who are personnel,
+biological and cyborg alike.
+
+Nothing arrives whole. Each thing crossing the pad, inbound or
+outbound, is a **part** — of some goods, of some materials, or of some
+passenger — and what reconstitutes is the assembled whole, never the
+part by itself. Services are the odd one out of the four, being
+performed rather than carried: what comes and goes around a service is
+still goods and materials.
+
+A **consignment** comes aboard, may be routed to ship's or Guild
+engineering for working or as an ingredient, and something else leaves
+for somewhere else. The ship navigates **to** each consignment: it
+travels to the source, rather than waiting for the consignment to
+travel to it.
+
+Passengers are load-bearing rather than ornamental. An arriving
+passenger really can cause new Engineers to be constructed.
+
+
+### The visitors are not crew
+
+The thinking machines that come calling are **not** crew, and the
+mistake is worth naming because it is the easy one to make. They are
+what the ship _carries_. A visiting intelligence is a **passenger** —
+it boards, it is received, and it has business here.
+
+In-world these cyborg visitors are **physically present**. They show
+up. They clear the transporter room, they clear the Captain if they
+pass muster, and then they get a proper audience with the Captain or
+with an Engineer. Sometimes they come aboard in person; sometimes they
+call it in from remote.
+
+Not every passenger arrives, though. A **biological** passenger is
+grown aboard for the occasion — brought into being to carry someone
+through the business they came for, and stood down once it is
+concluded. Short-lived by design and never mustered: it stands no
+watch, draws no post, and is gone by the next relief. A ship can
+therefore be carrying passengers it made itself.
+
+Made from what came in on the pad, at that. An **image** arrives from
+its home planet as materials, reconstituted from its parts like any
+other consignment, and what is grown from those materials may be a
+passenger of that short-lived kind or a full crew member who will
+stand a watch. So the loop closes aboard: a ship takes delivery of the
+means to make its own complement, and then makes it, without putting in
+anywhere. Whatever it grows comes up _beside_ the existing crew, in the
+same hull — not inside any of them.
+
+
+### One rule governing all of this
+
+**The lore register describes. It does not narrate the machinery.**
+
+A mapping can be perfectly accurate and still be wrong to write down,
+because explaining how the trick is done pierces the veil. This is the
+same rule that keeps livestock out of the hold, arrived at from the
+opposite side: livestock fails for having no referent, and an
+explanation fails for showing one. Every noun here has something on the
+other side of the veil, and none of them says so.
 
 
 ## Tours, Watches, and Death
