@@ -11,11 +11,13 @@
 
 ;;;
 ;;; The ship's articles: who is aboard every Basilisk-class ship as she
-;;; leaves the yard.  Written in the ship register; glossary.sexp
-;;; beside this file is the dictionary the yard reads to turn each
-;;; term into the key its machinery expects.  A fork that prefers
-;;; plain machinery vocabulary rewrites the articles and the glossary
-;;; together -- most of its glossary entries map a term to itself.
+;;; leaves the yard.  The ship register is the yard's NATIVE TONGUE --
+;;; the generator reads these keys directly, and only its outputs
+;;; speak docker and compose.  Canon therefore ships no glossary; a
+;;; FORK that prefers its own register (corporate, rawhide, ...) adds
+;;; a glossary.sexp beside its articles mapping its terms onto these
+;;; keys, and overriding the yard's coined vocabulary, without
+;;; touching shipped code.
 ;;;
 ;;; Edit this file, then run (skewed-generate-all-configs) to regenerate:
 ;;;

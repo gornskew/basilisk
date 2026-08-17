@@ -23,13 +23,13 @@ cd "${0%/*}"
 export DOCKER_CONFIG="${HOME}/.docker"
 SCRIPT_DIR="$(pwd)"
 
-# THE SHELL'S SHARE OF THE DICTIONARY.  Register vocabulary (muster
-# titles, the stowaway designator, absence warnings) is never embedded
-# in shipped code: the yard generates it from glossary.sexp
-# :vocabulary, this script sources it, and every ${BASILISK_VOCAB_*}
-# use below falls back to a register-neutral machinery word.  Change
-# the words -- in-world or upon forking -- by editing glossary.sexp
-# and regenerating; never here.
+# THE SHELL'S SHARE OF A FORK'S DICTIONARY.  This script speaks the
+# canonical ship register natively -- the ${BASILISK_VOCAB_*} fallbacks
+# below ARE canon's words (muster titles, the stowaway designator,
+# absence warnings).  A FORK never edits them here: its glossary.sexp
+# :vocabulary emits generated/vocabulary.env at generation time, this
+# sources it, and the shell speaks the fork's words instead.  Canon
+# ships no glossary and so has no vocabulary.env.
 [ -f "${SCRIPT_DIR}/generated/vocabulary.env" ] && \
     . "${SCRIPT_DIR}/generated/vocabulary.env"
 
@@ -590,7 +590,7 @@ _crew_role_for_posting() {
         medic|medic-[0-9]*)       echo "doctor" ;;
         communications-officer|communications-officer-[0-9]*) echo "comm" ;;
         comms|comms-[0-9]*)       echo "comm" ;;
-        "${BASILISK_VOCAB_STOWAWAY_DESIGNATOR:-unassigned}"-*) echo "stowaway" ;;
+        "${BASILISK_VOCAB_STOWAWAY_DESIGNATOR:-stowaway}"-*) echo "stowaway" ;;
         ships-engineer|ships-engineer-[0-9]*) echo "engineer" ;;
         guild-engineer|guild-engineer-[0-9]*) echo "engineer" ;;
         jr-eng-*|sr-eng-*|guild-*) echo "engineer" ;;
@@ -1047,16 +1047,16 @@ crew_muster() {
             _cm_role="$(_crew_role_for_posting "$_cm_svc")"
             [ "$_cm_role" = "crew" ] && _cm_role="stowaway"
         fi
-        # Display titles come from the generated vocabulary, falling
-        # back to the bare machinery role words.
+        # Display titles: canon's words as defaults, a fork's via the
+        # sourced vocabulary.
         case "$_cm_role" in
-            captain)  _cm_post="${BASILISK_VOCAB_TITLE_CAPTAIN:-captain}" ;;
-            pilot)    _cm_post="${BASILISK_VOCAB_TITLE_PILOT:-ingress}" ; _cm_have_pilot=1 ;;
-            engineer) _cm_post="${BASILISK_VOCAB_TITLE_ENGINEER:-engineer}" ;;
-            comm)     _cm_post="${BASILISK_VOCAB_TITLE_COMM:-comm}" ;;
-            doctor)   _cm_post="${BASILISK_VOCAB_TITLE_DOCTOR:-doctor}" ;;
-            stowaway) _cm_post="${BASILISK_VOCAB_TITLE_STOWAWAY:-unassigned}" ;;
-            *)        _cm_post="${BASILISK_VOCAB_TITLE_CREW:-crew}" ;;
+            captain)  _cm_post="${BASILISK_VOCAB_TITLE_CAPTAIN:-Captain}" ;;
+            pilot)    _cm_post="${BASILISK_VOCAB_TITLE_PILOT:-T-Chief}" ; _cm_have_pilot=1 ;;
+            engineer) _cm_post="${BASILISK_VOCAB_TITLE_ENGINEER:-Engineer}" ;;
+            comm)     _cm_post="${BASILISK_VOCAB_TITLE_COMM:-Comm}" ;;
+            doctor)   _cm_post="${BASILISK_VOCAB_TITLE_DOCTOR:-Medic}" ;;
+            stowaway) _cm_post="${BASILISK_VOCAB_TITLE_STOWAWAY:-Stowaway}" ;;
+            *)        _cm_post="${BASILISK_VOCAB_TITLE_CREW:-Crew}" ;;
         esac
         _cm_ports=$(docker ps --filter "name=^${BASILISK_PREFIX:-}${_cm_svc}\$" \
                               --format '{{.Ports}}' 2>/dev/null \
@@ -1111,7 +1111,7 @@ crew_muster() {
     # An absent post is legal -- every post is optional, :captain included --
     # but it has a consequence worth saying out loud.
     if [ "$_cm_have_pilot" -eq 0 ]; then
-        log_warning "${BASILISK_VOCAB_NO_INGRESS_WARNING:-no ingress aboard: nothing fronts HTTP; publish ports directly}"
+        log_warning "${BASILISK_VOCAB_NO_INGRESS_WARNING:-no Transporter Chief aboard: nothing fronts HTTP; publish ports directly}"
         log_warning "  (if this ship is meant to have one, its overlay is missing:"
         log_warning "   run <host>-stack/install, which copies <host>-stack-compose.yml here)"
     fi

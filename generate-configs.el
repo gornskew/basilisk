@@ -57,9 +57,9 @@
   (plist-get plist key))
 
 (defun skewed--has-mcp-services-p (config)
-  "Return non-nil if CONFIG has at least one service with :mcp t."
-  (cl-some (lambda (svc) (skewed--get-prop svc :mcp))
-           (skewed--get-prop config :services)))
+  "Non-nil if CONFIG's crew has anyone with :cyborg-passengers-allowed?."
+  (cl-some (lambda (svc) (skewed--get-prop svc :cyborg-passengers-allowed?))
+           (skewed--get-prop config :crew)))
 
 (defun skewed--mcp-approved-tools (_svc)
   "Return the standard tool names that should be pre-approved for an MCP service."
@@ -77,7 +77,7 @@
 (defun skewed--generate-compose-yaml (config)
   "Generate docker-compose.yml content from CONFIG."
   (let* ((defaults (skewed--get-prop config :defaults))
-         (services (skewed--get-prop config :services))
+         (services (skewed--get-prop config :crew))
          (network-name (or (skewed--get-prop defaults :network) "skewed-network"))
          (lines '()))
     
@@ -122,9 +122,9 @@
     (dolist (svc services)
       (let* ((name (skewed--get-prop svc :name))
              (image (skewed--get-prop svc :image))
-             (ports (skewed--get-prop svc :ports))
-             (env (skewed--get-prop svc :environment))
-             (vols (skewed--get-prop svc :volumes))
+             (ports (skewed--get-prop svc :hailing-frequencies))
+             (env (skewed--get-prop svc :space-suit))
+             (vols (skewed--get-prop svc :cargo-bays))
              (user (skewed--get-prop svc :user))
              (network-mode (skewed--get-prop svc :network-mode))
              (extra-hosts (skewed--get-prop svc :extra-hosts))
@@ -202,20 +202,20 @@
         
         ;; Ports
         (unless network-mode
-          (let ((ports-with-host (cl-remove-if-not (lambda (p) (skewed--get-prop p :host)) ports)))
+          (let ((ports-with-host (cl-remove-if-not (lambda (p) (skewed--get-prop p :galaxy)) ports)))
             (when ports-with-host
               (push "    ports:" lines)
               (dolist (port ports-with-host)
-                (let ((container (skewed--get-prop port :container))
-                      (host (skewed--get-prop port :host)))
+                (let ((container (skewed--get-prop port :aboard))
+                      (host (skewed--get-prop port :galaxy)))
                   (push (format "      - \"%s:%s\"" host container) lines))))))
         
         ;; Environment
         (push "    environment:" lines)
         (dolist (port ports)
           (let ((port-name (upcase (skewed--get-prop port :name)))
-                (container (skewed--get-prop port :container))
-                (host (skewed--get-prop port :host)))
+                (container (skewed--get-prop port :aboard))
+                (host (skewed--get-prop port :galaxy)))
             (when (equal port-name "HTTP")
               (push (format "      - HTTP_PORT=%s" container) lines)
               (when host
@@ -252,20 +252,20 @@
               (push (format "        required: %s" (if required "true" "false")) lines))))
         
         ;; Volumes
-        (let ((default-vols (skewed--get-prop defaults :volumes))
+        (let ((default-vols (skewed--get-prop defaults :cargo-bays))
               (svc-vols vols))
           (push "    volumes:" lines)
           (dolist (vol default-vols)
-            (let ((src (skewed--get-prop vol :source))
-                  (tgt (skewed--get-prop vol :target)))
+            (let ((src (skewed--get-prop vol :dockside))
+                  (tgt (skewed--get-prop vol :stowed-at)))
               (push "      - type: bind" lines)
               (push (format "        source: %s" src) lines)
               (push (format "        target: %s" tgt) lines)
               (push "        bind:" lines)
               (push "          create_host_path: true" lines)))
           (dolist (vol svc-vols)
-            (let ((src (skewed--get-prop vol :source))
-                  (tgt (skewed--get-prop vol :target))
+            (let ((src (skewed--get-prop vol :dockside))
+                  (tgt (skewed--get-prop vol :stowed-at))
                   (mode (skewed--get-prop vol :mode)))
               (if mode
                   (push (format "      - %s:%s:%s" src tgt mode) lines)
@@ -318,7 +318,7 @@
                 (interval (or (skewed--get-prop healthcheck :interval) "60s"))
                 (http-port (skewed--get-prop
                             (cl-find-if (lambda (p) (equal (skewed--get-prop p :name) "http")) ports)
-                            :container)))
+                            :aboard)))
             (push "    healthcheck:" lines)
             (push (format "      test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:%s%s\"]"
                           (or http-port 80) endpoint) lines)
@@ -351,16 +351,16 @@
   (let* ((mcp-config (skewed--get-prop config :mcp))
          (wrapper-path (skewed--get-prop mcp-config :wrapper-path-container))
          (request-timeout (skewed--get-prop mcp-config :request-timeout-ms))
-         (services (skewed--get-prop config :services))
+         (services (skewed--get-prop config :crew))
          (servers '()))
 
     (dolist (svc services)
-      (when (skewed--get-prop svc :mcp)
+      (when (skewed--get-prop svc :cyborg-passengers-allowed?)
         (let* ((name (skewed--get-prop svc :name))
-               (ports (skewed--get-prop svc :ports))
+               (ports (skewed--get-prop svc :hailing-frequencies))
                (http-port (skewed--get-prop
                            (cl-find-if (lambda (p) (equal (skewed--get-prop p :name) "http")) ports)
-                           :container))
+                           :aboard))
                (args (list wrapper-path
                            "--server-name" name
                            "--backend-host" name
@@ -380,16 +380,16 @@
 Uses placeholder ${SKEWED_CLONE_PATH} which gets substituted at merge time."
   (let* ((exec-path "${SKEWED_CLONE_PATH}/mcp/mcp-exec")
          (request-timeout (skewed--get-prop (skewed--get-prop config :mcp) :request-timeout-ms))
-         (services (skewed--get-prop config :services))
+         (services (skewed--get-prop config :crew))
          (servers '()))
 
     (dolist (svc services)
-      (when (skewed--get-prop svc :mcp)
+      (when (skewed--get-prop svc :cyborg-passengers-allowed?)
         (let* ((name (skewed--get-prop svc :name))
-               (ports (skewed--get-prop svc :ports))
+               (ports (skewed--get-prop svc :hailing-frequencies))
                (http-port (skewed--get-prop
                            (cl-find-if (lambda (p) (equal (skewed--get-prop p :name) "http")) ports)
-                           :container))
+                           :aboard))
                (args (list exec-path
                            "--server-name" name
                            "--backend-host" name
@@ -412,16 +412,16 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
   (let* ((mcp-config (skewed--get-prop config :mcp))
          (wrapper-path (skewed--get-prop mcp-config :wrapper-path-container))
          (request-timeout (skewed--get-prop mcp-config :request-timeout-ms))
-         (services (skewed--get-prop config :services))
+         (services (skewed--get-prop config :crew))
          (lines '()))
     
     (dolist (svc services)
-      (when (skewed--get-prop svc :mcp)
+      (when (skewed--get-prop svc :cyborg-passengers-allowed?)
         (let* ((name (skewed--get-prop svc :name))
-               (ports (skewed--get-prop svc :ports))
+               (ports (skewed--get-prop svc :hailing-frequencies))
                (http-port (skewed--get-prop
                            (cl-find-if (lambda (p) (equal (skewed--get-prop p :name) "http")) ports)
-                           :container)))
+                           :aboard)))
           (push (format "[mcp_servers.%s]" name) lines)
           (push "command = \"node\"" lines)
           (let ((args (list wrapper-path "--server-name" name
@@ -448,7 +448,7 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
 
 (defun skewed--generate-elisp (config)
   "Generate services-generated.el for Emacs dashboard."
-  (let* ((services (skewed--get-prop config :services))
+  (let* ((services (skewed--get-prop config :crew))
          (lines '()))
     
     (push ";;; services-generated.el --- Generated from services.sexp -*- lexical-binding: t; -*-" lines)
@@ -477,8 +477,8 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
       (let* ((name (skewed--get-prop svc :name))
              (type (skewed--get-prop svc :type))
              (lisp-impl (skewed--lisp-impl svc))
-             (mcp (skewed--get-prop svc :mcp))
-             (ports (skewed--get-prop svc :ports))
+             (mcp (skewed--get-prop svc :cyborg-passengers-allowed?))
+             (ports (skewed--get-prop svc :hailing-frequencies))
              (http-port (cl-find-if (lambda (p) (equal (skewed--get-prop p :name) "http")) ports))
              (swank-port (cl-find-if (lambda (p) (equal (skewed--get-prop p :name) "swank")) ports)))
         (push (format "    (:name \"%s\"" name) lines)
@@ -490,14 +490,14 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
           (push "     :mcp t" lines))
         (when http-port
           (push (format "     :http-host \"%s\"" name) lines)
-          (push (format "     :http-port %s" (skewed--get-prop http-port :container)) lines)
-          (when (skewed--get-prop http-port :host)
-            (push (format "     :http-host-port %s" (skewed--get-prop http-port :host)) lines)))
+          (push (format "     :http-port %s" (skewed--get-prop http-port :aboard)) lines)
+          (when (skewed--get-prop http-port :galaxy)
+            (push (format "     :http-host-port %s" (skewed--get-prop http-port :galaxy)) lines)))
         (when swank-port
           (push (format "     :swank-host \"%s\"" name) lines)
-          (push (format "     :swank-port %s" (skewed--get-prop swank-port :container)) lines)
-          (when (skewed--get-prop swank-port :host)
-            (push (format "     :swank-host-port %s" (skewed--get-prop swank-port :host)) lines)))
+          (push (format "     :swank-port %s" (skewed--get-prop swank-port :aboard)) lines)
+          (when (skewed--get-prop swank-port :galaxy)
+            (push (format "     :swank-host-port %s" (skewed--get-prop swank-port :galaxy)) lines)))
         (push "    )" lines)))
     
     (push "   ))" lines)
@@ -546,10 +546,10 @@ Ports matching `skewed--generated-env-port-defaults' yield no pin, so dev
 hosts stay offsettable."
   (let ((ingress (cl-find-if (lambda (svc)
                                (equal (skewed--get-prop svc :type) "reverse-proxy"))
-                             (skewed--get-prop config :services)))
+                             (skewed--get-prop config :crew)))
         (pins '()))
-    (dolist (port (skewed--get-prop ingress :ports))
-      (let ((host (format "%s" (or (skewed--get-prop port :host) ""))))
+    (dolist (port (skewed--get-prop ingress :hailing-frequencies))
+      (let ((host (format "%s" (or (skewed--get-prop port :galaxy) ""))))
         (when (string-match "\\`\\${\\([A-Z0-9_]+\\):-\\([0-9]+\\)}\\'" host)
           (let ((var (match-string 1 host))
                 (val (match-string 2 host)))
@@ -685,28 +685,35 @@ Returns the install script content as a string."
     (string-join (nreverse lines) "\n")))
 
 ;;; ============================================================================
-;;; THE DICTIONARY (glossary.sexp): ship register -> machinery keys
+;;; THE DICTIONARY (glossary.sexp): a FORK's register -> the canonical keys
 ;;;
-;;; The articles (services.sexp) are written in the ship register.  The
-;;; glossary.sexp sitting BESIDE each articles file is what makes that
-;;; mechanical rather than inventive: a flat plist of TERM MACHINERY-KEY
-;;; pairs, substituted on the config immediately after reading, so every
-;;; downstream generator (compose yaml, MCP json, elisp discovery,
-;;; install script) sees the machinery keys it always saw and needs no
-;;; changes at all.
+;;; The yard's NATIVE TONGUE is the ship register (Dave, 2026-08-17):
+;;; this generator reads :crew, :hailing-frequencies, :cargo-bays,
+;;; :space-suit, :cyborg-passengers-allowed? and friends directly, and
+;;; only its OUTPUTS speak compliant docker/compose (and the other
+;;; formats it spits out).  The canonical repo therefore ships NO
+;;; glossary -- only a FORK needs one, sitting beside its articles:
 ;;;
-;;; No glossary means the identity translation: a file already written
-;;; in machinery keys generates unchanged, which is exactly what a
-;;; corporate fork wants -- it replaces the articles and the dictionary
-;;; together, and most of its dictionary entries map a term to itself.
+;;;   :terms       fork keys -> the canonical keys this code reads,
+;;;                substituted on the config immediately after reading
+;;;                (the sample corporate fork's glossary will map
+;;;                :services -> :crew, :ports -> :hailing-frequencies,
+;;;                and so on).
+;;;   :vocabulary  the strings the yard COINS when generating (the
+;;;                unassigned-specimen designator, muster titles,
+;;;                absence warnings).  Canon's words are the code's
+;;;                defaults; a fork's glossary overrides them without
+;;;                touching shipped code, via generated/vocabulary.env
+;;;                for the shell half.
 ;;;
 ;;; The one structural (non-rename) translation is :provenance +
 ;;; :species -> :image, because docker wants the two halves reunited as
 ;;; one reference; see `skewed--join-species'.
 
 (defun skewed--load-glossary (services-file)
-  "The glossary.sexp beside SERVICES-FILE, as a flat plist, or nil.
-nil means the identity translation."
+  "The glossary.sexp beside SERVICES-FILE, as a plist, or nil.
+nil -- the canonical case -- means no translation: the articles are
+already in the yard's native register."
   (let ((f (expand-file-name "glossary.sexp"
                              (file-name-directory services-file))))
     (when (file-exists-p f)
@@ -719,19 +726,18 @@ nil means the identity translation."
 (defun skewed--glossary-vocab (glossary key)
   "The :vocabulary entry KEY from GLOSSARY, or nil.
 Vocabulary is the dictionary's other half: strings the yard COINS when
-generating, rather than keys it renames.  Register vocabulary is never
-embedded in code (Dave, 2026-08-17) -- absent a glossary the yard
-falls back to register-neutral machinery words, so the vocabulary is
-changeable upon forking by editing glossary.sexp alone."
+generating, rather than keys it renames.  A fork's glossary overrides
+the canonical words without touching shipped code; nil falls back to
+the canon default at each use site."
   (plist-get (plist-get glossary :vocabulary) key))
 
 (defun skewed--translate-register (glossary-or-form &optional glossary)
   "Substitute every keyword in a form that GLOSSARY's terms map.
 Called as (skewed--translate-register FORM GLOSSARY).  Terms are a
-flat plist (TERM MACHINERY-KEY ...).  Substitution is position-blind
--- any keyword anywhere in the tree -- which is why the glossary
-contract says its terms may be used only as KEYS in the articles,
-never as values."
+flat plist (FORK-TERM CANONICAL-KEY ...).  Substitution is
+position-blind -- any keyword anywhere in the tree -- which is why the
+glossary contract says its terms may be used only as KEYS in the
+articles, never as values."
   (let ((form glossary-or-form)
         (terms (skewed--glossary-terms glossary)))
     (if (null terms) form
@@ -747,7 +753,7 @@ Species is the image type, repo:tag; provenance is the registry and/or
 namespace it hails from -- its home planet, stripped from the species
 and reattached only here, where docker insists on one reference.  A
 service already carrying :image passes through untouched."
-  (dolist (svc (skewed--get-prop config :services))
+  (dolist (svc (skewed--get-prop config :crew))
     (let ((species (plist-get svc :species))
           (provenance (plist-get svc :provenance)))
       (when (and species (not (plist-get svc :image)))
@@ -771,16 +777,16 @@ Absent one: a posted crew member takes the slug of every post it
 stands (full post names, hyphen-joined; no post is primary); a
 species aboard with NO assigned posting takes a designator prefix on
 the repo half of its species, so one is obvious from its slug alone.
-The designator is GLOSSARY vocabulary (\"stowaway\" in the canonical
-register), never embedded here -- changeable in-world or on forking
-by editing glossary.sexp alone; the codeless fallback is the neutral
-machinery word.  Collisions get -2, -3 ... suffixes, which the role
-machinery already tolerates (jr-eng-cyborg-2 is still an engineer)."
+The designator is \"stowaway\" -- the yard's native word -- unless a
+fork's glossary :vocabulary overrides it (:stowaway-designator), which
+changes it without touching shipped code.  Collisions get -2, -3 ...
+suffixes, which the role machinery already tolerates (jr-eng-cyborg-2
+is still an engineer)."
   (let ((taken (delq nil (mapcar (lambda (s) (plist-get s :name))
-                                 (skewed--get-prop config :services))))
+                                 (skewed--get-prop config :crew))))
         (designator (or (skewed--glossary-vocab glossary :stowaway-designator)
-                        "unassigned")))
-    (dolist (svc (skewed--get-prop config :services))
+                        "stowaway")))
+    (dolist (svc (skewed--get-prop config :crew))
       (unless (plist-get svc :name)
         (let* ((posts (skewed--ensure-list (plist-get svc :post)))
                (stem (if posts
@@ -812,11 +818,11 @@ joined, missing names derived.  Every consumer sees the same names."
        glossary))))
 
 (defun skewed--generate-vocabulary-env (glossary)
-  "KEY='VALUE' lines for the shell half of the yard (compose-dev).
-Register vocabulary is never embedded in code: compose-dev sources
-this GENERATED file and falls back to register-neutral machinery
-words without it, so every word it speaks is changeable -- in-world
-or upon forking -- by editing glossary.sexp alone and regenerating."
+  "KEY='VALUE' lines for the shell half of a FORK's dictionary.
+compose-dev speaks the canonical register natively; when a fork's
+GLOSSARY carries :vocabulary, this generated file is how the shell
+learns the fork's words instead -- changeable by editing the fork's
+glossary alone, never shipped basilisk code."
   (let ((vocab (plist-get glossary :vocabulary))
         (lines '()))
     (push "# DO NOT EDIT - Generated from glossary.sexp :vocabulary" lines)
@@ -846,7 +852,7 @@ VACANT posting -- stated on the books (its :post, :description and
 :requires all stand) but invisible to the machinery until a species
 that meets its requirements signs on.  Each vacancy is said out loud
 once per generation."
-  (let* ((all (skewed--get-prop config :services))
+  (let* ((all (skewed--get-prop config :crew))
          (aboard-p (lambda (svc) (or (plist-get svc :image)
                                      (member (plist-get svc :name) base-names))))
          (berthed (seq-filter aboard-p all)))
@@ -855,7 +861,7 @@ once per generation."
         (message "  Note: posting %s is stated but VACANT (no species assigned) -- nothing emitted"
                  (or (plist-get svc :post) (plist-get svc :name)))))
     (let ((out (copy-sequence config)))
-      (plist-put out :services berthed))))
+      (plist-put out :crew berthed))))
 
 (defun skewed--ensure-list (x)
   "X if it is a list, else (X).  :post accepts one keyword or several."
@@ -887,7 +893,7 @@ arrangement rather than manifest costs a warning and nothing more."
   (let ((tables (delq nil (list (skewed--get-prop config :postings)
                                 (and base-config
                                      (skewed--get-prop base-config :postings))))))
-    (dolist (svc (skewed--get-prop config :services))
+    (dolist (svc (skewed--get-prop config :crew))
       (let ((reqs (copy-sequence (plist-get svc :requires))))
         (dolist (p (skewed--ensure-list (plist-get svc :post)))
           (dolist (r (skewed--posting-requires p tables))
@@ -906,7 +912,7 @@ MCP configs, SLIME) still reaches the same crew member -- and the base
 service itself is suppressed via an emitted profiles stub (collected
 in :relieved-names) so it does not also come up."
   (let ((base-services (and base-config
-                            (skewed--get-prop base-config :services)))
+                            (skewed--get-prop base-config :crew)))
         (relieved '()))
     (let ((services
            (mapcar
@@ -925,9 +931,9 @@ in :relieved-names) so it does not also come up."
                       ;; :relieves itself is bookkeeping, not config.
                       (plist-put merged :relieves nil)
                       merged)))))
-            (skewed--get-prop config :services))))
+            (skewed--get-prop config :crew))))
       (let ((out (copy-sequence config)))
-        (setq out (plist-put out :services services))
+        (setq out (plist-put out :crew services))
         (plist-put out :relieved-names (nreverse relieved))))))
 
 (defun skewed--resolve-compose-defaults (s)
@@ -1004,9 +1010,9 @@ when no articles are found at STACK-DIR."
   (let* ((over-file (expand-file-name "services.sexp" stack-dir))
          (over-config (and (file-exists-p over-file)
                            (skewed--read-articles over-file)))
-         (over (and over-config (skewed--get-prop over-config :services)))
+         (over (and over-config (skewed--get-prop over-config :crew)))
          (base-config (skewed--read-articles skewed-gen-base-articles))
-         (base (and base-config (skewed--get-prop base-config :services)))
+         (base (and base-config (skewed--get-prop base-config :crew)))
          (out '()))
     (when over-config
       (dolist (svc base)
@@ -1147,7 +1153,7 @@ Examples:
                                        (skewed--read-articles
                                         skewed-gen-base-articles)))
                         (base-names (mapcar (lambda (s) (plist-get s :name))
-                                            (skewed--get-prop base-config :services))))
+                                            (skewed--get-prop base-config :crew))))
                    (skewed--filter-berthed
                     (skewed--apply-relieves
                      (skewed--resolve-post-requires raw base-config)
@@ -1172,17 +1178,19 @@ Examples:
         (insert (skewed--generate-compose-yaml config)))
       (message "Generated: %s" compose-file))
 
-    ;; The shell's share of the dictionary (base generation only): the
-    ;; vocabulary compose-dev speaks, generated so no register word
-    ;; ships embedded in code.
+    ;; The shell's share of a FORK's dictionary (base generation only):
+    ;; compose-dev speaks the canonical words natively and sources this
+    ;; file, when a glossary emits one, to speak the fork's instead.
+    ;; Canon ships no glossary, so canon emits no vocabulary.env.
     (when (string-empty-p skewed-gen-output-prefix)
-      (let ((vocab-file (expand-file-name "generated/vocabulary.env"
+      (let ((glossary (skewed--load-glossary skewed-gen-input-file))
+            (vocab-file (expand-file-name "generated/vocabulary.env"
                                           skewed-gen-output-dir)))
-        (make-directory (file-name-directory vocab-file) t)
-        (with-temp-file vocab-file
-          (insert (skewed--generate-vocabulary-env
-                   (skewed--load-glossary skewed-gen-input-file))))
-        (message "Generated: %s" vocab-file)))
+        (when (plist-get glossary :vocabulary)
+          (make-directory (file-name-directory vocab-file) t)
+          (with-temp-file vocab-file
+            (insert (skewed--generate-vocabulary-env glossary)))
+          (message "Generated: %s" vocab-file))))
     
     ;; Generate MCP configs (only when services declare :mcp t)
     (when (skewed--has-mcp-services-p config)
@@ -1248,7 +1256,7 @@ Examples:
           (insert (skewed--generate-install-script
                    skewed-gen-output-prefix
                    (skewed--has-mcp-services-p config)
-                   (plist-get (skewed--get-prop config :meta) :image-variant)
+                   (plist-get (skewed--get-prop config :meta) :strain)
                    (skewed--ingress-port-pins config))))
         (set-file-modes install-file #o755)
         (message "Generated: %s" install-file)))
