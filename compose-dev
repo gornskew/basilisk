@@ -580,6 +580,7 @@ _crew_role_for_posting() {
         medic|medic-[0-9]*)       echo "doctor" ;;
         communications-officer|communications-officer-[0-9]*) echo "comm" ;;
         comms|comms-[0-9]*)       echo "comm" ;;
+        stowaway-*)               echo "stowaway" ;;
         ships-engineer|ships-engineer-[0-9]*) echo "engineer" ;;
         guild-engineer|guild-engineer-[0-9]*) echo "engineer" ;;
         jr-eng-*|sr-eng-*|guild-*) echo "engineer" ;;

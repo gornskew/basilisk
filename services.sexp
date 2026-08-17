@@ -99,11 +99,12 @@
   ;; :name is the author's slug and optional: absent, the yard derives
   ;; it from the posts stood (hyphen-joined), or, for a species aboard
   ;; with NO assigned posting -- a STOWAWAY, comprehended like anyone
-  ;; else -- from the repo half of its species.  :provenance is only
-  ;; needed off Docker Hub's library; :post only when capabilities are
-  ;; expected of the berth.  Explicit names below where derivation
-  ;; could not tell two of a post apart (-human/-cyborg), or where an
-  ;; abbreviated slug earns its keep.
+  ;; else -- as stowaway-<repo>, the designator making one obvious
+  ;; from its slug alone.  :provenance is only needed off Docker Hub's
+  ;; library; :post only when capabilities are expected of the berth.
+  ;; Explicit names below where derivation could not tell two of a
+  ;; post apart (-human/-cyborg), or where an abbreviated slug earns
+  ;; its keep.
   (:post :captain
    :description "The ship's console, and the longest-lived process aboard."
    :type "emacs-lisp"

@@ -753,9 +753,10 @@ is the author's slug, and the license to abbreviate lives there.
 Absent one: a posted crew member takes the slug of every post it
 stands (full post names, hyphen-joined; no post is primary); a
 species aboard with NO assigned posting is a STOWAWAY, comprehended
-like anyone else, and takes the repo half of its species as its name.
-Collisions get -2, -3 ... suffixes, which the role machinery already
-tolerates (jr-eng-cyborg-2 is still an engineer)."
+like anyone else, and named stowaway-<repo> -- the designator makes
+one obvious from its slug alone (Dave, 2026-08-17).  Collisions get
+-2, -3 ... suffixes, which the role machinery already tolerates
+(jr-eng-cyborg-2 is still an engineer)."
   (let ((taken (delq nil (mapcar (lambda (s) (plist-get s :name))
                                  (skewed--get-prop config :services)))))
     (dolist (svc (skewed--get-prop config :services))
@@ -764,7 +765,10 @@ tolerates (jr-eng-cyborg-2 is still an engineer)."
                (stem (if posts
                          (mapconcat (lambda (p) (substring (symbol-name p) 1))
                                     posts "-")
-                       (skewed--species-repo (plist-get svc :species))))
+                       (let ((repo (skewed--species-repo
+                                    (plist-get svc :species))))
+                         (if (string-empty-p repo) ""
+                           (concat "stowaway-" repo)))))
                (name stem)
                (n 1))
           (when (string-empty-p stem)
