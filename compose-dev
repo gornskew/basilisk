@@ -975,15 +975,13 @@ _vs_recreate() {
 }
 
 # =============================================================================
-# CREW MUSTER -- what the roster expects vs what is actually aboard
+# CREW MUSTER -- what the articles expect vs what is actually aboard
 #
-# fittings.sexp has carried both halves of this for a while: :roster says
-# which posts a crew-level implies, and :warnings carries the sentence to
-# print when one of them is absent.  Nothing ever CHECKED it at runtime,
-# so a ship could report every service healthy while serving nothing at
-# all.  Sally did exactly that on 2026-08-15 -- validation passed, five
-# containers green, and the Pilot publishing a dev port instead of :80,
-# which no layer mentioned because no layer was looking.
+# Nothing ever CHECKED the ship's complement at runtime, so a ship could
+# report every service healthy while serving nothing at all.  Sally did
+# exactly that on 2026-08-15 -- validation passed, five containers
+# green, and the ingress publishing a dev port instead of :80, which no
+# layer mentioned because no layer was looking.
 #
 # So this prints the manifest every time: post, service, and the ports it
 # actually publishes.  Making the ingress port visible at startup is most

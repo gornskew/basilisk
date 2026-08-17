@@ -1,4 +1,4 @@
-;;; services.sexp - Single Source of Truth for the Basilisk stack
+;;; services.sexp - the base Basilisk-class outfitting
 ;;; -*- mode: lisp-data; -*-
 
 ;; Copyright © 2026 Gornskew Enterprises
@@ -10,145 +10,162 @@
 ;; ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
 
 ;;;
-;;; This file defines the base services for the stack.
+;;; The ship's articles: who is aboard every Basilisk-class ship as she
+;;; leaves the yard.  Written in the ship register; glossary.sexp
+;;; beside this file is the dictionary the yard reads to turn each
+;;; term into the key its machinery expects.  A fork that prefers
+;;; plain machinery vocabulary rewrites the articles and the glossary
+;;; together -- most of its glossary entries map a term to itself.
+;;;
 ;;; Edit this file, then run (skewed-generate-all-configs) to regenerate:
 ;;;
 ;;;   - docker-compose.yml         (base compose config)
 ;;;   - mcp/mcp-container.json     (for claude/gemini CLI inside container)
 ;;;   - mcp/mcp-windows.json       (for Claude Desktop on Windows via WSL)
 ;;;   - mcp/mcp.toml               (for Codex CLI and Grok CLI)
-;;;   - dot-files/emacs.d/etc/services-generated.el
-;;;
-;;; For overlays (e.g., betatest or commercial images):
-;;;   - Create a separate services.sexp for the overlay
-;;;   - Generate with prefix: (skewed-generate-configs "overlay.sexp" dir "betatest-")
-;;;   - This produces betatest-compose.yml, betatest-mcp-container.json, etc.
-;;;   - Docker Compose merges automatically (compose-dev picks up all .yml files)
-;;;   - MCP configs merge via: mcp/merge-mcp-configs.sh
+;;;   - generated/services-generated.el
 ;;;
 ;;; DO NOT EDIT the generated files directly.
-
-;;; BUILD VARIANTS
-;;; ==============
-;;; The skewed-emacs image supports build variants (docker/BUILD.md):
 ;;;
-;;;   full    - Everything: GUI workstation + TUI LLM CLIs
-;;;             (claude, codex, gemini, grok) + copilot-ls + chromium
-;;;             Best for: Emacs power users; sticky AI-TUI installs
+;;; A ship takes on more crew by OVERLAY: each host's *-stack repo
+;;; carries its own articles in this same register (a Transporter
+;;; Chief, a Guild detachment), generated with that repo's prefix and
+;;; merged by Docker Compose at up-time (compose-dev picks up all .yml
+;;; files; MCP configs merge via mcp/merge-mcp-configs.sh).  A
+;;; subtractive refit -- gutting the base complement to taste -- is a
+;;; fork of this repo, not an overlay.
 ;;;
-;;;   default - Non-GUI + web-page snapshotting (chrome-headless-shell);
-;;;             AI TUIs installable on demand (M-x skewed-install)
-;;;             Best for: general distribution; Claude Desktop users
-;;;
-;;;   lite    - Core Emacs + MCP services only, no snapshot browser
-;;;             Best for: minimal deployments
-;;;
-;;;   Also: aituis/tui (default + AI TUIs), gui (workstation, no TUIs)
-;;;
-;;; Image tag format: {branch}-{variant}
-;;;   Examples: devo-full, devo-default, devo-lite, master-full
-;;;
-;;; To pick a variant, set EMACS_IMAGE_VARIANT in your environment
-;;; or in .env file before running compose-dev.  This dev-stack
-;;; default stays "full" (the kitchen-sink image); the Docker Hub
-;;; canonical {branch}/latest tags point at "default".
-;;;
-;;; The MCP configuration is identical across variants - only the
-;;; docker-compose.yml image tag changes based on variant.
+;;; The Captain's species ships in several strains (devo-full,
+;;; devo-default, devo-lite, ...): the strain is the tag half of the
+;;; species, so the build variant is already part of the species
+;;; designation.  docker/BUILD.md in skewed-emacs carries the detail;
+;;; EMACS_IMAGE_VARIANT in .env (or a --lite/--full switch) picks the
+;;; strain a host flies, and this dev stack defaults to full.
 
 
 (
  :meta
  (:version "2.0"
-  :description "Skewed Emacs + Gendl development stack")
+  :description "base Basilisk-class outfitting")
 
  :defaults
- (:network "skewed-network"
-  :restart "unless-stopped"
-  :volumes ((:source "${PROJECTS_DIR}" :target "/projects"))
+ (:restart "unless-stopped"
+  :cargo-bays ((:dockside "${PROJECTS_DIR}" :stowed-at "/projects"))
   :timezone "${TZ:-Etc/UTC}"
   :network-ipv6 t
   :network-ipv4-subnet "172.20.0.0/16"
   :network-ipv6-subnet "fd00:cafe::/80")
 
+ ;; How cyborg passengers come aboard: the lisply-mcp wrapper that
+ ;; every posting with :cyborg-passengers-allowed? answers through.
  :mcp
  (:wrapper-path-container "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js"
   :request-timeout-ms 30000)
- ;; :exec-path-wsl removed - now derived from SKEWED_CLONE_PATH env var at merge time
 
- :services
+ :crew
  (
   ;; NAMES ARE POSTINGS, not species (Dave, 2026-08-16).  :name becomes
   ;; the compose service name, the container_name and the hostname; the
-  ;; SPECIES lives in :image and is derived from it, and the officer's
-  ;; PERSONAL name is minted into the container at up-time.  Three
-  ;; namespaces, three different sources -- see basilisk/LORE.md §I.
+  ;; SPECIES is the image type, repo:tag, with the provenance (registry
+  ;; and namespace -- the home planet) split off beside it; and the
+  ;; officer's PERSONAL name is minted into the container at up-time.
+  ;; Three namespaces, three different sources -- see LORE.md §I.
   (:name "captain"
    :post :captain
+   :description "The ship's console, and the longest-lived process aboard."
    :type "emacs-lisp"
-   :lisp-impl "Emacs"
-   :mcp t
-   :image "gornskew/${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}"
-   :ports ((:name "http" :container 7080)
-           (:name "webterm" :container 6942 :host ${TTYD_HOST_PORT:-6942} :external t))
-   :environment (("WEBTERM" . "${WEBTERM:-ttyd}")
-                 ("WEBTERM_PORT" . "6942")
-                 ("TERM" . "xterm-256color")
-                 ("COLORTERM" . "truecolor"))
-   :volumes ((:source "${USER_HOME}/.claude/.credentials.json"
-              :target "/home/emacs-user/.claude/.credentials.json")
-             (:source "${USER_HOME}/.gemini/google_accounts.json"
-              :target "/home/emacs-user/.gemini/google_accounts.json")
-             (:source "${USER_HOME}/.gemini/oauth_creds.json"
-              :target "/home/emacs-user/.gemini/oauth_creds.json")
-             (:source "${USER_HOME}/.codex/auth.json"
-              :target "/home/emacs-user/.codex/auth.json")
-             ;; Auth only — do not mount all of ~/.grok (would hide the
-             ;; image-baked binary under ~/.grok/bin and downloads).
-             (:source "${USER_HOME}/.grok/auth.json"
-              :target "/home/emacs-user/.grok/auth.json")
-             (:source "/tmp/.X11-unix" :target "/tmp/.X11-unix" :mode "rw")
-             (:source "${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local"
-              :target "/home/emacs-user/.emacs-local" :mode "ro")
-             (:source "${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local-early"
-              :target "/home/emacs-user/.emacs-local-early" :mode "ro"))
-
+   :cyborg-passengers-allowed? t
+   :provenance "gornskew"
+   :species "${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}"
+   :hailing-frequencies ((:name "http" :aboard 7080)
+                         (:name "webterm" :aboard 6942 :galaxy ${TTYD_HOST_PORT:-6942}))
+   :space-suit (("WEBTERM" . "${WEBTERM:-ttyd}")
+                ("WEBTERM_PORT" . "6942")
+                ("TERM" . "xterm-256color")
+                ("COLORTERM" . "truecolor"))
+   ;; The Captain's papers and effects, stowed aboard from the galaxy.
+   :cargo-bays ((:dockside "${USER_HOME}/.claude/.credentials.json"
+                 :stowed-at "/home/emacs-user/.claude/.credentials.json")
+                (:dockside "${USER_HOME}/.gemini/google_accounts.json"
+                 :stowed-at "/home/emacs-user/.gemini/google_accounts.json")
+                (:dockside "${USER_HOME}/.gemini/oauth_creds.json"
+                 :stowed-at "/home/emacs-user/.gemini/oauth_creds.json")
+                (:dockside "${USER_HOME}/.codex/auth.json"
+                 :stowed-at "/home/emacs-user/.codex/auth.json")
+                ;; Papers only -- never stow all of ~/.grok: it would
+                ;; bury the belt's own grok binary under ~/.grok/bin
+                ;; and downloads.
+                (:dockside "${USER_HOME}/.grok/auth.json"
+                 :stowed-at "/home/emacs-user/.grok/auth.json")
+                (:dockside "/tmp/.X11-unix" :stowed-at "/tmp/.X11-unix" :mode "rw")
+                (:dockside "${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local"
+                 :stowed-at "/home/emacs-user/.emacs-local" :mode "ro")
+                (:dockside "${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local-early"
+                 :stowed-at "/home/emacs-user/.emacs-local-early" :mode "ro"))
+   ;; How this post shows on a bridge viewscreen.  :in-stack is the
+   ;; ONLY sanctioned routing for the :emacs kind -- emacs lisply has
+   ;; no token gate, so it never rides a public path.  Off-ship, the
+   ;; Captain is sampled through that ship's own gendl-ccl proxy
+   ;; (publish-emacs-metrics!), which is gated.
+   :probe (:tile "heap skewed-emacs"
+           :in-stack (:kind :emacs
+                      :url "http://captain:7080/lisply/lisp-eval"
+                      :alert-mb 2000)
+           :remote (:kind :metrics
+                    :path "/eyes-only-metrics/skewed-emacs"
+                    :alert-mb 2000))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "30s"))
 
+  ;; Two small, competent, collegial engineering departments -- the
+  ;; -human and -cyborg variants of one post (CCL and SBCL).
   (:name "jr-eng-human"
    :post :jr-eng-human
+   :description "Junior engineering, the human department."
    :type "common-lisp"
-   :lisp-impl "CCL"
-   :image "gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl"
-   :ports ((:name "http" :host ${GENDL_CCL_HOST_PORT:-19080} :container 9080)
-           (:name "swank" :container 4200))
-   ;;:environment (("HTTP_HOST" . "::"))
-   :mcp t
+   :provenance "gornskew"
+   :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl"
+   :hailing-frequencies ((:name "http" :galaxy ${GENDL_CCL_HOST_PORT:-19080} :aboard 9080)
+                         (:name "swank" :aboard 4200))
+   :cyborg-passengers-allowed? t
+   ;; One probe for the department pair, and it rides here: this
+   ;; engineer carries the metrics publisher; the cyborg department
+   ;; publishes nothing, so there is no tile to ask for.  No :in-stack
+   ;; form either -- a bridge viewscreen samples its own ship's image
+   ;; without a probe entry.
+   :probe (:tile "heap gendl-ccl"
+           :remote (:kind :metrics
+                    :path "/eyes-only-metrics/gendl-ccl"
+                    :alert-mb 1200))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "72s"))
 
   (:name "jr-eng-cyborg"
    :post :jr-eng-cyborg
+   :description "Junior engineering, the cyborg department."
    :type "common-lisp"
-   :lisp-impl "SBCL"
-   :image "gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl"
-   :ports ((:name "http" :host ${GENDL_SBCL_HOST_PORT:-29080} :container 9090)
-           (:name "swank" :container 4210))
-   ;;:environment (("HTTP_HOST" . "::"))
-   :mcp t
+   :provenance "gornskew"
+   :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl"
+   :hailing-frequencies ((:name "http" :galaxy ${GENDL_SBCL_HOST_PORT:-29080} :aboard 9090)
+                         (:name "swank" :aboard 4210))
+   :cyborg-passengers-allowed? t
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "90s"))
 
-  ;; L4 watchdog (added 2026-07-26 after the unbounded-curl Emacs
-  ;; event-loop wedge): Docker healthchecks only MARK containers
-  ;; unhealthy; nothing restarts them without an actor.  A blocked
-  ;; Emacs cannot self-heal, so recovery must come from outside.
-  ;; autoheal restarts ANY container that flunks its healthcheck.
+  ;; The Medic stands the dead-man's watch (added 2026-07-26, after a
+  ;; Captain fell into an unbounded call and could not be roused from
+  ;; within).  A fitness check only MARKS a crew member unfit; nothing
+  ;; relieves them without an actor, so relief must come from outside
+  ;; the afflicted.  The Medic revives ANY crew member who fails their
+  ;; fitness check.
   (:name "medic"
    :post :medic
+   :description "Watches for the wedged and revives them."
    :type "utility"
-   :image "willfarrell/autoheal:latest"
-   :environment (("AUTOHEAL_CONTAINER_LABEL" . "all")
-                 ("AUTOHEAL_INTERVAL" . "15")
-                 ("AUTOHEAL_START_PERIOD" . "60"))
-   :volumes ((:source "/var/run/docker.sock" :target "/var/run/docker.sock")))
+   :provenance "willfarrell"
+   :species "autoheal:latest"
+   :space-suit (("AUTOHEAL_CONTAINER_LABEL" . "all")
+                ("AUTOHEAL_INTERVAL" . "15")
+                ("AUTOHEAL_START_PERIOD" . "60"))
+   ;; The galaxy's own docker socket: how the Medic reaches the crew.
+   :cargo-bays ((:dockside "/var/run/docker.sock"
+                 :stowed-at "/var/run/docker.sock")))
   )
  )

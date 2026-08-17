@@ -432,7 +432,7 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
     (dolist (svc services)
       (let* ((name (skewed--get-prop svc :name))
              (type (skewed--get-prop svc :type))
-             (lisp-impl (skewed--get-prop svc :lisp-impl))
+             (lisp-impl (skewed--lisp-impl svc))
              (mcp (skewed--get-prop svc :mcp))
              (ports (skewed--get-prop svc :ports))
              (http-port (cl-find-if (lambda (p) (equal (skewed--get-prop p :name) "http")) ports))
@@ -641,81 +641,109 @@ Returns the install script content as a string."
     (string-join (nreverse lines) "\n")))
 
 ;;; ============================================================================
-;;; SYMBOLIC ROSTERS (Basilisk fittings, 2026-08-15)
+;;; THE DICTIONARY (glossary.sexp): ship register -> machinery keys
 ;;;
-;;; A host's services.sexp may name who is aboard SYMBOLICALLY in :meta --
-;;; either a coarse :crew-level or a specific :roster -- instead of restating
-;;; service definitions that are identical across five stacks.  Expansion
-;;; happens on the CONFIG PLIST immediately after reading, so every
-;;; downstream generator (compose yaml, MCP json, elisp discovery, install
-;;; script) sees ordinary :services and needs no changes at all.
+;;; The articles (services.sexp) are written in the ship register.  The
+;;; glossary.sexp sitting BESIDE each articles file is what makes that
+;;; mechanical rather than inventive: a flat plist of TERM MACHINERY-KEY
+;;; pairs, substituted on the config immediately after reading, so every
+;;; downstream generator (compose yaml, MCP json, elisp discovery,
+;;; install script) sees the machinery keys it always saw and needs no
+;;; changes at all.
 ;;;
-;;; Level expands to roster; roster infers level.  See fittings.sexp for the
-;;; catalogue and BASILISK.md for the conceit.
+;;; No glossary means the identity translation: a file already written
+;;; in machinery keys generates unchanged, which is exactly what a
+;;; corporate fork wants -- it replaces the articles and the dictionary
+;;; together, and most of its dictionary entries map a term to itself.
+;;;
+;;; The one structural (non-rename) translation is :provenance +
+;;; :species -> :image, because docker wants the two halves reunited as
+;;; one reference; see `skewed--join-species'.
 
-(defvar skewed-gen-fittings-file nil
-  "The Basilisk fitting catalogue: posts -> container services.
+(defun skewed--load-glossary (services-file)
+  "The glossary.sexp beside SERVICES-FILE, as a flat plist, or nil.
+nil means the identity translation."
+  (let ((f (expand-file-name "glossary.sexp"
+                             (file-name-directory services-file))))
+    (when (file-exists-p f)
+      (skewed--read-sexp-file f))))
 
-SET AT LOAD TIME to the fittings.sexp sitting beside this file, rather
-than defaulted once and left alone.  That is deliberate and it is not
-the usual choice, so it is worth the paragraph:
+(defun skewed--translate-register (form glossary)
+  "Substitute every keyword in FORM that GLOSSARY maps.
+GLOSSARY is a flat plist (TERM MACHINERY-KEY ...).  Substitution is
+position-blind -- any keyword anywhere in the tree -- which is why the
+glossary contract says its terms may be used only as KEYS in the
+articles, never as values."
+  (if (null glossary) form
+    (cond ((keywordp form) (or (plist-get glossary form) form))
+          ((consp form) (cons (skewed--translate-register (car form) glossary)
+                              (skewed--translate-register (cdr form) glossary)))
+          (t form))))
 
-a plain `defvar' default would be evaluated only on the FIRST load in an
-Emacs session and then left alone forever, which is exactly the
-behaviour eyes-only's parameters.lisp relies on to survive hot reloads.
-Here it is a footgun.  During the skewed-emacs -> basilisk move two
-copies of this generator exist side by side, and a session that loaded
-one and then loaded the other would keep the FIRST catalogue path --
-silently generating from the wrong repo's catalogue, with nothing in the
-output to say so.  Observed exactly that while moving the yard.
+(defun skewed--join-species (config)
+  "Fold each service's :provenance + :species pair into docker's :image.
+Species is the image type, repo:tag; provenance is the registry and/or
+namespace it hails from -- its home planet, stripped from the species
+and reattached only here, where docker insists on one reference.  A
+service already carrying :image passes through untouched."
+  (dolist (svc (skewed--get-prop config :services))
+    (let ((species (plist-get svc :species))
+          (provenance (plist-get svc :provenance)))
+      (when (and species (not (plist-get svc :image)))
+        (plist-put svc :image
+                   (if provenance (concat provenance "/" species) species)))))
+  config)
 
-To point it somewhere else, setq it AFTER loading this file.")
+(defun skewed--read-articles (services-file)
+  "Read SERVICES-FILE translated through its own glossary, species joined."
+  (let ((config (skewed--read-sexp-file services-file)))
+    (when config
+      (skewed--join-species
+       (skewed--translate-register
+        config (skewed--load-glossary services-file))))))
 
-(setq skewed-gen-fittings-file
-      (let ((beside (expand-file-name
-                     "fittings.sexp"
-                     (file-name-directory (or load-file-name buffer-file-name
-                                              default-directory)))))
-        (if (file-exists-p beside) beside "/projects/basilisk/fittings.sexp")))
+(defun skewed--resolve-compose-defaults (s)
+  "Resolve ${VAR:-default} to default and ${VAR} to \"\" in S.
+Good enough for image references, which never nest expansions."
+  (let ((out (replace-regexp-in-string
+              "\\${[A-Za-z0-9_]+:-\\([^}]*\\)}" "\\1" (or s ""))))
+    (replace-regexp-in-string "\\${[A-Za-z0-9_]+}" "" out)))
 
-(defun skewed--stack-short-name (dir)
-  "Short stack name from DIR: /projects/narad-stack/ -> \"narad\"."
-  (let ((base (file-name-nondirectory (directory-file-name dir))))
-    (if (string-suffix-p "-stack" base)
-        (substring base 0 (- (length base) (length "-stack")))
-      base)))
+(defun skewed--lisp-impl (svc)
+  "SVC's lisp implementation: declared if present, else derived.
+Derived from the species -- the strain (tag half) names the engine
+\(devo-ccl, devo-sbcl, devo-enterprise-smp-licensed), so a declared
+copy could only ever disagree with the image it describes.  Same
+argument that removed the :species label (2026-08-17).  An overlay may
+still declare :lisp-impl for a species whose strain says nothing.
+Order matters below: non-smp must precede smp, which would otherwise
+swallow it."
+  (or (skewed--get-prop svc :lisp-impl)
+      (let* ((image (skewed--resolve-compose-defaults
+                     (or (skewed--get-prop svc :image) "")))
+             (tag (if (string-match ":\\([^:/]+\\)\\'" image)
+                      (match-string 1 image) ""))
+             (type (skewed--get-prop svc :type)))
+        (cond ((equal type "emacs-lisp") "Emacs")
+              ((string-match-p "non-smp" tag) "AllegroCL-Enterprise")
+              ((string-match-p "smp" tag) "AllegroCL-SMP-Enterprise")
+              ((string-match-p "ccl" tag) "CCL")
+              ((string-match-p "sbcl" tag) "SBCL")
+              ((equal type "reverse-proxy") "AllegroCL-Runtime")))))
 
-(defun skewed--subst-stack (form stack)
-  "Recursively replace {{STACK}} with STACK in every string in FORM.
-Substitution is done at GENERATION time deliberately, so one catalogue
-serves every ship without anything having to exist in .env."
-  (cond ((stringp form) (replace-regexp-in-string "{{STACK}}" stack form t t))
-        ((consp form) (cons (skewed--subst-stack (car form) stack)
-                            (skewed--subst-stack (cdr form) stack)))
-        (t form)))
-
-(defun skewed--catalogue-post (catalogue post)
-  "The catalogue entry for POST, or nil."
-  (seq-find (lambda (e) (eq (plist-get e :post) post))
-            (skewed--get-prop catalogue :posts)))
-
-(defun skewed--level-roster (catalogue level)
-  "The roster named by LEVEL, or nil if LEVEL is unknown."
-  (let ((e (seq-find (lambda (x) (eq (plist-get x :level) level))
-                     (skewed--get-prop catalogue :crew-levels))))
-    (and e (plist-get e :roster))))
-
-(defun skewed--infer-crew-level (catalogue roster)
-  "Infer a crew-level from ROSTER: the highest level wholly contained in it.
-Returns `:custom' when no named level fits, which is a first-class
-outcome -- the scheme must keep describing ships we actually build."
-  (let ((best :custom) (best-n -1))
-    (dolist (e (skewed--get-prop catalogue :crew-levels))
-      (let* ((lr (plist-get e :roster)) (n (length lr)))
-        (when (and (> n best-n)
-                   (seq-every-p (lambda (p) (memq p roster)) lr))
-          (setq best (plist-get e :level) best-n n))))
-    best))
+(defvar skewed-gen-base-articles
+  (let ((beside (expand-file-name
+                 "services.sexp"
+                 (file-name-directory (or load-file-name buffer-file-name
+                                          default-directory)))))
+    (if (file-exists-p beside) beside "/projects/basilisk/services.sexp"))
+  "The base ship's articles: the crew aboard every Basilisk-class ship.
+Board probe generation reads these alongside each watched stack's own
+overlay, because an overlay declares only its deviation -- the Captain
+whose heap a board watches is defined here, not in sally-stack.
+Resolved at LOAD TIME beside this file, for the same
+two-copies-of-the-yard reason the old fittings path was (see git
+history); setq it after loading to point elsewhere.")
 
 (defun skewed--merge-service (base over)
   "Merge service plist OVER onto BASE; OVER's keys win."
@@ -723,99 +751,48 @@ outcome -- the scheme must keep describing ships we actually build."
     (cl-loop for (k v) on over by #'cddr do (setq out (plist-put out k v)))
     out))
 
-(defun skewed--expand-roster (config dir prefix)
-  "Expand a symbolic :crew-level/:roster in CONFIG into concrete :services.
-Returns CONFIG unchanged when neither is declared, so hosts still using
-fully explicit :services keep working untouched."
-  (let* ((meta (skewed--get-prop config :meta))
-         (level (plist-get meta :crew-level))
-         (declared (plist-get meta :roster)))
-    (if (not (or level declared))
-        config
-      (let* ((catalogue (skewed--read-sexp-file skewed-gen-fittings-file))
-             (stack (skewed--stack-short-name dir))
-             (overlay-p (not (string-empty-p (or prefix ""))))
-             (roster (or declared (skewed--level-roster catalogue level))))
-        (unless catalogue
-          (error "Cannot read fitting catalogue: %s" skewed-gen-fittings-file))
-        (unless roster
-          (error "Unknown :crew-level %s (see fittings.sexp :crew-levels)" level))
-        ;; Declaring both is allowed only if they agree.  Refuse rather than
-        ;; silently pick a winner: a config that lies about its own crew is
-        ;; worse than one that will not build.
-        (when (and level declared
-                   (not (equal (sort (copy-sequence declared) #'string<)
-                               (sort (copy-sequence
-                                      (skewed--level-roster catalogue level))
-                                     #'string<))))
-          (error ":crew-level %s and :roster disagree; declare one or make them match"
-                 level))
-        ;; A Basilisk-class ship carries a Captain BY DEFAULT, and having
-        ;; that Captain be skewed-emacs or a derived species is recommended
-        ;; -- but it is a recommendation, not a class invariant (Dave,
-        ;; 2026-08-15, revising the same morning's stricter reading).  A
-        ;; roster of just a Pilot is a standalone Cyclops deployment; just a
-        ;; ship's engineer is a standalone monolithic KBE server.  Those are
-        ;; real shapes we ship, so the generator WARNS and proceeds -- the
-        ;; :captain entry in the catalogue's :warnings table carries the
-        ;; message, exactly like every other omission.
-        (let ((expanded '()))
-          (dolist (post roster)
-            (let ((entry (skewed--catalogue-post catalogue post)))
-              (unless entry
-                (error "Unknown post %s (see fittings.sexp :posts)" post))
-              ;; An overlay emits only the delta from the vanilla base: the
-              ;; roster still names in-base posts, because it describes the
-              ;; whole ship, but restating them here would fight the base.
-              (unless (and overlay-p (plist-get entry :in-base))
-                (dolist (svc (plist-get entry :services))
-                  (push (skewed--subst-stack svc stack) expanded)))))
-          (setq expanded (nreverse expanded))
-          ;; The host's own :services are now deviation only, merged key-wise
-          ;; over what expansion produced -- the same sparse-overlay
-          ;; discipline already used against the base services.sexp.
-          (dolist (hsvc (skewed--get-prop config :services))
-            (let* ((name (plist-get hsvc :name))
-                   (pos (seq-position expanded name
-                                      (lambda (s n) (equal (plist-get s :name) n)))))
-              (if pos
-                  (setf (nth pos expanded)
-                        (skewed--merge-service (nth pos expanded) hsvc))
-                (setq expanded (append expanded (list hsvc))))))
-          ;; Say out loud, once, what is not aboard.
-          (dolist (w (skewed--get-prop catalogue :warnings))
-            (unless (memq (plist-get w :post) roster)
-              (message "  Note (%s): %s" stack (plist-get w :when-absent))))
-          (message "  %s: crew-level %s, roster %s -> %d service(s)"
-                   stack (or level (skewed--infer-crew-level catalogue roster))
-                   roster (length expanded))
-          (let ((out (copy-sequence config)))
-            (plist-put out :services expanded)))))))
-
-;;; EYES ONLY HEAP PROBES FROM THE ROSTER (2026-08-15)
+;;; EYES ONLY HEAP PROBES FROM THE ARTICLES (2026-08-15, reworked 2026-08-17)
 ;;;
-;;; The roster is the SSoT for who is aboard, so it is also the authority on
-;;; what can be PROBED.  eyes-only's *heap-probes* was hand-maintained per
-;;; board, which meant a probe could name a crew member who was never aboard
-;;; the ship it points at -- and an absent optional post then presents as a
-;;; permanently red tile rather than as nothing at all.  That is exactly
-;;; shelly's 2026-08-14 symptom.  Deriving the list from each ship's roster
-;;; makes the failure impossible: no post, no probe, no tile.
+;;; The articles are the SSoT for who is aboard, so they are also the
+;;; authority on what can be PROBED.  eyes-only's *heap-probes* was
+;;; hand-maintained per board, which meant a probe could name a crew
+;;; member who was never aboard the ship it points at -- and an absent
+;;; optional post then presents as a permanently red tile rather than as
+;;; nothing at all.  That is exactly shelly's 2026-08-14 symptom.
+;;; Deriving the list from each ship's actual crew makes the failure
+;;; impossible: no post, no probe, no tile.
+;;;
+;;; A :probe rides ON the crew entry that publishes it (the fitting
+;;; catalogue that used to group these by post retired 2026-08-17).  A
+;;; watched ship's crew is its base articles merged with its own overlay
+;;; articles, overlay keys winning -- the same key-wise discipline
+;;; compose applies to the generated yml.
 
-(defvar skewed-gen-probe-posts '(:captain :ship-engineers :guild)
-  "Posts that can yield an eyes-only heap probe, in emission order.")
-
-(defun skewed--stack-roster (stack-dir catalogue)
-  "The roster of the ship whose services.sexp lives in STACK-DIR.
-Expands a declared :crew-level against CATALOGUE.  NIL when that stack
-does not use symbolic rosters."
-  (let* ((f (expand-file-name "services.sexp" stack-dir))
-         (config (and (file-exists-p f) (skewed--read-sexp-file f)))
-         (meta (and config (skewed--get-prop config :meta))))
-    (when meta
-      (or (plist-get meta :roster)
-          (let ((level (plist-get meta :crew-level)))
-            (and level (skewed--level-roster catalogue level)))))))
+(defun skewed--stack-crew (stack-dir)
+  "The full crew of the ship at STACK-DIR: base articles + its overlay.
+Overlay entries restating a base :name merge key-wise over the base
+entry (so a deviation cannot silently shed the base's :probe).  NIL
+when no articles are found at STACK-DIR."
+  (let* ((over-file (expand-file-name "services.sexp" stack-dir))
+         (over-config (and (file-exists-p over-file)
+                           (skewed--read-articles over-file)))
+         (over (and over-config (skewed--get-prop over-config :services)))
+         (base-config (skewed--read-articles skewed-gen-base-articles))
+         (base (and base-config (skewed--get-prop base-config :services)))
+         (out '()))
+    (when over-config
+      (dolist (svc base)
+        (let ((dev (seq-find (lambda (o) (equal (plist-get o :name)
+                                                (plist-get svc :name)))
+                             over)))
+          (push (if dev (skewed--merge-service svc dev) svc) out)))
+      (setq out (nreverse out))
+      (dolist (o over)
+        (unless (seq-find (lambda (svc) (equal (plist-get svc :name)
+                                               (plist-get o :name)))
+                          out)
+          (setq out (append out (list o)))))
+      out)))
 
 (defun skewed--heap-probe-entries (config dir)
   "Build the eyes-only *heap-probes* list for the board declared in CONFIG.
@@ -824,13 +801,12 @@ Returns nil unless CONFIG's :meta carries an :eyes-only-board.
 Each watch entry names a :stack and either :in-stack t (this board's own
 ship, sampled over the docker bridge) or an :edge URL prefix reaching that
 ship's token-gated metrics.  An optional :watch narrows which posts this
-board cares about; it can never widen past what the target's roster
+board cares about; it can never widen past what the target's crew
 actually carries, which is the guarantee that kills phantom tiles."
   (let* ((meta (skewed--get-prop config :meta))
          (board (plist-get meta :eyes-only-board)))
     (when board
-      (let ((catalogue (skewed--read-sexp-file skewed-gen-fittings-file))
-            (root (file-name-directory (directory-file-name dir)))
+      (let ((root (file-name-directory (directory-file-name dir)))
             (out '()))
         (dolist (w board)
           (let* ((stack (plist-get w :stack))
@@ -838,33 +814,32 @@ actually carries, which is the guarantee that kills phantom tiles."
                  (edge (plist-get w :edge))
                  (watch (plist-get w :watch))
                  (sdir (expand-file-name (concat stack "-stack/") root))
-                 (roster (skewed--stack-roster sdir catalogue)))
-            (unless roster
-              (error "Board watches %s, whose services.sexp declares no roster"
-                     stack))
-            (dolist (post skewed-gen-probe-posts)
-              (when (and (memq post roster)
-                         (or (null watch) (memq post watch)))
-                (let* ((entry (skewed--catalogue-post catalogue post))
-                       (probe (plist-get entry :probe))
-                       ;; A post with no :in-stack form contributes nothing
-                       ;; to its own board -- the board self-samples its own
-                       ;; image for the heap gendl-ccl tile.
-                       (spec (and probe (if in-stack
-                                            (plist-get probe :in-stack)
-                                          (plist-get probe :remote)))))
-                  (when spec
-                    (unless (or in-stack edge)
-                      (error "Board watch for %s is off-ship but declares no :edge"
-                             stack))
-                    (push (list (format "%s %s" (plist-get probe :tile) stack)
-                                (plist-get spec :kind)
-                                (or (plist-get spec :url)
-                                    (concat edge (plist-get spec :path)))
-                                (plist-get spec :alert-mb))
-                          out)))))
-            (dolist (post skewed-gen-probe-posts)
-              (when (and watch (memq post watch) (not (memq post roster)))
+                 (crew (skewed--stack-crew sdir)))
+            (unless crew
+              (error "Board watches %s, but no articles found at %s"
+                     stack sdir))
+            (dolist (svc crew)
+              (let* ((post (plist-get svc :post))
+                     (probe (plist-get svc :probe))
+                     ;; A probe with no :in-stack form contributes nothing
+                     ;; to its own board -- the board self-samples its own
+                     ;; image for the heap gendl-ccl tile.
+                     (spec (and probe (if in-stack
+                                          (plist-get probe :in-stack)
+                                        (plist-get probe :remote)))))
+                (when (and spec (or (null watch) (memq post watch)))
+                  (unless (or in-stack edge)
+                    (error "Board watch for %s is off-ship but declares no :edge"
+                           stack))
+                  (push (list (format "%s %s" (plist-get probe :tile) stack)
+                              (plist-get spec :kind)
+                              (or (plist-get spec :url)
+                                  (concat edge (plist-get spec :path)))
+                              (plist-get spec :alert-mb))
+                        out))))
+            (dolist (post watch)
+              (unless (seq-find (lambda (svc) (eq (plist-get svc :post) post))
+                                crew)
                 (message "  Note (%s): board asks for %s, which is not aboard -- no probe emitted"
                          stack post)))))
         (nreverse out)))))
@@ -876,14 +851,14 @@ actually carries, which is the guarantee that kills phantom tiles."
       (let ((file (expand-file-name "eyes-only-probes-generated.lisp" dir)))
         (with-temp-file file
           (insert ";;; eyes-only-probes-generated.lisp -*- mode: lisp -*-\n")
-          (insert ";;; DO NOT EDIT -- generated from the fleet's Basilisk rosters by\n")
-          (insert ";;; skewed-emacs/generate-configs.el.  Regenerate with:\n")
+          (insert ";;; DO NOT EDIT -- generated from the fleet's Basilisk articles by\n")
+          (insert ";;; basilisk/generate-configs.el.  Regenerate with:\n")
           (insert (format ";;;   (skewed-generate-configs \"%s\")\n" dir))
           (insert ";;;\n")
-          (insert ";;; Every entry here corresponds to a post actually on the target\n")
-          (insert ";;; ship's roster, so a crew member who is not aboard cannot show up\n")
+          (insert ";;; Every entry here corresponds to a post actually aboard the target\n")
+          (insert ";;; ship, so a crew member who is not aboard cannot show up\n")
           (insert ";;; as a permanently red tile.  Change the fleet by editing the\n")
-          (insert ";;; rosters, or this board's :eyes-only-board, in services.sexp.\n\n")
+          (insert ";;; ships' articles, or this board's :eyes-only-board, in services.sexp.\n\n")
           (insert "(in-package :gdl-user)\n\n")
           (insert "(setq eyes-only::*heap-probes*\n      '(")
           (let ((first t))
@@ -926,10 +901,10 @@ Examples:
                             ""
                           (concat basename "-"))))
          (skewed-gen-output-prefix (if prefix prefix auto-prefix))
-         (config (skewed--expand-roster
-                  (skewed--read-sexp-file skewed-gen-input-file)
-                  skewed-gen-output-dir
-                  skewed-gen-output-prefix))
+         ;; Read through the register dictionary: the articles may be in
+         ;; the ship register (glossary.sexp beside them), and everything
+         ;; downstream sees machinery keys either way.
+         (config (skewed--read-articles skewed-gen-input-file))
          (mcp-dir (expand-file-name "mcp/" skewed-gen-output-dir))
          (elisp-dir (expand-file-name "dot-files/emacs.d/etc/" skewed-gen-output-dir)))
     
