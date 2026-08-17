@@ -712,17 +712,34 @@ nil means the identity translation."
     (when (file-exists-p f)
       (skewed--read-sexp-file f))))
 
-(defun skewed--translate-register (form glossary)
-  "Substitute every keyword in FORM that GLOSSARY maps.
-GLOSSARY is a flat plist (TERM MACHINERY-KEY ...).  Substitution is
-position-blind -- any keyword anywhere in the tree -- which is why the
-glossary contract says its terms may be used only as KEYS in the
-articles, never as values."
-  (if (null glossary) form
-    (cond ((keywordp form) (or (plist-get glossary form) form))
-          ((consp form) (cons (skewed--translate-register (car form) glossary)
-                              (skewed--translate-register (cdr form) glossary)))
-          (t form))))
+(defun skewed--glossary-terms (glossary)
+  "GLOSSARY's :terms section; a legacy flat glossary IS its terms."
+  (and glossary (or (plist-get glossary :terms) glossary)))
+
+(defun skewed--glossary-vocab (glossary key)
+  "The :vocabulary entry KEY from GLOSSARY, or nil.
+Vocabulary is the dictionary's other half: strings the yard COINS when
+generating, rather than keys it renames.  Register vocabulary is never
+embedded in code (Dave, 2026-08-17) -- absent a glossary the yard
+falls back to register-neutral machinery words, so the vocabulary is
+changeable upon forking by editing glossary.sexp alone."
+  (plist-get (plist-get glossary :vocabulary) key))
+
+(defun skewed--translate-register (glossary-or-form &optional glossary)
+  "Substitute every keyword in a form that GLOSSARY's terms map.
+Called as (skewed--translate-register FORM GLOSSARY).  Terms are a
+flat plist (TERM MACHINERY-KEY ...).  Substitution is position-blind
+-- any keyword anywhere in the tree -- which is why the glossary
+contract says its terms may be used only as KEYS in the articles,
+never as values."
+  (let ((form glossary-or-form)
+        (terms (skewed--glossary-terms glossary)))
+    (if (null terms) form
+      (cl-labels ((walk (f)
+                    (cond ((keywordp f) (or (plist-get terms f) f))
+                          ((consp f) (cons (walk (car f)) (walk (cdr f))))
+                          (t f))))
+        (walk form)))))
 
 (defun skewed--join-species (config)
   "Fold each service's :provenance + :species pair into docker's :image.
@@ -746,19 +763,23 @@ rode along in the string is dropped."
          (repo (if (string-match "\\`\\([^:]*\\):" s) (match-string 1 s) s)))
     (file-name-nondirectory repo)))
 
-(defun skewed--derive-names (config)
+(defun skewed--derive-names (config &optional glossary)
   "Fill in each crew entry's :name where the articles left it out.
 Only :species is required of a service.  An explicit :name wins -- it
 is the author's slug, and the license to abbreviate lives there.
 Absent one: a posted crew member takes the slug of every post it
 stands (full post names, hyphen-joined; no post is primary); a
-species aboard with NO assigned posting is a STOWAWAY, comprehended
-like anyone else, and named stowaway-<repo> -- the designator makes
-one obvious from its slug alone (Dave, 2026-08-17).  Collisions get
--2, -3 ... suffixes, which the role machinery already tolerates
-(jr-eng-cyborg-2 is still an engineer)."
+species aboard with NO assigned posting takes a designator prefix on
+the repo half of its species, so one is obvious from its slug alone.
+The designator is GLOSSARY vocabulary (\"stowaway\" in the canonical
+register), never embedded here -- changeable in-world or on forking
+by editing glossary.sexp alone; the codeless fallback is the neutral
+machinery word.  Collisions get -2, -3 ... suffixes, which the role
+machinery already tolerates (jr-eng-cyborg-2 is still an engineer)."
   (let ((taken (delq nil (mapcar (lambda (s) (plist-get s :name))
-                                 (skewed--get-prop config :services)))))
+                                 (skewed--get-prop config :services))))
+        (designator (or (skewed--glossary-vocab glossary :stowaway-designator)
+                        "unassigned")))
     (dolist (svc (skewed--get-prop config :services))
       (unless (plist-get svc :name)
         (let* ((posts (skewed--ensure-list (plist-get svc :post)))
@@ -768,7 +789,7 @@ one obvious from its slug alone (Dave, 2026-08-17).  Collisions get
                        (let ((repo (skewed--species-repo
                                     (plist-get svc :species))))
                          (if (string-empty-p repo) ""
-                           (concat "stowaway-" repo)))))
+                           (concat designator "-" repo)))))
                (name stem)
                (n 1))
           (when (string-empty-p stem)
@@ -782,12 +803,39 @@ one obvious from its slug alone (Dave, 2026-08-17).  Collisions get
 (defun skewed--read-articles (services-file)
   "Read SERVICES-FILE translated through its own glossary, species
 joined, missing names derived.  Every consumer sees the same names."
-  (let ((config (skewed--read-sexp-file services-file)))
+  (let ((config (skewed--read-sexp-file services-file))
+        (glossary (skewed--load-glossary services-file)))
     (when config
       (skewed--derive-names
        (skewed--join-species
-        (skewed--translate-register
-         config (skewed--load-glossary services-file)))))))
+        (skewed--translate-register config glossary))
+       glossary))))
+
+(defun skewed--generate-vocabulary-env (glossary)
+  "KEY='VALUE' lines for the shell half of the yard (compose-dev).
+Register vocabulary is never embedded in code: compose-dev sources
+this GENERATED file and falls back to register-neutral machinery
+words without it, so every word it speaks is changeable -- in-world
+or upon forking -- by editing glossary.sexp alone and regenerating."
+  (let ((vocab (plist-get glossary :vocabulary))
+        (lines '()))
+    (push "# DO NOT EDIT - Generated from glossary.sexp :vocabulary" lines)
+    (push "# Sourced by compose-dev.  Register vocabulary lives in the" lines)
+    (push "# glossary, never in shipped code." lines)
+    (cl-flet ((emit (key val)
+                (when val
+                  (push (format "%s='%s'" key
+                                (replace-regexp-in-string "'" "'\\\\''" val))
+                        lines))))
+      (emit "BASILISK_VOCAB_STOWAWAY_DESIGNATOR"
+            (plist-get vocab :stowaway-designator))
+      (cl-loop for (role title) on (plist-get vocab :muster-titles) by #'cddr
+               do (emit (format "BASILISK_VOCAB_TITLE_%s"
+                                (upcase (substring (symbol-name role) 1)))
+                        title))
+      (emit "BASILISK_VOCAB_NO_INGRESS_WARNING"
+            (plist-get vocab :no-ingress-warning)))
+    (concat (string-join (nreverse lines) "\n") "\n")))
 
 (defun skewed--filter-berthed (config &optional base-names)
   "Withhold VACANT postings from emission; everything else passes.
@@ -1123,6 +1171,18 @@ Examples:
       (with-temp-file compose-file
         (insert (skewed--generate-compose-yaml config)))
       (message "Generated: %s" compose-file))
+
+    ;; The shell's share of the dictionary (base generation only): the
+    ;; vocabulary compose-dev speaks, generated so no register word
+    ;; ships embedded in code.
+    (when (string-empty-p skewed-gen-output-prefix)
+      (let ((vocab-file (expand-file-name "generated/vocabulary.env"
+                                          skewed-gen-output-dir)))
+        (make-directory (file-name-directory vocab-file) t)
+        (with-temp-file vocab-file
+          (insert (skewed--generate-vocabulary-env
+                   (skewed--load-glossary skewed-gen-input-file))))
+        (message "Generated: %s" vocab-file)))
     
     ;; Generate MCP configs (only when services declare :mcp t)
     (when (skewed--has-mcp-services-p config)
