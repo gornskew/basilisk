@@ -62,6 +62,26 @@
  (:wrapper-path-container "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js"
   :request-timeout-ms 30000)
 
+ ;; POSTING QUALIFICATIONS: what a species must be capable of to stand
+ ;; each post.  Requirements only -- deliberately NOT a fitting
+ ;; catalogue (no service definitions, no rosters; that idea retired
+ ;; 2026-08-17).  A species states its CAPABILITIES in its own image
+ ;; manifest (the basilisk.capabilities label -- the SSoT for what an
+ ;; image can do), and the muster verifies the match at up-time,
+ ;; warning and proceeding: an ability may also come aboard by
+ ;; arrangement (a services-init hook, at boot or later), which the
+ ;; manifest cannot know.  A crew entry's :post may be a LIST -- one
+ ;; crew member standing several posts, none primary, ordering
+ ;; meaningless -- and its name is a slug incorporating every post it
+ ;; stands, with license to abbreviate aggressively.
+ :postings
+ ((:post :ships-engineer :requires ("gendl"))
+  (:post :guild-engineer :requires ("genworks-gdl"))
+  (:post :transporter-chief :requires ("reverse-proxy"))
+  (:post :communications-officer
+   :description "Keeps the bridge viewscreen; hails the fleet."
+   :requires ("bridge viewscreen operations")))
+
  :crew
  (
   ;; NAMES ARE POSTINGS, not species (Dave, 2026-08-16).  :name becomes
@@ -116,10 +136,13 @@
                     :alert-mb 2000))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "30s"))
 
-  ;; Two small, competent, collegial engineering departments -- the
-  ;; -human and -cyborg variants of one post (CCL and SBCL).
+  ;; Two small, competent, collegial engineering departments -- both
+  ;; stand the :ships-engineer post; -human and -cyborg are the name
+  ;; slugs telling the two variants apart, and each entry's :species
+  ;; pin is what GUARANTEES which engine stands the post (gendl-ccl
+  ;; vs gendl-sbcl) -- the post is generic, the species is not.
   (:name "jr-eng-human"
-   :post :jr-eng-human
+   :post :ships-engineer
    :description "Junior engineering, the human department."
    :type "common-lisp"
    :provenance "gornskew"
@@ -139,7 +162,7 @@
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "72s"))
 
   (:name "jr-eng-cyborg"
-   :post :jr-eng-cyborg
+   :post :ships-engineer
    :description "Junior engineering, the cyborg department."
    :type "common-lisp"
    :provenance "gornskew"

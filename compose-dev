@@ -580,9 +580,30 @@ _crew_role_for_posting() {
         medic|medic-[0-9]*)       echo "doctor" ;;
         communications-officer|communications-officer-[0-9]*) echo "comm" ;;
         comms|comms-[0-9]*)       echo "comm" ;;
+        ships-engineer|ships-engineer-[0-9]*) echo "engineer" ;;
+        guild-engineer|guild-engineer-[0-9]*) echo "engineer" ;;
         jr-eng-*|sr-eng-*|guild-*) echo "engineer" ;;
         *)                        echo "crew" ;;
     esac
+}
+
+# A basilisk.post label may carry a LIST (comma-joined): one crew
+# member standing several posts.  No posting is primary and ordering
+# carries no meaning, but ROLE= is single-valued legacy -- so take the
+# first RECOGNIZED role scanning the list, without reading position as
+# primacy.
+_crew_role_for_postings() {
+    _crp_role="crew"
+    _crp_old_ifs=$IFS; IFS=','
+    for _crp_p in $1; do
+        _crp_r="$(_crew_role_for_posting "$_crp_p")"
+        if [ "$_crp_r" != "crew" ]; then
+            _crp_role="$_crp_r"
+            break
+        fi
+    done
+    IFS=$_crp_old_ifs
+    echo "$_crp_role"
 }
 
 # MANNED/DRONE IS GONE FROM HERE, deliberately (Dave, 2026-08-17).
@@ -736,7 +757,7 @@ _ci_image="$(docker inspect --format \
             "$_ci_id" 2>/dev/null)"
         [ -n "$_ci_post" ] && _ci_posting="$_ci_post"
 
-        _ci_role="$(_crew_role_for_posting "$_ci_posting")"
+        _ci_role="$(_crew_role_for_postings "$_ci_posting")"
         _crew_unique_name "$_ci_species"
         _ci_mint_name="$_crew_unique_name_result"
 
@@ -1024,6 +1045,22 @@ crew_muster() {
         # verified and says so quietly; a manifest that HAS one and is
         # missing a required capability is a loud warning.
         _cm_cname="${BASILISK_PREFIX:-}${_cm_svc}"
+        # One crew member may stand several posts (basilisk.post is a
+        # comma list; no posting is primary).  Print the full list
+        # whenever there is more than the name already says.
+        _cm_posts="$(docker inspect --format \
+            '{{index .Config.Labels "basilisk.post"}}' \
+            "$_cm_cname" 2>/dev/null)"
+        case "$_cm_posts" in
+            *,*) log_info "    stands: ${_cm_posts}" ;;
+        esac
+        # REQUIREMENTS vs CAPABILITIES: basilisk.requires unions the
+        # qualifications of every post stood (emitted by the yard from
+        # the :postings tables); basilisk.capabilities on the IMAGE
+        # manifest is the SSoT for what the species can do.  A missing
+        # capability WARNS and never errors -- the ability may come
+        # aboard by arrangement (a services-init hook, at boot or
+        # later), which the manifest cannot know.
         _cm_requires="$(docker inspect --format \
             '{{index .Config.Labels "basilisk.requires"}}' \
             "$_cm_cname" 2>/dev/null)"
@@ -1040,7 +1077,7 @@ crew_muster() {
                 for _cm_req in $_cm_requires; do
                     case ",$_cm_caps," in
                         *",$_cm_req,"*) ;;
-                        *) log_warning "    ${_cm_svc}: posting requires \"${_cm_req}\" but species ${_cm_img} does not list it" ;;
+                        *) log_warning "    ${_cm_svc}: stands a post requiring \"${_cm_req}\" but species ${_cm_img} does not list it (arranged aboard?)" ;;
                     esac
                 done
                 IFS=$_cm_old_ifs

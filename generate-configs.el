@@ -165,13 +165,25 @@
         ;; :species in any services.sexp when this came out, and nothing
         ;; read the label but the resolution chain that went with it.
         (let* ((raw-post (skewed--get-prop svc :post))
-               (post (if (keywordp raw-post)
-                         (substring (symbol-name raw-post) 1) raw-post))
-               ;; A posting's REQUIREMENTS ride as a label so the crew
-               ;; muster can verify them at up-time against the species'
-               ;; own capability list -- the basilisk.capabilities label
-               ;; on the IMAGE manifest, which is the SSoT for what an
-               ;; image can do (Dave, 2026-08-17).
+               ;; :post may be a LIST -- one crew member standing
+               ;; several posts.  The label carries them all,
+               ;; comma-joined.  NO POSTING IS PRIMARY and ordering
+               ;; carries no meaning (mixin-like; conflicts get dealt
+               ;; with when observed), so consumers must never read
+               ;; position as primacy.
+               (post (and raw-post
+                          (mapconcat (lambda (p)
+                                       (if (keywordp p)
+                                           (substring (symbol-name p) 1)
+                                         (format "%s" p)))
+                                     (skewed--ensure-list raw-post) ",")))
+               ;; REQUIREMENTS ride as a label so the crew muster can
+               ;; verify them at up-time against the species' own
+               ;; capability list -- the basilisk.capabilities label
+               ;; on the IMAGE manifest, the SSoT for what an image
+               ;; can do (Dave, 2026-08-17).  Already unioned with the
+               ;; requirements of every stood posting by
+               ;; `skewed--resolve-post-requires'.
                (requires (skewed--get-prop svc :requires)))
           (when (or post requires)
             (push "    labels:" lines)
@@ -288,7 +300,17 @@
                 ;; Networks
         (unless network-mode
           (push "    networks:" lines)
-          (push "      - skewed-network" lines))
+          (let ((alias (skewed--get-prop svc :network-alias)))
+            (if alias
+                ;; A relieving crew member answers to the relieved
+                ;; name as well: everyone who hails the old name
+                ;; (cyclops backends, MCP configs, SLIME) reaches the
+                ;; same container.
+                (progn
+                  (push "      skewed-network:" lines)
+                  (push "        aliases:" lines)
+                  (push (format "          - %s" alias) lines))
+              (push "      - skewed-network" lines))))
         
         ;; Healthcheck
         (when healthcheck
@@ -304,9 +326,20 @@
             (push "      timeout: 3s" lines)
             (push "      retries: 3" lines)
             (push "      start_period: 15s" lines)))
-        
+
         (push "" lines)))
-    
+
+    ;; RELIEVED base crew: each name here is stood by a renamed crew
+    ;; member above (which carries it as a network alias).  The stub
+    ;; assigns a never-activated profile, so compose defines the base
+    ;; service but does not start it.
+    (dolist (victim (skewed--get-prop config :relieved-names))
+      (push (format "  # %s is relieved: the post is stood by a renamed crew member" victim) lines)
+      (push (format "  %s:" victim) lines)
+      (push "    profiles:" lines)
+      (push "      - relieved" lines)
+      (push "" lines))
+
     (string-join (nreverse lines) "\n")))
 
 ;;; ============================================================================
@@ -733,6 +766,79 @@ once per generation."
     (let ((out (copy-sequence config)))
       (plist-put out :services berthed))))
 
+(defun skewed--ensure-list (x)
+  "X if it is a list, else (X).  :post accepts one keyword or several."
+  (if (listp x) x (list x)))
+
+(defun skewed--posting-requires (post tables)
+  "The :requires of POST per the first of TABLES that defines it.
+Each table is a :postings list -- the posting qualifications: what a
+species must be capable of to stand that post.  Requirements only;
+this is deliberately NOT a fitting catalogue (no service definitions,
+no rosters)."
+  (catch 'found
+    (dolist (table tables)
+      (let ((entry (seq-find (lambda (e) (eq (plist-get e :post) post))
+                             table)))
+        (when entry (throw 'found (plist-get entry :requires)))))))
+
+(defun skewed--resolve-post-requires (config base-config)
+  "Union each crew entry's :requires with those of every post it stands.
+:post may be a single keyword or a LIST -- one crew member can stand
+several posts (narad's human junior engineer also stands
+:communications-officer, the ability arriving with his services-init
+hook at boot or later, not with his species).  Per-post requirements
+come from the :postings qualification tables -- this file's own, then
+the base articles' -- e.g. :ships-engineer requires \"gendl\",
+:guild-engineer requires \"genworks-gdl\".  The muster's manifest
+check stays WARNING severity, so a capability that arrives by
+arrangement rather than manifest costs a warning and nothing more."
+  (let ((tables (delq nil (list (skewed--get-prop config :postings)
+                                (and base-config
+                                     (skewed--get-prop base-config :postings))))))
+    (dolist (svc (skewed--get-prop config :services))
+      (let ((reqs (copy-sequence (plist-get svc :requires))))
+        (dolist (p (skewed--ensure-list (plist-get svc :post)))
+          (dolist (r (skewed--posting-requires p tables))
+            (unless (member r reqs)
+              (setq reqs (append reqs (list r))))))
+        (when reqs (plist-put svc :requires reqs)))))
+  config)
+
+(defun skewed--apply-relieves (config base-config)
+  "Resolve :relieves entries: a renamed crew member takes over a base post.
+A crew entry naming :relieves \"<base-name>\" is the base entry merged
+under the NEW name (its own keys winning), so the articles state only
+the deviation.  The relieved base name becomes a NETWORK ALIAS of the
+new container -- everyone who hails the old name (cyclops backends,
+MCP configs, SLIME) still reaches the same crew member -- and the base
+service itself is suppressed via an emitted profiles stub (collected
+in :relieved-names) so it does not also come up."
+  (let ((base-services (and base-config
+                            (skewed--get-prop base-config :services)))
+        (relieved '()))
+    (let ((services
+           (mapcar
+            (lambda (svc)
+              (let ((victim (plist-get svc :relieves)))
+                (if (not victim)
+                    svc
+                  (let ((base (seq-find (lambda (b) (equal (plist-get b :name)
+                                                           victim))
+                                        base-services)))
+                    (unless base
+                      (error ":relieves %S names no base crew member" victim))
+                    (push victim relieved)
+                    (let ((merged (skewed--merge-service base svc)))
+                      (setq merged (plist-put merged :network-alias victim))
+                      ;; :relieves itself is bookkeeping, not config.
+                      (plist-put merged :relieves nil)
+                      merged)))))
+            (skewed--get-prop config :services))))
+      (let ((out (copy-sequence config)))
+        (setq out (plist-put out :services services))
+        (plist-put out :relieved-names (nreverse relieved))))))
+
 (defun skewed--resolve-compose-defaults (s)
   "Resolve ${VAR:-default} to default and ${VAR} to \"\" in S.
 Good enough for image references, which never nest expansions."
@@ -850,7 +956,7 @@ actually carries, which is the guarantee that kills phantom tiles."
               (error "Board watches %s, but no articles found at %s"
                      stack sdir))
             (dolist (svc crew)
-              (let* ((post (plist-get svc :post))
+              (let* ((posts (skewed--ensure-list (plist-get svc :post)))
                      (probe (plist-get svc :probe))
                      ;; A probe with no :in-stack form contributes nothing
                      ;; to its own board -- the board self-samples its own
@@ -858,7 +964,9 @@ actually carries, which is the guarantee that kills phantom tiles."
                      (spec (and probe (if in-stack
                                           (plist-get probe :in-stack)
                                         (plist-get probe :remote)))))
-                (when (and spec (or (null watch) (memq post watch)))
+                (when (and spec (or (null watch)
+                                    (seq-some (lambda (p) (memq p watch))
+                                              posts)))
                   (unless (or in-stack edge)
                     (error "Board watch for %s is off-ship but declares no :edge"
                            stack))
@@ -869,7 +977,9 @@ actually carries, which is the guarantee that kills phantom tiles."
                               (plist-get spec :alert-mb))
                         out))))
             (dolist (post watch)
-              (unless (seq-find (lambda (svc) (eq (plist-get svc :post) post))
+              (unless (seq-find (lambda (svc)
+                                  (memq post (skewed--ensure-list
+                                              (plist-get svc :post))))
                                 crew)
                 (message "  Note (%s): board asks for %s, which is not aboard -- no probe emitted"
                          stack post)))))
@@ -934,17 +1044,23 @@ Examples:
          (skewed-gen-output-prefix (if prefix prefix auto-prefix))
          ;; Read through the register dictionary: the articles may be in
          ;; the ship register (glossary.sexp beside them), and everything
-         ;; downstream sees machinery keys either way.  Vacant postings
-         ;; (stated, no species, not a deviation on a base post) are
-         ;; noted and withheld from emission.
-         (config (let ((base-names
-                        (unless (string= (expand-file-name skewed-gen-input-file)
-                                         (expand-file-name skewed-gen-base-articles))
-                          (let ((b (skewed--read-articles skewed-gen-base-articles)))
-                            (mapcar (lambda (s) (plist-get s :name))
-                                    (skewed--get-prop b :services))))))
+         ;; downstream sees machinery keys either way.  Then: per-post
+         ;; requirements resolved from the :postings qualification
+         ;; tables, :relieves entries merged over their base crew
+         ;; members, and vacant postings (stated, no species, not a
+         ;; deviation on a base post) noted and withheld.
+         (config (let* ((raw (skewed--read-articles skewed-gen-input-file))
+                        (base-p (string= (expand-file-name skewed-gen-input-file)
+                                         (expand-file-name skewed-gen-base-articles)))
+                        (base-config (unless base-p
+                                       (skewed--read-articles
+                                        skewed-gen-base-articles)))
+                        (base-names (mapcar (lambda (s) (plist-get s :name))
+                                            (skewed--get-prop base-config :services))))
                    (skewed--filter-berthed
-                    (skewed--read-articles skewed-gen-input-file)
+                    (skewed--apply-relieves
+                     (skewed--resolve-post-requires raw base-config)
+                     base-config)
                     base-names)))
          (mcp-dir (expand-file-name "mcp/" skewed-gen-output-dir))
          (elisp-dir (expand-file-name "dot-files/emacs.d/etc/" skewed-gen-output-dir)))
