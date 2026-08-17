@@ -166,10 +166,21 @@
         ;; read the label but the resolution chain that went with it.
         (let* ((raw-post (skewed--get-prop svc :post))
                (post (if (keywordp raw-post)
-                         (substring (symbol-name raw-post) 1) raw-post)))
-          (when post
+                         (substring (symbol-name raw-post) 1) raw-post))
+               ;; A posting's REQUIREMENTS ride as a label so the crew
+               ;; muster can verify them at up-time against the species'
+               ;; own capability list -- the basilisk.capabilities label
+               ;; on the IMAGE manifest, which is the SSoT for what an
+               ;; image can do (Dave, 2026-08-17).
+               (requires (skewed--get-prop svc :requires)))
+          (when (or post requires)
             (push "    labels:" lines)
-            (push (format "      basilisk.post: \"%s\"" post) lines)))
+            (when post
+              (push (format "      basilisk.post: \"%s\"" post) lines))
+            (when requires
+              (push (format "      basilisk.requires: \"%s\""
+                            (mapconcat #'identity requires ","))
+                    lines))))
         (when user (push (format "    user: %s" user) lines))
         (push (format "    restart: %s" restart) lines)
         (push "    stdin_open: true" lines)
@@ -702,6 +713,26 @@ service already carrying :image passes through untouched."
        (skewed--translate-register
         config (skewed--load-glossary services-file))))))
 
+(defun skewed--filter-berthed (config &optional base-names)
+  "Withhold VACANT postings from emission; everything else passes.
+A crew entry with no :image is one of two things: a DEVIATION on a
+post the base articles already berth (its :name is in BASE-NAMES --
+emitted as the sparse overlay it is, compose merges it key-wise), or a
+VACANT posting -- stated on the books (its :post, :description and
+:requires all stand) but invisible to the machinery until a species
+that meets its requirements signs on.  Each vacancy is said out loud
+once per generation."
+  (let* ((all (skewed--get-prop config :services))
+         (aboard-p (lambda (svc) (or (plist-get svc :image)
+                                     (member (plist-get svc :name) base-names))))
+         (berthed (seq-filter aboard-p all)))
+    (dolist (svc all)
+      (unless (funcall aboard-p svc)
+        (message "  Note: posting %s is stated but VACANT (no species assigned) -- nothing emitted"
+                 (or (plist-get svc :post) (plist-get svc :name)))))
+    (let ((out (copy-sequence config)))
+      (plist-put out :services berthed))))
+
 (defun skewed--resolve-compose-defaults (s)
   "Resolve ${VAR:-default} to default and ${VAR} to \"\" in S.
 Good enough for image references, which never nest expansions."
@@ -903,8 +934,18 @@ Examples:
          (skewed-gen-output-prefix (if prefix prefix auto-prefix))
          ;; Read through the register dictionary: the articles may be in
          ;; the ship register (glossary.sexp beside them), and everything
-         ;; downstream sees machinery keys either way.
-         (config (skewed--read-articles skewed-gen-input-file))
+         ;; downstream sees machinery keys either way.  Vacant postings
+         ;; (stated, no species, not a deviation on a base post) are
+         ;; noted and withheld from emission.
+         (config (let ((base-names
+                        (unless (string= (expand-file-name skewed-gen-input-file)
+                                         (expand-file-name skewed-gen-base-articles))
+                          (let ((b (skewed--read-articles skewed-gen-base-articles)))
+                            (mapcar (lambda (s) (plist-get s :name))
+                                    (skewed--get-prop b :services))))))
+                   (skewed--filter-berthed
+                    (skewed--read-articles skewed-gen-input-file)
+                    base-names)))
          (mcp-dir (expand-file-name "mcp/" skewed-gen-output-dir))
          (elisp-dir (expand-file-name "dot-files/emacs.d/etc/" skewed-gen-output-dir)))
     

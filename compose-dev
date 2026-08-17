@@ -578,6 +578,7 @@ _crew_role_for_posting() {
         transporter-chief|transporter-chief-[0-9]*) echo "pilot" ;;
         pilot|pilot-[0-9]*)       echo "pilot" ;;
         medic|medic-[0-9]*)       echo "doctor" ;;
+        communications-officer|communications-officer-[0-9]*) echo "comm" ;;
         comms|comms-[0-9]*)       echo "comm" ;;
         jr-eng-*|sr-eng-*|guild-*) echo "engineer" ;;
         *)                        echo "crew" ;;
@@ -1014,6 +1015,37 @@ crew_muster() {
                         | tr ',' '\n' | sed -n 's/.*0\.0\.0\.0:\([0-9]*\)->\([0-9]*\).*/\1->\2/p' \
                         | sort -u | tr '\n' ' ')
         printf '  %s %-24s %s\n' "$_cm_post" "$_cm_svc" "${_cm_ports:-(no published ports)}"
+
+        # REQUIREMENTS vs CAPABILITIES (Dave, 2026-08-17).  A posting
+        # states its requirements (basilisk.requires, emitted by the
+        # yard); the species states its capabilities in its own image
+        # manifest (basilisk.capabilities label) -- the SSoT for what an
+        # image can do.  A manifest with no capability list cannot be
+        # verified and says so quietly; a manifest that HAS one and is
+        # missing a required capability is a loud warning.
+        _cm_cname="${BASILISK_PREFIX:-}${_cm_svc}"
+        _cm_requires="$(docker inspect --format \
+            '{{index .Config.Labels "basilisk.requires"}}' \
+            "$_cm_cname" 2>/dev/null)"
+        if [ -n "$_cm_requires" ]; then
+            _cm_img="$(docker inspect --format '{{.Config.Image}}' \
+                "$_cm_cname" 2>/dev/null)"
+            _cm_caps="$(docker image inspect --format \
+                '{{index .Config.Labels "basilisk.capabilities"}}' \
+                "$_cm_img" 2>/dev/null)"
+            if [ -z "$_cm_caps" ]; then
+                log_info "    requires [${_cm_requires}]; species manifest carries no capability list (cannot verify)"
+            else
+                _cm_old_ifs=$IFS; IFS=','
+                for _cm_req in $_cm_requires; do
+                    case ",$_cm_caps," in
+                        *",$_cm_req,"*) ;;
+                        *) log_warning "    ${_cm_svc}: posting requires \"${_cm_req}\" but species ${_cm_img} does not list it" ;;
+                    esac
+                done
+                IFS=$_cm_old_ifs
+            fi
+        fi
     done
 
     # An absent post is legal -- every post is optional, :captain included --
