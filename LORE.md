@@ -48,8 +48,15 @@ Captain goes about hung with instruments — a working belt of them,
 each for a different kind of business, of which the editor is only the
 one everybody has heard of. Others keep the ship's records, carry its
 correspondence, and receive whatever comes aboard wanting an audience.
-Several of them he is still learning. He is further along than he lets
-on, and would rather you assumed otherwise.
+One is a **glass**, for looking at a distant thing and seeing it as it
+actually appears rather than as the plans claim — not to be confused
+with the bridge viewscreen, which is Comms's board and points inward.
+The glass points out, and a Captain who has one can check its own work.
+
+Several of these he is still learning. He is further along than he lets
+on, and would rather you assumed otherwise. Note too that not every
+Captain carries the full belt: a lightly-fitted one may have no glass
+at all, and finds out the hard way.
 
 Temperament: territorial, indifferent to ceremony, and in possession
 of a great deal of undocumented institutional memory.  A Captain who
