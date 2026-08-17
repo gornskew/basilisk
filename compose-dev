@@ -487,12 +487,19 @@ restart_services() {
 #
 # Mints a per-container identity -- NAME (random, species-flavored),
 # SPECIES, ROLE -- and writes it into /tmp/skewed-crew-identity inside
-# each running container, once.  Species/role are inferred from the
-# compose SERVICE NAME, the same name services.sexp already assigns as
-# container_name/hostname (generate-configs.el) -- no schema change,
-# every existing overlay (sally-stack, shelly-stack, ...) participates
-# automatically, and any container this script has never heard of
-# before still gets a generic crew/unknown identity.
+# each running container, once.
+#
+# The two axes come from two different places, on purpose.  SPECIES is
+# the IMAGE TYPE, read off Config.Image and never looked up.  ROLE
+# comes from the POSTING -- the basilisk.post label, falling back to
+# the hostname that services.sexp already assigns.  So renaming a
+# service in an overlay changes what it stands, not what it is, and
+# swapping its image changes what it is, not what it stands.
+#
+# No schema change, every existing overlay (sally-stack, shelly-stack,
+# ...) participates automatically, and any container this script has
+# never heard of before still gets a generic crew identity with its
+# image as its species.
 #
 # IDEMPOTENT BY DESIGN: skips any container whose identity file already
 # exists.  A plain docker restart (same filesystem) therefore keeps
@@ -506,35 +513,38 @@ restart_services() {
 # own name -- see apps/eyes-only source/metrics.lisp.
 # =============================================================================
 
-# Species = the container's IMAGE, not its compose service name or
-# container name (Dave, 2026-08-14): a service could be renamed in an
-# overlay without changing what it actually runs, and species should
-# track the latter.  Matched against the running container's own
-# Config.Image (docker inspect), so this needs nothing from
-# services.sexp and works for a service this script has never named.
-# The genworks/gdl vs gornskew/gendl ORG NAMESPACE is the real signal
-# behind gendl vs genworks-gdl -- community shop vs commissioned fleet
-# engineering IS the licensing-tier distinction (Cluster commercial-
-# tiering thread, org).  (Said "Starfleet" until 2026-08-15; the ship
-# skin was walked back off recognizable Star Trek dress precisely to
-# reduce cease-and-desist exposure -- see eyes-only/THEMES.md -- and
-# leaving the word in a shipped open-source file gave that back for
-# nothing.  The fleet is ours; it does not need anyone else's navy.)
+# SPECIES IS THE IMAGE TYPE -- repo:tag, DERIVED and never looked up
+# (Dave, 2026-08-17).  There is no species table here any more, and no
+# species registry anywhere: Basilisk does not adjudicate whether an
+# image qualifies as a species, because the image simply IS one.
+#
+# The REGISTRY/NAMESPACE is stripped.  It is the image's home planet --
+# its provenance -- and says nothing about what the image IS, so
+# gornskew/gendl and someone else's gendl are the same species from
+# different worlds.  (This replaces an older reading in which the
+# genworks/gdl vs gornskew/gendl namespace was the signal behind the
+# licensing tier.  That distinction is real, but it is provenance, and
+# it now rides on the tag: :devo-enterprise-smp-licensed says it.)
+#
+# The TAG IS PART OF THE SPECIES.  gendl:devo-ccl and gendl:devo-sbcl
+# are different species, which is precisely what the old glob table
+# lost -- its */gendl:* arm dropped the tag and mustered both engineers
+# alike.  Cute species names, for images we control, are issued as tags.
+#
+# Matched against the running container's own Config.Image (docker
+# inspect), so this needs nothing from services.sexp and works for a
+# service this script has never named.
 _crew_species_from_image() {
-    case "$1" in
-        */skewed-emacs:*|skewed-emacs:*) echo "skewed-emacs" ;;
-        */cyclops:*|cyclops:*)           echo "cyclops" ;;
-        genworks/gdl:*)                  echo "genworks-gdl" ;;
-        */gendl:*|gendl:*)               echo "gendl" ;;
-        */autoheal:*|autoheal:*)         echo "autohealer" ;;
-        *)                                echo "unknown" ;;
+    _csi_ref="${1##*/}"         # drop registry/namespace; a registry
+                                # port colon rides along with it
+    _csi_ref="${_csi_ref%%@*}"  # a digest pin is not a species
+    case "$_csi_ref" in
+        "")  echo "unknown" ;;
+        *:*) echo "$_csi_ref" ;;
+        *)   echo "${_csi_ref}:latest" ;;   # implicit tag, made explicit
     esac
 }
 
-# Role follows from species alone -- every species in the fleet maps
-# to exactly one role today (one Captain-shaped thing, one Pilot-
-# shaped thing, ...).  Unknown species still participate (generic
-# crew), so nothing needs to opt in.
 # Role comes from the POSTING, not the species (Dave, 2026-08-16).
 #
 # Deriving role from the image was only ever a guess made in the absence
@@ -544,33 +554,14 @@ _crew_species_from_image() {
 # mislabels it.  The hostname now DECLARES the posting, so the role is
 # read rather than inferred.
 #
-# The reverse direction is the useful one and lives in the SSoT already:
-# each posting declares its DEFAULT species as its :image.  Filling a
-# posting with something else is a supported oddity, not a broken state.
+# There is no longer a post->species table either (Dave, 2026-08-17).
+# It ran backwards: what usually stands a post is a reasonable thing to
+# know, but it is not how species is resolved.  Species comes off the
+# image and nowhere else, so a post that cannot be recognized costs a
+# stylish name and nothing more.
 #
 # Trailing -N is tolerated so a ship can carry more than one of a post
 # (jr-eng-cyborg-2 is still an engineer).
-# Each post has a DEFAULT species (Dave, 2026-08-16).  This is the
-# useful direction of the mapping that used to run species->role: a post
-# says what usually stands it, and a service that wants something else
-# declares :species in the SSoT.  Species strictly means IMAGE TYPE, so
-# these are image identities, not adjectives.
-_crew_default_species_for_post() {
-    case "$1" in
-        captain*)                 echo "skewed-emacs" ;;
-        pilot*)                   echo "cyclops" ;;
-        medic*)                   echo "autohealer" ;;
-        comms*)                   echo "eyes-only" ;;
-        jr-eng-human*)            echo "gendl-ccl" ;;
-        jr-eng-cyborg*)           echo "gendl-sbcl" ;;
-        guild-master-cyborg*)     echo "genworks-gdl-enterprise-smp" ;;
-        guild-master-human*)      echo "genworks-gdl-enterprise-non-smp" ;;
-        guild-journeyman-cyborg*) echo "genworks-gdl-pro-smp" ;;
-        guild-journeyman-human*)  echo "genworks-gdl-pro-non-smp" ;;
-        *)                        echo "unknown" ;;
-    esac
-}
-
 _crew_role_for_posting() {
     case "$1" in
         captain|captain-[0-9]*)   echo "captain" ;;
@@ -582,47 +573,63 @@ _crew_role_for_posting() {
     esac
 }
 
-# Manned or drone -- DERIVED, and the table encodes exactly one thing:
-# is there a compiler aboard?  A drone stands a watch and runs the one
-# system it was built for; anything manned can fabricate something new.
+# MANNED/DRONE IS GONE FROM HERE, deliberately (Dave, 2026-08-17).
 #
-# Orthogonal to both role and price, which is the whole point (LORE.md
-# section I): the Medic is a drone AND free, while Cyclops is a drone
-# that costs $99.  Note also that ROLE is the invariant, not the byte
-# count -- CCL's save-application carries a compiler whether or not you
-# want it, and that promotes nobody.
-_crew_manned_for_species() {
-    case "$1" in
-        skewed-emacs)         echo "manned" ;;   # a console is where a person sits
-        gendl|genworks-gdl)   echo "manned" ;;   # Engineers carry compilers
-        cyclops)              echo "drone" ;;
-        autohealer)           echo "drone" ;;
-        *)                    echo "unknown" ;;
-    esac
-}
+# It asked exactly one question -- is there a compiler aboard? -- and
+# that is a CAPABILITY OF THE IMAGE, not a trait of a species, so it
+# cannot be derived from a species table without guessing.  The image
+# will answer for itself once our Dockerfiles carry OCI labels; they
+# carry none today, so there is nothing to read yet and the field is
+# not written at all rather than written as a guess.
+#
+# Nothing is lost in the meantime: MANNED= was computed, written and
+# then read by nobody (verified 2026-08-17 -- the only sites that
+# mentioned it were the four that produced it).  The lore distinction
+# it encodes is real and load-bearing on pricing (LORE.md section I:
+# the Medic is a drone AND free, while Cyclops is a drone that costs
+# $99), which is the argument for wiring it properly rather than for
+# keeping a table that only ever approximated it.
+#
+# Do not reintroduce a species->manned case statement here.
 
 # Name-pool syllables per species -- kept in sync BY HAND with
 # eyes-only-metrics.lisp's *CREW-NAME-POOLS* (that Lisp copy is now the
 # fallback path only; this shell copy is authoritative whenever
 # compose-dev is what started the stack).
+#
+# THIS IS A STYLE TABLE, NOT A SPECIES REGISTRY.  It grants no
+# membership and gates nothing: a species absent from it is a perfectly
+# good species that draws from the unknown pool, which costs a stylish
+# name and nothing else.  Defaults are fine; registries are not.
+#
+# Keyed on repo:tag and MATCHED MOST-SPECIFIC-FIRST, which is how the
+# tag earns its keep: gendl:devo-ccl and gendl:devo-sbcl are different
+# species and now sound like it, instead of both mustering out of the
+# one gendl pool as they did until 2026-08-17.  Order matters in both
+# case statements -- *non-smp* must precede *smp*, which would
+# otherwise swallow it.
 _crew_onsets_for() {
-    case $1 in
-        skewed-emacs) echo 'Bl Gr Thr Kro Zar Vex Mog Drel' ;;
-        cyclops)      echo 'Bl Zh Vek Skr Yor Tsa Kli Dro' ;;
-        gendl)        echo 'Ka Lis Par Quo Sem Tel Nym Ori' ;;
-        genworks-gdl) echo 'Ad Bex Cor Dal Enn Fir Gal Hux' ;;
-        autohealer)   echo 'Om Sal Vel Lum Mir Ana Eir Thea' ;;
-        *)            echo 'X Yz Qm' ;;
+    case "$1" in
+        skewed-emacs:*) echo 'Bl Gr Thr Kro Zar Vex Mog Drel' ;;
+        cyclops:*)      echo 'Bl Zh Vek Skr Yor Tsa Kli Dro' ;;
+        gendl:*sbcl*)   echo 'Vas Ael Ion Cyr Tha Mor Zel Ryn' ;;
+        gendl:*)        echo 'Ka Lis Par Quo Sem Tel Nym Ori' ;;
+        gdl:*non-smp*)  echo 'Ad Bex Cor Dal Enn Fir Gal Hux' ;;
+        gdl:*)          echo 'Ost Ven Kal Rhe Sig Tor Wex Yar' ;;
+        autoheal:*)     echo 'Om Sal Vel Lum Mir Ana Eir Thea' ;;
+        *)              echo 'X Yz Qm' ;;
     esac
 }
 _crew_finals_for() {
-    case $1 in
-        skewed-emacs) echo 'org arn und ath esh ork ilk uz' ;;
-        cyclops)      echo 'ej ix osk arr unn eth yx oa' ;;
-        gendl)        echo 'da per lon ta mir vex is und' ;;
-        genworks-gdl) echo 'mand ton dry well berg worth field ston' ;;
-        autohealer)   echo 'a une is oon ara elle ios em' ;;
-        *)            echo 'ar il ot' ;;
+    case "$1" in
+        skewed-emacs:*) echo 'org arn und ath esh ork ilk uz' ;;
+        cyclops:*)      echo 'ej ix osk arr unn eth yx oa' ;;
+        gendl:*sbcl*)   echo 'ien uur eos aal ymn ore ith yss' ;;
+        gendl:*)        echo 'da per lon ta mir vex is und' ;;
+        gdl:*non-smp*)  echo 'mand ton dry well berg worth field ston' ;;
+        gdl:*)          echo 'holm gate forge crest march stead vale bury' ;;
+        autoheal:*)     echo 'a une is oon ara elle ios em' ;;
+        *)              echo 'ar il ot' ;;
     esac
 }
 
@@ -641,10 +648,10 @@ _crew_pick() {
 # THIS RUN (_crew_minted_names).  20 collisions -> numeral-disambiguated
 # (mirrors eyes-only-metrics.lisp's MINT-CREW-NAME).
 _crew_unique_name() {
-    _cun_species=$1
+    _cun_species="$1"
     _cun_tries=0
     while :; do
-        _cun_name="$(_crew_pick "$(_crew_onsets_for $_cun_species)")$(_crew_pick "$(_crew_finals_for $_cun_species)")"
+        _cun_name="$(_crew_pick "$(_crew_onsets_for "$_cun_species")")$(_crew_pick "$(_crew_finals_for "$_cun_species")")"
         case " ${_crew_minted_names} " in
             *" ${_cun_name} "*)
                 _cun_tries=$((_cun_tries + 1))
@@ -690,22 +697,15 @@ _ci_image="$(docker inspect --format \
             "$_ci_id" 2>/dev/null)"
         [ -n "$_ci_posting" ] || _ci_posting="${_ci_name#${BASILISK_PREFIX:-}}"
 
-        # Species resolution, most-declared first: an explicit
-        # basilisk.species label beats what the image looks like, which
-        # beats the post's default.  The label exists so an odd filling
-        # -- a Guild engineer standing in at the conn -- states itself
-        # instead of being mis-derived.
-        _ci_species="$(docker inspect \
-            --format '{{index .Config.Labels "basilisk.species"}}' \
-            "$_ci_id" 2>/dev/null)"
-        if [ -z "$_ci_species" ]; then
-            _ci_species="$(_crew_species_from_image "$_ci_image")"
-        fi
-        if [ -z "$_ci_species" ] || [ "$_ci_species" = "unknown" ]; then
-            _ci_species="$(_crew_default_species_for_post "$_ci_posting")"
-        fi
+        # Species is the image type, full stop -- no label to consult,
+        # no post default to fall back to, nothing to resolve between
+        # (Dave, 2026-08-17).  The old three-step chain also had an
+        # ordering bug that dies with it: its post-default arm ran
+        # against the HOSTNAME-derived posting, because the
+        # basilisk.post label override below had not happened yet.
+        _ci_species="$(_crew_species_from_image "$_ci_image")"
 
-        # Post likewise: the declared label wins, the hostname is the
+        # Post: the declared label wins, the hostname is the
         # fallback for containers created before labels existed.
         _ci_post="$(docker inspect \
             --format '{{index .Config.Labels "basilisk.post"}}' \
@@ -713,21 +713,20 @@ _ci_image="$(docker inspect --format \
         [ -n "$_ci_post" ] && _ci_posting="$_ci_post"
 
         _ci_role="$(_crew_role_for_posting "$_ci_posting")"
-        _ci_manned="$(_crew_manned_for_species "$_ci_species")"
         _crew_unique_name "$_ci_species"
         _ci_mint_name="$_crew_unique_name_result"
 
-        # MANNED= is appended LAST, and NAME= stays first, on purpose:
-        # every reader is key-based except skewed-emacs's dashboard,
-        # which reads line 1 and requires the NAME= prefix.  Readers
-        # that predate this field ignore it (cyclops utility.lisp and
-        # eyes-only metrics.lisp both scan for their own keys), so the
-        # addition is backward-compatible by construction.
+        # NAME= stays FIRST: every reader is key-based except
+        # skewed-emacs's dashboard, which reads line 1 and requires the
+        # NAME= prefix.  MANNED= used to be appended last and is no
+        # longer written at all -- see the note where its table was;
+        # every reader scans for its own keys, so dropping it is
+        # backward-compatible the same way adding it was.
         if docker exec "$_ci_name" sh -c \
-            "printf 'NAME=%s\nSPECIES=%s\nROLE=%s\nMANNED=%s\n' '$_ci_mint_name' '$_ci_species' '$_ci_role' '$_ci_manned' > /tmp/skewed-crew-identity" \
+            "printf 'NAME=%s\nSPECIES=%s\nROLE=%s\n' '$_ci_mint_name' '$_ci_species' '$_ci_role' > /tmp/skewed-crew-identity" \
             2>/dev/null
         then
-            log_success "  ${_ci_name}: crew identity minted -- ${_ci_mint_name} (${_ci_role}, ${_ci_species}, ${_ci_manned})"
+            log_success "  ${_ci_name}: crew identity minted -- ${_ci_mint_name} (${_ci_role}, ${_ci_species})"
         else
             log_warning "  ${_ci_name}: could not write crew identity (no shell/writable rootfs?)"
         fi

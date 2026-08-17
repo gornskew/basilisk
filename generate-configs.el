@@ -152,26 +152,24 @@
         ;; --backend-host keep working unchanged in every instance.
         (push (format "    container_name: ${BASILISK_PREFIX:-}%s" name) lines)
         (push (format "    hostname: %s" name) lines)
-        ;; DECLARED TAXONOMY, as labels (Dave, 2026-08-16).  A service
-        ;; must say which :post it stands and may optionally name its
-        ;; :species; omitted, the species defaults from the post.
-        ;; Emitting both as labels is what lets mint_crew_identities and
-        ;; `docker ps -f label=...` read the taxonomy instead of
-        ;; pattern-matching a hostname -- and it keeps the override
-        ;; honest, since a post filled by an unusual species says so
-        ;; here rather than being silently mis-derived.
+        ;; DECLARED TAXONOMY, as a label (Dave, 2026-08-16).  A service
+        ;; must say which :post it stands.  Emitting it as a label is
+        ;; what lets mint_crew_identities and `docker ps -f label=...`
+        ;; read the posting instead of pattern-matching a hostname, and
+        ;; it is authoritative: the declared label beats the hostname.
+        ;;
+        ;; THERE IS NO :species LABEL any more (Dave, 2026-08-17).
+        ;; Species is the image type -- it is spelled `image:' two lines
+        ;; up -- so a second, declarable copy of it could only ever
+        ;; disagree with the thing it was describing.  Nothing declared
+        ;; :species in any services.sexp when this came out, and nothing
+        ;; read the label but the resolution chain that went with it.
         (let* ((raw-post (skewed--get-prop svc :post))
-               (raw-species (skewed--get-prop svc :species))
                (post (if (keywordp raw-post)
-                         (substring (symbol-name raw-post) 1) raw-post))
-               (species (if (keywordp raw-species)
-                            (substring (symbol-name raw-species) 1) raw-species)))
-          (when (or post species)
+                         (substring (symbol-name raw-post) 1) raw-post)))
+          (when post
             (push "    labels:" lines)
-            (when post
-              (push (format "      basilisk.post: \"%s\"" post) lines))
-            (when species
-              (push (format "      basilisk.species: \"%s\"" species) lines))))
+            (push (format "      basilisk.post: \"%s\"" post) lines)))
         (when user (push (format "    user: %s" user) lines))
         (push (format "    restart: %s" restart) lines)
         (push "    stdin_open: true" lines)
