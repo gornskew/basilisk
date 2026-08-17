@@ -1018,17 +1018,31 @@ crew_muster() {
     log_info "Crew muster:"
     _cm_have_pilot=0
     for _cm_svc in $_cm_services; do
-        # Roles come from _crew_role_for_posting -- the SAME derivation
-        # minting uses.  This case used to carry its own species->role
-        # copy keyed on the old service names, which silently mustered
-        # every renamed post as "Crew" (caught on a real deploy,
-        # 2026-08-16).  Two tables, one truth: don't reintroduce it.
-        case "$(_crew_role_for_posting "$_cm_svc")" in
+        _cm_cname="${BASILISK_PREFIX:-}${_cm_svc}"
+        # Roles come from the DECLARED posting label when there is one
+        # (a comma list -- no posting primary), from the service name
+        # for containers created before labels, via the SAME
+        # derivation minting uses (two tables, one truth: a private
+        # species->role copy here silently mustered every renamed post
+        # as "Crew" on a real deploy, 2026-08-16).  A container with
+        # NO posting at all is a STOWAWAY: a species specimen aboard,
+        # comprehended like anyone else, assigned nothing.
+        _cm_posts="$(docker inspect --format \
+            '{{index .Config.Labels "basilisk.post"}}' \
+            "$_cm_cname" 2>/dev/null)"
+        if [ -n "$_cm_posts" ]; then
+            _cm_role="$(_crew_role_for_postings "$_cm_posts")"
+        else
+            _cm_role="$(_crew_role_for_posting "$_cm_svc")"
+            [ "$_cm_role" = "crew" ] && _cm_role="stowaway"
+        fi
+        case "$_cm_role" in
             captain)  _cm_post="Captain " ;;
             pilot)    _cm_post="T-Chief " ; _cm_have_pilot=1 ;;
             engineer) _cm_post="Engineer" ;;
             comm)     _cm_post="Comm    " ;;
             doctor)   _cm_post="Medic   " ;;
+            stowaway) _cm_post="Stowaway" ;;
             *)        _cm_post="Crew    " ;;
         esac
         _cm_ports=$(docker ps --filter "name=^${BASILISK_PREFIX:-}${_cm_svc}\$" \
@@ -1044,13 +1058,9 @@ crew_muster() {
         # image can do.  A manifest with no capability list cannot be
         # verified and says so quietly; a manifest that HAS one and is
         # missing a required capability is a loud warning.
-        _cm_cname="${BASILISK_PREFIX:-}${_cm_svc}"
         # One crew member may stand several posts (basilisk.post is a
         # comma list; no posting is primary).  Print the full list
         # whenever there is more than the name already says.
-        _cm_posts="$(docker inspect --format \
-            '{{index .Config.Labels "basilisk.post"}}' \
-            "$_cm_cname" 2>/dev/null)"
         case "$_cm_posts" in
             *,*) log_info "    stands: ${_cm_posts}" ;;
         esac

@@ -75,7 +75,11 @@
  ;; meaningless -- and its name is a slug incorporating every post it
  ;; stands, with license to abbreviate aggressively.
  :postings
- ((:post :ships-engineer :requires ("gendl"))
+ (;; A skewed-emacs Captain is recommended, not a class invariant --
+  ;; and the qualification scheme says exactly that: a Captain of
+  ;; another species musters with a warning and proceeds.
+  (:post :captain :requires ("skewed-emacs"))
+  (:post :ships-engineer :requires ("gendl"))
   (:post :guild-engineer :requires ("genworks-gdl"))
   (:post :transporter-chief :requires ("reverse-proxy"))
   (:post :communications-officer
@@ -90,8 +94,17 @@
   ;; and namespace -- the home planet) split off beside it; and the
   ;; officer's PERSONAL name is minted into the container at up-time.
   ;; Three namespaces, three different sources -- see LORE.md §I.
-  (:name "captain"
-   :post :captain
+  ;;
+  ;; ONLY :species IS REQUIRED of a crew entry (Dave, 2026-08-17).
+  ;; :name is the author's slug and optional: absent, the yard derives
+  ;; it from the posts stood (hyphen-joined), or, for a species aboard
+  ;; with NO assigned posting -- a STOWAWAY, comprehended like anyone
+  ;; else -- from the repo half of its species.  :provenance is only
+  ;; needed off Docker Hub's library; :post only when capabilities are
+  ;; expected of the berth.  Explicit names below where derivation
+  ;; could not tell two of a post apart (-human/-cyborg), or where an
+  ;; abbreviated slug earns its keep.
+  (:post :captain
    :description "The ship's console, and the longest-lived process aboard."
    :type "emacs-lisp"
    :cyborg-passengers-allowed? t
@@ -178,8 +191,7 @@
   ;; relieves them without an actor, so relief must come from outside
   ;; the afflicted.  The Medic revives ANY crew member who fails their
   ;; fitness check.
-  (:name "medic"
-   :post :medic
+  (:post :medic
    :description "Watches for the wedged and revives them."
    :type "utility"
    :provenance "willfarrell"

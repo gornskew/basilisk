@@ -738,13 +738,52 @@ service already carrying :image passes through untouched."
                    (if provenance (concat provenance "/" species) species)))))
   config)
 
+(defun skewed--species-repo (species)
+  "The repo half of SPECIES: \"redis:7\" -> \"redis\".
+Env expansions resolve to their defaults first; any namespace that
+rode along in the string is dropped."
+  (let* ((s (skewed--resolve-compose-defaults (or species "")))
+         (repo (if (string-match "\\`\\([^:]*\\):" s) (match-string 1 s) s)))
+    (file-name-nondirectory repo)))
+
+(defun skewed--derive-names (config)
+  "Fill in each crew entry's :name where the articles left it out.
+Only :species is required of a service.  An explicit :name wins -- it
+is the author's slug, and the license to abbreviate lives there.
+Absent one: a posted crew member takes the slug of every post it
+stands (full post names, hyphen-joined; no post is primary); a
+species aboard with NO assigned posting is a STOWAWAY, comprehended
+like anyone else, and takes the repo half of its species as its name.
+Collisions get -2, -3 ... suffixes, which the role machinery already
+tolerates (jr-eng-cyborg-2 is still an engineer)."
+  (let ((taken (delq nil (mapcar (lambda (s) (plist-get s :name))
+                                 (skewed--get-prop config :services)))))
+    (dolist (svc (skewed--get-prop config :services))
+      (unless (plist-get svc :name)
+        (let* ((posts (skewed--ensure-list (plist-get svc :post)))
+               (stem (if posts
+                         (mapconcat (lambda (p) (substring (symbol-name p) 1))
+                                    posts "-")
+                       (skewed--species-repo (plist-get svc :species))))
+               (name stem)
+               (n 1))
+          (when (string-empty-p stem)
+            (error "Crew entry with no :name, no :post and no :species -- nothing to derive a name from"))
+          (while (member name taken)
+            (setq n (1+ n) name (format "%s-%d" stem n)))
+          (push name taken)
+          (plist-put svc :name name)))))
+  config)
+
 (defun skewed--read-articles (services-file)
-  "Read SERVICES-FILE translated through its own glossary, species joined."
+  "Read SERVICES-FILE translated through its own glossary, species
+joined, missing names derived.  Every consumer sees the same names."
   (let ((config (skewed--read-sexp-file services-file)))
     (when config
-      (skewed--join-species
-       (skewed--translate-register
-        config (skewed--load-glossary services-file))))))
+      (skewed--derive-names
+       (skewed--join-species
+        (skewed--translate-register
+         config (skewed--load-glossary services-file)))))))
 
 (defun skewed--filter-berthed (config &optional base-names)
   "Withhold VACANT postings from emission; everything else passes.

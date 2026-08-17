@@ -27,6 +27,7 @@ services:
     hostname: captain
     labels:
       basilisk.post: "captain"
+      basilisk.requires: "skewed-emacs"
     restart: unless-stopped
     stdin_open: true
     tty: true
