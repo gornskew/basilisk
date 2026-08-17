@@ -480,25 +480,31 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
   "Host ports generate-env.sh writes into .env when it inherits nothing.")
 
 (defun skewed--ingress-port-pins (config)
-  "Return host.env pin lines for CONFIG's Pilot, as a list of KEY=VALUE strings.
+  "Return host.env pin lines for CONFIG's ingress, as KEY=VALUE strings.
 
-A ship whose Pilot fronts the public internet declares its own published
-ports in services.sexp -- sally and shelly publish :80.  That declaration
-reaches compose as `${CYCLOPS_HOST_PORT:-80}', and compose reads .env
-FIRST, where generate-env.sh has written the dev port unless it inherited
-a value.  So the overlay's own default never gets a chance: the ingress
-moves to 19069 and every property behind it goes dark.  That is the
-2026-08-16 outage, and it happened because this generator emitted an
-install script that wrote only the image variant into host.env -- the one
-channel ./basilisk and basilisk.service both read before generating.
+A ship whose ingress fronts the public internet declares its own
+published ports in services.sexp -- sally and shelly publish :80.  That
+declaration reaches compose as `${CYCLOPS_HOST_PORT:-80}', and compose
+reads .env FIRST, where generate-env.sh has written the dev port unless
+it inherited a value.  So the overlay's own default never gets a chance:
+the ingress moves to 19069 and every property behind it goes dark.  That
+is the 2026-08-16 outage, and it happened because this generator emitted
+an install script that wrote only the image variant into host.env -- the
+one channel ./basilisk and basilisk.service both read before generating.
+
+The ingress is found BY PROPERTY (:type \"reverse-proxy\"), never by its
+service name: the name is a posting, postings get renamed (pilot ->
+transporter-chief), and a name match here would silently drop the :80
+pin on the next rename -- re-running the 2026-08-16 outage with a fresh
+cause.
 
 Ports matching `skewed--generated-env-port-defaults' yield no pin, so dev
 hosts stay offsettable."
-  (let ((pilot (cl-find-if (lambda (svc)
-                             (equal (skewed--get-prop svc :name) "pilot"))
-                           (skewed--get-prop config :services)))
+  (let ((ingress (cl-find-if (lambda (svc)
+                               (equal (skewed--get-prop svc :type) "reverse-proxy"))
+                             (skewed--get-prop config :services)))
         (pins '()))
-    (dolist (port (skewed--get-prop pilot :ports))
+    (dolist (port (skewed--get-prop ingress :ports))
       (let ((host (format "%s" (or (skewed--get-prop port :host) ""))))
         (when (string-match "\\`\\${\\([A-Z0-9_]+\\):-\\([0-9]+\\)}\\'" host)
           (let ((var (match-string 1 host))

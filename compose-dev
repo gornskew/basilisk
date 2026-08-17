@@ -562,9 +562,18 @@ _crew_species_from_image() {
 #
 # Trailing -N is tolerated so a ship can carry more than one of a post
 # (jr-eng-cyborg-2 is still an engineer).
+#
+# transporter-chief is the CURRENT name of the ingress posting (a
+# reverse proxy receives; it never goes anywhere, so "pilot" described
+# something the software does not do).  The pilot arm stays for
+# containers created before the rename; both map to the same ROLE
+# string, "pilot", because the role vocabulary reaches the eyes-only
+# per-skin rank titles and renaming IT is a separate, still-open
+# decision (Dave) -- do not rename the role here as a tidy-up.
 _crew_role_for_posting() {
     case "$1" in
         captain|captain-[0-9]*)   echo "captain" ;;
+        transporter-chief|transporter-chief-[0-9]*) echo "pilot" ;;
         pilot|pilot-[0-9]*)       echo "pilot" ;;
         medic|medic-[0-9]*)       echo "doctor" ;;
         comms|comms-[0-9]*)       echo "comm" ;;
@@ -994,7 +1003,7 @@ crew_muster() {
         # 2026-08-16).  Two tables, one truth: don't reintroduce it.
         case "$(_crew_role_for_posting "$_cm_svc")" in
             captain)  _cm_post="Captain " ;;
-            pilot)    _cm_post="Pilot   " ; _cm_have_pilot=1 ;;
+            pilot)    _cm_post="T-Chief " ; _cm_have_pilot=1 ;;
             engineer) _cm_post="Engineer" ;;
             comm)     _cm_post="Comm    " ;;
             doctor)   _cm_post="Medic   " ;;
@@ -1008,9 +1017,9 @@ crew_muster() {
     done
 
     # An absent post is legal -- every post is optional, :captain included --
-    # but it has a consequence, and fittings.sexp already words it.
+    # but it has a consequence worth saying out loud.
     if [ "$_cm_have_pilot" -eq 0 ]; then
-        log_warning "no Pilot aboard: nothing fronts HTTP; publish ports directly"
+        log_warning "no Transporter Chief aboard: nothing fronts HTTP; publish ports directly"
         log_warning "  (if this ship is meant to have one, its overlay is missing:"
         log_warning "   run <host>-stack/install, which copies <host>-stack-compose.yml here)"
     fi
