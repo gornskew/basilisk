@@ -1,147 +1,174 @@
 # BASILISK
 
+The corporate register. This file is the source: it says what a stack
+is and how it behaves, in plain operational terms.
 
-## A Class of Space Vessel
-
-A Basilisk is a class of ridged bio-hull inter-stellar (not
-inter-galactic) space vessel, fabricated in various tonnages.
-`basilisk up ...` is the general replicator recipe for
-bio-replicator-fabricating, outfitting, and mustering these ridged
-hulls.
-
-Other terminology the lore may bring into play now or later: `muster`
-(the crew log), `roster` (the server-side crew table), `watch` (a
-`docker restart`), `yard` (a host reboot), `relief` and `tour` (what a
-recreate does to a complement). Freeze-dry or Cryogenically preserved
-Corpses which may be reänimated (dumped lisp images). And so on. 
+`LORE.md` says the same things in the ship register. `GLOSSARY.md` is
+the term table that maps between them, and is what keeps the two in
+step — every heading here has a counterpart there, and the vocabulary
+is substituted, not reinvented. Content that exists in only one
+register is marked as such in the file that owns it.
 
 
-## Who and/or What Is Typically Aboard These Vessels
+## What a Basilisk is
+
+One Docker Compose stack: a set of containers on one host, generated
+from a single declaration and brought up with `basilisk up`.
+
+The **stack** is the unit of interest. Not the host, which can carry
+several stacks at once, and not the container, which is one member of
+one stack. A stack is described by `services.sexp`, which every other
+config is generated from — compose file, MCP registries, the Emacs
+service table.
 
 
-| post | in-world |
+## Posts
+
+A **post** is the job a container stands. Posts are named for what
+they do, and the container's hostname is the post name.
+
+| post | usual image | what it does |
+|---|---|---|
+| **captain** | `skewed-emacs` | hosts the editor daemon and the `lisply-mcp` layer; the long-lived process other containers are restarted around |
+| **transporter chief** | `cyclops` | the reverse proxy: everything entering the stack arrives through it and is identified there |
+| **engineers** | `gendl`, `gdl` | the KBE engines; they evaluate, compute, and render |
+| **comms** | `eyes-only` | serves the monitoring board |
+| **medic** | `autoheal` | watches container health and restarts what has wedged |
+| **crew** | anything an overlay adds | unrecognized images still participate, by design |
+
+> The transporter chief's post is still spelled `pilot` in
+> `services.sexp` and everything generated from it. The name settled
+> before the configs did; renaming a post and renaming a running
+> container are separate jobs and only the first is done.
+
+
+## Posts and images are two different axes
+
+A post says what a container is **for**. An image says what it **is**.
+They are declared separately and resolved separately:
+
+- **post** comes from the `basilisk.post` label, falling back to the
+  hostname. It decides which containers exist at all, since a stack is
+  composed by listing posts.
+- **species** is the image type, written `repo:tag` — `gendl:devo-ccl`,
+  `cyclops:master`. It is derived from the image reference and never
+  looked up. The registry and namespace are stripped: they are
+  **provenance**, saying where an image is from rather than what it is,
+  so `gornskew/gendl` and anyone else's `gendl` are the same species
+  from different sources.
+
+Nothing adjudicates whether an image qualifies as a species. A
+declaration is taken at face value, and an image that cannot perform
+its post is discovered in service rather than refused at the gate.
+
+The tag is part of the species, which is why `gendl:devo-ccl` and
+`gendl:devo-sbcl` are two species and not one.
+
+
+## Routing authority
+
+The **captain holds routing authority** for the stack, and exercises it
+by writing the proxy's configuration — `cyclops.sexp` — which the
+reverse proxy then serves. Nothing else in the stack decides where
+traffic goes.
+
+Two related roles are currently empty, and named here so they are not
+quietly merged into the above:
+
+- **Request forwarding** is unattended; routing authority absorbs it.
+- **Route planning**, deciding what the configuration should say, is a
+  separate concern from holding the authority to write it. Nobody owns
+  it yet.
+
+Consequently a default stack has no forwarding-only post. Where a
+stack includes a `cyclops`, it is put on transporter chief duty, which
+matches what the software does: a reverse proxy **receives**. It never
+initiates outbound connections on the stack's behalf.
+
+None of which pins a stack to one host. A stack can be brought down
+here and stood up elsewhere; a running stack can in principle be
+migrated between hosts without stopping; and the host itself can move,
+physically or as a live VM migration, in which case every stack on it
+relocates without any of them having been migrated. All three are
+possible and none is routine.
+
+
+## What the reverse proxy is for
+
+Its job is **identification, not security**: knowing which request is
+which and which backend it belongs to. The backends are poor at this
+precisely because they are busy serving. Security is a separate
+concern layered on top, not the same one.
+
+Without a reverse proxy in the stack, nothing is closed off — traffic
+simply arrives at each service directly and unscreened, straight to an
+engine or to the captain.
+
+Anything that clears the proxy and is not a plain document request
+reaches the **captain**, which either handles it or dispatches it to an
+engineer, ship's or guild.
+
+
+## What moves through a stack
+
+Everything arriving is reassembled at the proxy into one of four
+things:
+
+| kind | what it is |
 |---|---|
-| **Captain** | has the conn; and is the ship's console, the one process that outlives the others' restarts |
-| **Transporter Chief** | everything and everyone coming aboard transports in through their room, and is vetted there before reaching the ship proper |
-| **Engineers** | the KBE engines — designing ships from aboard one |
-| **Comm** | the Communications Officer: runs the board any ship can project on its bridge viewscreen or other display |
-| **Medic** | rated `:doctor`; so-called "healer" that watches for the wedged and revives or dispatches them |
-| **Crew** | anything else an overlay adds — unknown species still muster in, by design |
+| **materials** | raw input, brought in to be worked on — an image pull included |
+| **goods** | processed or manufactured output: a finished result, or an input to the next step |
+| **services** | work performed rather than content transferred — the engine does the thing, and the result is what leaves |
+| **passengers** | processes with business here: **external** clients connecting in, and **local** ones started on demand |
 
-> The Transporter Chief's posting is still spelled `pilot` in
-> `services.sexp`, the generated compose, and everything downstream of
-> them. The lore settled first and the configs follow; renaming a
-> posting and renaming a live container are two different jobs, and
-> only the first one is done.
+**No single packet is a unit of any of these.** Each packet in or out
+is part of some goods, materials, or passenger, and what is reassembled
+is the whole. Services are the odd one of the four, being performed
+rather than carried: what arrives and departs around a service is still
+goods and materials.
 
-### The conn, the helm, and navigation
+A unit of work arrives, may be routed to an engine for processing or as
+an input, and something else is delivered elsewhere. The stack reaches
+**out to** each source rather than waiting for the source to reach it.
 
-The **Captain has the conn** — authority over where the ship goes,
-exercised by writing the standing orders the rest of the ship then
-flies by. Nothing else aboard holds it.
+Both kinds of passenger pass through the captain. An **external**
+passenger — a client connecting over MCP — arrives through the proxy
+and terminates at the captain, which owns that layer. A **local** one
+does not arrive at all: the captain starts it, on demand, to carry a
+piece of work, and stops it afterwards. Such a container is short-lived
+by design, stands no post, and is never registered in the crew table.
 
-The **helm** — flying those orders — currently goes **unattended**, and
-the conn absorbs the piloting. **Navigation** is a separate thing from
-both, and the seat is **vacant**; it is not part of the conn and should
-not be quietly folded into it.
-
-So a default ship carries no **Pilot**. That posting is kept here
-prospectively: if a species and a duty turn up that genuinely want a
-Pilot's watch, the seat is ready for them. A ship augmented with a
-Cyclops puts it on Transporter Chief duty instead, which is what it is
-actually good at — a reverse proxy **receives**. It never goes
-anywhere, and "Pilot at the helm" described an outbound act the
-software does not perform.
-
-None of which fixes a hull in place. A ship may make for another galaxy
-at **impulse**, standing down here and mustering there; or it may be
-carried through a wormhole at **warp**, which is the same journey made
-without ever standing down. And a **galaxy** may itself get under way —
-the machine relocated, or the VM live-migrated across a network — in
-which case every ship aboard travels and not one of them has transited.
-All of it is reserved. None of it is routine.
+Which is why passengers are load-bearing: an incoming request really
+can cause new containers to be created, and can itself be the container
+that gets created. Containers so created are **siblings** on the same
+daemon — they come up in the same stack, on the same network, alongside
+the existing containers rather than nested inside any of them.
 
 
-### What the Transporter Chief is for
+## What the captain carries
 
-The Chief's job is **not security**. It is knowing who is who and what
-is what. The departments are bad at that precisely because they are
-busy doing their own work. Security is a separate role, and the Chief
-has security officers under him.
+The image name `skewed-emacs` undersells the post considerably. The
+captain image is a toolkit, of which the editor is only the
+best-known component:
 
-Without a Chief aboard, visitors still get in — each department simply
-keeps its own mini-transporter and takes them unscreened, straight
-into Engineering, or in to see the Captain.
-
-Anything non-biological that clears the transporter room goes on to
-the **Captain** for a second vetting, who either receives it personally
-or hands it off to an Engineer, ship's or Guild.
-
-
-## What a Ship Carries
-
-A Basilisk picks up, processes, and delivers. Everything arriving
-reconstitutes on the transporter pad as one of four things:
-
-| aboard | what it is |
+| tool | for |
 |---|---|
-| **materials** | raw stock, brought aboard to be worked on |
-| **goods** | processed or manufactured: the finished thing, or an ingredient for the next one |
-| **services** | work performed rather than cargo handed over — the Engineer does the thing, and what leaves is the result |
-| **passengers** | personnel: **cyborg** ones arriving from outside, **biological** ones grown aboard for the occasion |
+| `emacs`, `emacsclient` | the editor and its daemon |
+| `node` + `lisply-mcp` | the MCP layer through which clients connect |
+| `webshot` + `chromium` | headless capture, driven over CDP with a real viewport |
+| `git` | version control |
+| `ttyd` | browser-facing terminal |
+| `claude`, `codex`, `grok`, `gemini` | agent CLIs, for outbound work |
 
-Nothing arrives whole. Each thing that crosses the pad, inbound or
-outbound, is a **part** — of some goods, of some materials, or of some
-passenger — and what reconstitutes is the assembled whole, never the
-part on its own. Services are the odd one out of the four, being
-performed rather than carried: what comes and goes around a service is
-still goods and materials.
+Two of those run on `node`, so the runtime is load-bearing twice over:
+it carries both the inbound MCP layer and the screen capture.
 
-A **consignment** comes aboard, may be routed to ship's or Guild
-engineering for processing or as an ingredient, and something else
-gets delivered elsewhere. The ship navigates **to** each consignment:
-it travels to the source, rather than waiting for the consignment to
-travel to it.
+**The toolkit is not uniform across images.** The headless browser
+ships in `-full` and `-aituis` and is an optional `skewed-install`
+module elsewhere, so a lite captain may have no capture ability at all.
+Anything that expects to `webshot` from a given stack should check
+rather than assume.
 
-Passengers come in both kinds, and **both pass the Captain's watch**. A
-**cyborg** passenger arrives from outside with business to transact,
-clears the transporter room, and is received by the Captain — who
-either deals with it personally or walks it down to an Engineer. A
-**biological** one does not arrive at all: the Captain **invites** it,
-and it is grown for the occasion, brought into being to carry someone
-through what they came for and stood down afterwards.
-
-Which is why passengers are load-bearing rather than ornamental: an
-arriving passenger really can cause new crew to be constructed, and can
-just as well be the thing that gets constructed.
-
-The stock itself comes aboard the same way. An **image** arrives from
-its home planet as materials — reconstituted from its parts on the pad
-like anything else — and what gets grown from those materials may be a
-new crew member, or a passenger that lives only as long as the business
-it came for. A ship can take delivery of the means to make its own
-complement, and then make it, without ever putting in anywhere.
-
-Note what is _not_ aboard: livestock. Every noun in this lore has
-something on the other side of the veil, and a detail that maps onto
-nothing is decoration.
-
-
-## Which _Species_ typically fills each _Posting_? 
-
-- **Captains** are almost exclusively from a sometimes horrifying,
-  sometimes friendly and gentle, Gnu-Human hybrid presenting species
-  called _skewed-emacs_. Note that the species name undersells the
-  posting badly: a Captain is not one tool but a belt of them, and the
-  editor everyone names it after is simply the most famous. Receiving
-  visitors, keeping records, and corresponding off-ship are separate
-  instruments on that belt, and the complement grows.
-
-- **Transporter Chiefs** tend to be of the _cyclops_ drone species.
-
-- **Comms** tend to be of the _eyes-only_ drone species. Local ship's
-  engineers are usually junior engineers of some gendl variety (human
-  or cyborg).
-
-
-
+There is deliberately no `docker` CLI and no docker socket mounted
+today. Adding them would be another entry in the table above — a
+capability of the image, not a change of species.

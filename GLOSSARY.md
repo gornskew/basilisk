@@ -1,62 +1,102 @@
-# GLOSSARY — the working vocabulary
+# GLOSSARY — the translation dictionary
 
-What the words mean, in both directions. `LORE.md` owns the world
-underneath; `BASILISK.md` owns who is aboard; this is the quick lookup.
+`BASILISK.md` is the source, written in the corporate register.
+`LORE.md` is its translation into the ship register. **This file is
+what makes that translation mechanical rather than inventive**: a term
+is substituted from the tables below, never coined on the spot.
+
+Read left-to-right to translate, right-to-left to look up something you
+met in the lore and want to place. Columns are ordered source-first
+because that is the direction the work runs.
 
 
-## I. The world (canonical, and in use)
+## I. In use
 
-These are real, load-bearing, and used in the code and the docs.
+Load-bearing in the code and both documents.
 
-| in-world | in the world |
+| corporate | lore |
 |---|---|
-| **galaxy** | a host or VM: balaram, sally, shelly, elsie, narad |
-| **ship** | one compose stack — one `basilisk up` |
-| **crew member** | one container, standing one post |
-| **posting** | the container's job role, captured by hostname: `captain`, `jr-eng-cyborg`, `pilot` (that last one is the Transporter Chief; the posting is renamed in the lore and not yet in the configs) |
-| **the yard** | a Basilisk repository — where hulls are laid down |
-| **the bridge viewscreen** | the Eyes Only board — the display itself, as opposed to **Comm**, the posting that runs it, which is typically comms officer |
-| **the conn** | authority over where the ship goes — held by the Captain, exercised by writing the standing orders the rest of the ship flies by |
-| **the transporter room** | the reverse proxy: everything coming aboard arrives through it and is vetted before it reaches the ship proper |
-| **consignment** | one unit of what comes aboard, bound for a department or for onward delivery |
-| **goods**, **materials**, **services**, **passengers** | what the ship carries: processed or manufactured things; raw stock, an arriving image included; work performed rather than handed over; and personnel. Traffic, in the other register |
-| **reconstitute** | what happens on the transporter pad. No single packet is a consignment — each is a _part_ of some goods, materials, or passenger, and the whole is assembled from its parts on arrival |
-| **a biological passenger** | a container spun up for the occasion and stood down after: grown aboard, standing no watch, never mustered. As against a **cyborg passenger**, which arrives from outside |
-| **provenance**, or a **home planet** | an image's registry and namespace — where it is from, as opposed to what it is. `gornskew/gendl` and someone else's `gendl` are the same species from different worlds |
-| **impulse** | a ship making for another galaxy the ordinary way: the complement stands down here and musters there |
-| **warp** | the same journey made without ever standing down — a running complement carried through a wormhole to another galaxy. It is said to have been done |
-| **a galaxy under way** | the host or VM _itself_ moving: the machine physically relocated, or the VM live-migrated across a network. Every ship in it travels, and not one of them has transited |
-| **watch change** | a restart: the ship holds station, the watch turns over |
-| **yard period** | the galaxy itself went down or was rebuilt |
-| **fittings** | `fittings.sexp` — what each post means in container terms |
-| **crew level** | a named point in roster-space: `:standard`, `:piloted`, `:guild` |
+| host, or VM: balaram, sally, shelly, elsie, narad | **galaxy** |
+| one compose stack — one `basilisk up` | **ship** |
+| container | **crew member** |
+| the job a container stands, carried on its hostname | **posting** |
+| image type, `repo:tag` | **species** |
+| the tag half of an image type | **strain** |
+| registry and namespace — where an image is from | **provenance**, a **home planet** |
+| a Basilisk repository, where stacks are defined | **the yard** |
+| routing authority: writing `cyclops.sexp` | **the conn** |
+| the reverse proxy | **the transporter room** |
+| reassemble a request from its packets | **reconstitute** |
+| one packet | **a part** of some consignment |
+| one unit of work, in or out | **a consignment** |
+| raw input; processed output; work performed; connecting processes | **materials**, **goods**, **services**, **passengers** |
+| an external client connecting in | **a cyborg passenger** |
+| a container started on demand and stopped after | **a biological passenger** |
+| the captain image's toolkit | **the Captain's belt** |
+| headless capture — `webshot` over `chromium` | **the glass** |
+| the monitoring board | **the bridge viewscreen** |
+| restart | **watch change** |
+| recreate — the complement is replaced, the stack persists | **relief in place** |
+| the host went down or was rebuilt | **yard period** |
+| moving a stack between hosts, stopped or live | **transiting** at impulse, or at **warp** |
+| moving the host itself, physically or by live migration | **a galaxy under way** |
+
 
 ## II. Vacant, and kept on the books
 
-Real vocabulary for seats nobody currently stands. Listed separately
-from section I because nothing in the code answers to them yet.
+Real vocabulary for seats nobody stands. Kept out of section I because
+nothing in the code answers to them yet.
 
-| in-world | in the world |
+| corporate | lore |
 |---|---|
-| **the helm** | flying the standing orders. **Unattended** — the conn absorbs it |
-| **navigation** | choosing the route, as distinct from either holding the conn or standing the helm. **Vacant**, and deliberately not folded into the conn |
-| **Pilot** | the posting that would stand the helm. No default berth: a ship carrying a Cyclops puts it on Transporter Chief duty instead. Kept here against a species and a duty that genuinely want it |
+| request forwarding — unattended, absorbed by routing authority | **the helm** |
+| route planning, as distinct from the authority to write routes | **navigation** |
+| the post that would do forwarding only; no default berth | **Pilot** |
 
 
-## III. Some potential git and CI jargon (not yet used)
+## III. Sketched, not yet used
 
-| sketch | git |
+A git and CI register, drafted and not adopted.
+
+| git | sketch |
 |---|---|
-| plans | a repository / working tree |
-| drafts | uncommitted changes to tracked files |
-| unlogged | untracked files |
-| seal | `git commit` |
-| on the slip | commits ahead of the upstream (unpushed) |
-| file | `git push` |
-| from the yard | commits behind the upstream |
-| draw | `git pull --ff-only` |
-| shipshape | clean, and level with the upstream |
-| adrift | detached HEAD |
-| refit | deploy: pull, install, restart |
+| a repository / working tree | plans |
+| uncommitted changes to tracked files | drafts |
+| untracked files | unlogged |
+| `git commit` | seal |
+| commits ahead of upstream | on the slip |
+| `git push` | file |
+| commits behind upstream | from the yard |
+| `git pull --ff-only` | draw |
+| clean, and level with upstream | shipshape |
+| detached HEAD | adrift |
+| deploy: pull, install, restart | refit |
 
 
+## Keeping the two registers in step
+
+1. **Write in `BASILISK.md` first.** It is the source. Corporate → lore
+   adds costume and is safe; lore → corporate has to recover precision
+   it never had, and would guess.
+2. **Add the term here before using it** in either file. A term used in
+   only one document is how the two drift apart.
+3. **Headings correspond.** `BASILISK.md` sections map onto `LORE.md`
+   sections I–VII in order. Adding a section to one means adding it to
+   the other.
+4. **Register-only content is marked**, and does not need a counterpart:
+   `LORE.md` VIII–X are lore-native (names, character, death, and the
+   rules governing the register itself).
+5. **The veil looks after itself.** `LORE.md` cannot narrate machinery,
+   because machinery terms are substituted out on the way in. It is a
+   property of the translation, not a discipline anyone has to keep.
+6. **Species names pass through untranslated.** _skewed-emacs_,
+   _gendl_, _Genworks GDL_, _cyclops_, _autoheal_, _eyes-only_ are
+   proper nouns in both registers — the name of a kind of creature and
+   the name of an image are the same word on purpose, which is the
+   whole content of "species is the image type". They will show up in a
+   leak scan of `LORE.md` and are not leaks.
+
+A cheap check that catches the common failure — a section added to one
+file and forgotten in the other — is to compare the two heading lists:
+`BASILISK.md`'s sections should map one-for-one onto `LORE.md` I–VII,
+in order, with VIII onward marked lore-native.
