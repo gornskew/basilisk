@@ -310,7 +310,7 @@ ENVIRONMENT:
 
 NETWORK:
     Services communicate via one Docker network per instance -- the
-    ship herself, named for her (minted by generate-env.sh into .ship,
+    ship himself, named by the yard (generate-env.sh mints into .ship,
     surfaced as DOCKER_NETWORK_NAME in .env)
     - From host: localhost:<host-port>
     - Inter-container: <service-hostname>:<container-port>

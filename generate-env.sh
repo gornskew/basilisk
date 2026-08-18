@@ -70,8 +70,9 @@ fi
 #                       is still "captain" to its own fleet.
 #   network name     -- one bridge per instance, or they share a broadcast
 #                       domain and service DNS becomes ambiguous.  Each
-#                       instance is her own SHIP and carries her own minted
-#                       name; see THE SHIP'S NAME below.
+#                       instance is his own SHIP and carries his own minted
+#                       name (basilisks are said to be all male); see THE
+#                       SHIP'S NAME below.
 #   published ports  -- a host port can only be claimed once.
 #
 # The offset is applied here, in shell, because compose cannot do arithmetic
@@ -90,8 +91,8 @@ fi
 # =============================================================================
 # THE SHIP'S NAME (Dave, 2026-08-17)
 #
-# A ship is minted a name the first time she is fitted out from this
-# clone, and keeps it for life -- per instance: .ship, or
+# THE YARD names a ship the first time he is fitted out from this
+# clone, and he keeps it for life -- per instance: .ship, or
 # .ship-<instance>, beside .env and equally uncommitted.  The docker
 # network IS the ship: the connective tissue every crew member plugs
 # into.  So the network takes the ship's name, which ought to be unique
@@ -176,7 +177,7 @@ BASILISK_INSTANCE=$BASILISK_INSTANCE
 BASILISK_PREFIX=$BASILISK_PREFIX
 BASILISK_PORT_OFFSET=$BASILISK_PORT_OFFSET
 
-# The ship: her minted name, and the network that IS her (one bridge
+# The ship: his minted name, and the network that IS him (one bridge
 # per instance, named for the ship)
 BASILISK_SHIP=$BASILISK_SHIP
 DOCKER_NETWORK_NAME=$NETWORK_NAME
