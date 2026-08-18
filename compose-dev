@@ -682,10 +682,10 @@ _crew_role_for_postings() {
 # Nothing is lost in the meantime: MANNED= was computed, written and
 # then read by nobody (verified 2026-08-17 -- the only sites that
 # mentioned it were the four that produced it).  The lore distinction
-# it encodes is real and load-bearing on pricing (LORE.md section I:
-# the Medic is a drone AND free, while Cyclops is a drone that costs
-# $99), which is the argument for wiring it properly rather than for
-# keeping a table that only ever approximated it.
+# it encodes is real and load-bearing on pricing (a drone can be free
+# or commercial, and the difference is priced), which is the argument
+# for wiring it properly rather than for keeping a table that only
+# ever approximated it.
 #
 # Do not reintroduce a species->manned case statement here.
 
@@ -710,9 +710,9 @@ _crew_role_for_postings() {
 # image yet, so nothing mints one today, but it lands the moment the
 # board ships as a binary with a :post :comms.  Until 2026-08-17 it
 # would have fallen through to the unknown pool and sounded like no
-# one.  LORE.md's Comms section sets the character -- lilting and
-# nasal, resolving on a hum, so a name trails off rather than stopping
-# -- which is deliberately the one corner of the sonic space the other
+# one.  The Comms character -- lilting and nasal, resolving on a hum,
+# so a name trails off rather than stopping -- is deliberately the one
+# corner of the sonic space the other
 # pools leave empty: captain consonant-heavy, gendl liquid, gdl
 # English-gentry, cyclops clipped and sibilant, autoheal vocalic.
 _crew_onsets_for() {

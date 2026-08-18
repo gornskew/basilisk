@@ -97,7 +97,8 @@
   ;; SPECIES is the image type, repo:tag, with the provenance (registry
   ;; and namespace -- the home planet) split off beside it; and the
   ;; officer's PERSONAL name is minted into the container at up-time.
-  ;; Three namespaces, three different sources -- see LORE.md §I.
+  ;; Three namespaces, three different sources -- see BASILISK.md,
+  ;; "Postings and species".
   ;;
   ;; ONLY :species IS REQUIRED of a crew entry (Dave, 2026-08-17).
   ;; :name is the author's slug and optional: absent, the yard derives
