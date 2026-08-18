@@ -37,10 +37,11 @@ that name throughout the whole galaxy.
 
 
 If you (ship's owner/commissioner) have a personal scroll chest named
-`~/projects/` it will be confiscated at muster and appear again
-onboard as a scroll chest named "/projects/". To have a different
-scroll chest brought aboard, call out `PROJECTS_DIR=` with its name
-just before you utter the `./basilisk up` incantation --- e.g:
+`~/projects/` it will be requisitioned to appear in the ship as
+`/projects/`, and curiously, will remain in your possession wherever
+you brought it from. To have a different scroll chest appearing aboard,
+call out `PROJECTS_DIR=` with its name just before you utter the
+`./basilisk up` incantation --- e.g:
 
 ```bash
 PROJECTS_DIR=/path/to/projects ./basilisk up
@@ -57,6 +58,11 @@ A first `up` also leaves a few deliberate marks in the galaxy:
   onboard, and `claude_desktop_config.json` that gives wormhole access
   to cyborgs from across not only this galaxy but from alien galaxies
   as well.
+
+- If your galaxy already carries a `~/.claude.json` scroll that
+  routes through some `mcp/mcp-exec`, it is gently re-pointed at this
+  pouch's copy (a backup scroll is kept; nothing else in it is
+  touched).
 
 
 ## The orders
@@ -109,6 +115,10 @@ git pull
 ```bash
 BASILISK_INSTANCE=alpha BASILISK_PORT_OFFSET=100 ./basilisk up
 ```
+
+Each ship gets his own name and his own waters. To hail the second
+ship's Captain from ashore, prefix the incantation:
+`BASILISK_PREFIX=alpha- eskew`.
 
 ## Coming aboard
 
@@ -177,9 +187,10 @@ These drawn-up departmental paperworks include, among others:
 The drawn documents are etched permanently into scale tablets
 harvested from shed reptilian skins, and for all practical purposes
 are unchangeable. Although in theory these reptilian scales can be
-sanded down and redrawn, under all normal circumstances, these might
-as well have been carved in earth granite. So you should probably
-consider them as set in stone.
+sanded down and redrawn, in reality, the yard is the only one who purports
+to understand the detailed rune arrangements required for the ship's
+paperworks to pass muster. So hands & claws off of these while a ship
+is in-voyage.
 
 
 ## Signing on more crew
@@ -196,6 +207,9 @@ repeat what is already in the base basilisk pouch.
 mkdir ~/projects/obelisk-stack && cd ~/projects/obelisk-stack
 $EDITOR basilisk.sexp               # your deviations and additions
 ```
+
+A stack pouch may be named anything you like; its articles are
+always named for the yard they feed — hence `basilisk.sexp` here.
 
 Have the yard draw the stack pouch's paperwork, then carry it in and
 raise the ship:
