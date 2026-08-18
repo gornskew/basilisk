@@ -1220,11 +1220,16 @@ Examples:
          (skewed-gen-input-file (expand-file-name (or services-file default-services-file)))
          ;; Auto-derive prefix from directory name if not provided
          ;; The BASE stack generates unprefixed (docker-compose.yml); host
-         ;; overlays get "<host>-".  "basilisk" joins "skewed-emacs" as a
+         ;; overlays get "<host>-".  A yard recognizes ITS OWN directory
+         ;; name as a base -- a register fork renames the repo and the
+         ;; yard follows, zero code edits -- and "skewed-emacs" stays a
          ;; base name for the duration of the move, and outlives it.
          (auto-prefix (let ((basename (file-name-nondirectory
                                        (directory-file-name skewed-gen-output-dir))))
-                        (if (member basename '("basilisk" "skewed-emacs"))
+                        (if (member basename
+                                    (list (file-name-nondirectory
+                                           (directory-file-name skewed-gen-yard-dir))
+                                          "skewed-emacs"))
                             ""
                           (concat basename "-"))))
          (skewed-gen-output-prefix (if prefix prefix auto-prefix))
