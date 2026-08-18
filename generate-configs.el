@@ -573,12 +573,15 @@ hosts stay offsettable."
               (push (format "%s=%s" var val) pins))))))
     (nreverse pins)))
 
-(defun skewed--generate-install-script (prefix &optional has-mcp variant port-pins)
+(defun skewed--generate-install-script (prefix &optional has-mcp variant port-pins template-files)
   "Generate install script for overlay or base repository with PREFIX.
 When PREFIX is empty, generates a base install (copies docker-compose.yml).
 When HAS-MCP is non-nil, include MCP config copy commands.
 PORT-PINS is a list of KEY=VALUE strings (see `skewed--ingress-port-pins')
 written into host.env alongside the image variant.
+TEMPLATE-FILES is a list of (SRC-BASENAME . DEST-BASENAME) copied into
+the basilisk clone's templates/ directory, for compose-dev to rewrite
+from the crew ledger on the way up.
 Returns the install script content as a string."
   (let ((lines '())
         (is-base (string-empty-p prefix))
@@ -659,6 +662,30 @@ Returns the install script content as a string."
       (push "    fi" lines)
       (push "done" lines))
     (push "" lines)
+
+    ;; CREW LEDGER + TEMPLATED FITTINGS.  The chief's standing orders and
+    ;; the services-init hooks ride INTO the basilisk clone, so the yard
+    ;; never reaches outside its own directory on the way up.  Templates
+    ;; are rewritten from the ledger by compose-dev (substitute_templates)
+    ;; before any container starts; the rewritten copies land in
+    ;; generated/ and are what the articles mount.
+    (unless is-base
+      (push (format "if [ -f \"$SCRIPT_DIR/generated/%screw.env\" ]; then" prefix) lines)
+      (push "    echo \"Installing crew ledger (generated/crew.env)...\"" lines)
+      (push "    mkdir -p \"$TARGET_DIR/generated\"" lines)
+      (push (format "    cp \"$SCRIPT_DIR/generated/%screw.env\" \"$TARGET_DIR/generated/crew.env\""
+                    prefix)
+            lines)
+      (push "fi" lines)
+      (push "" lines)
+      (when template-files
+        (push "echo \"Installing templated fittings...\"" lines)
+        (push "mkdir -p \"$TARGET_DIR/templates\"" lines)
+        (dolist (tf template-files)
+          (push (format "cp \"$SCRIPT_DIR/%s\" \"$TARGET_DIR/templates/%s\""
+                        (car tf) (cdr tf))
+                lines))
+        (push "" lines)))
 
     ;; SYSTEMD HOST INJECTION.  There is exactly ONE Basilisk unit, and it
     ;; lives in the Basilisk clone.  Until 2026-08-15 every *-stack repo
@@ -832,6 +859,46 @@ joined, missing names derived.  Every consumer sees the same names."
        (skewed--join-species
         (skewed--translate-register config glossary))
        glossary))))
+
+;;; THE CREW LEDGER (crew.env): posting -> the hand standing it.
+;;;
+;;; A rule in a templated fitting (templates/, substituted by
+;;; compose-dev on the way up) names a POSTING, never a crew member:
+;;; ${BASILISK_POST_1ST_OFFICER} resolves to whatever name the hand
+;;; standing :1st-officer answers to, and
+;;; ${BASILISK_POST_1ST_OFFICER_HTTP_PORT} to the aboard port of his
+;;; http frequency.  So the chief's standing orders survive renames
+;;; and reliefs untouched.  ONE hand per posting for now: the first
+;;; declared wins (base order, then overlay additions); ships with
+;;; several of a posting are a known limitation, deliberately
+;;; unhandled until the simple case has sailed.
+
+(defun skewed--posting-env-name (post)
+  "BASILISK_POST_<POSTING> environment name for POST keyword."
+  (concat "BASILISK_POST_"
+          (upcase (replace-regexp-in-string
+                   "-" "_" (substring (symbol-name post) 1)))))
+
+(defun skewed--generate-crew-env (crew)
+  "KEY=VALUE lines resolving each posting to its first-declared hand.
+CREW is the ship's full merged complement."
+  (let ((seen '()) (lines '()))
+    (dolist (svc crew)
+      (dolist (p (skewed--ensure-list (plist-get svc :post)))
+        (unless (memq p seen)
+          (push p seen)
+          (let ((base (skewed--posting-env-name p)))
+            (push (format "%s=%s" base (plist-get svc :name)) lines)
+            (dolist (f (plist-get svc :hailing-frequencies))
+              (let ((fname (plist-get f :name))
+                    (port (plist-get f :aboard)))
+                (when (and fname port)
+                  (push (format "%s_%s_PORT=%s" base
+                                (upcase (replace-regexp-in-string
+                                         "-" "_" fname))
+                                port)
+                        lines))))))))
+    (mapconcat #'identity (nreverse lines) "\n")))
 
 (defun skewed--generate-vocabulary-env (glossary)
   "KEY='VALUE' lines for the shell half of a FORK's dictionary.
@@ -1232,6 +1299,23 @@ Examples:
           (with-temp-file vocab-file
             (insert (skewed--generate-vocabulary-env glossary)))
           (message "Generated: %s" vocab-file))))
+
+    ;; The crew ledger: the ship's FULL merged complement (base
+    ;; articles + this overlay), so a template can name any posting
+    ;; aboard regardless of which articles signed the hand on.
+    (let ((ledger-crew (skewed--stack-crew skewed-gen-output-dir)))
+      (when ledger-crew
+        (let ((crew-env (expand-file-name
+                         (format "generated/%screw.env" skewed-gen-output-prefix)
+                         skewed-gen-output-dir)))
+          (make-directory (file-name-directory crew-env) t)
+          (with-temp-file crew-env
+            (insert (format "# DO NOT EDIT - Generated from %s\n" skewed-gen-articles-filename)
+                    "# The crew ledger: posting -> first hand standing it, aboard ports per frequency.\n"
+                    "# Consumed by compose-dev's substitute_templates on the way up.\n"
+                    (skewed--generate-crew-env ledger-crew)
+                    "\n"))
+          (message "Generated: %s" crew-env))))
     
     ;; Generate MCP configs (only when services declare :mcp t)
     (when (skewed--has-mcp-services-p config)
@@ -1292,13 +1376,28 @@ Examples:
     ;; another checkout, so basilisk is excluded alongside skewed-emacs.
     (unless (member (file-name-nondirectory (directory-file-name skewed-gen-output-dir))
                     '("basilisk" "skewed-emacs"))
-      (let ((install-file (expand-file-name "install" skewed-gen-output-dir)))
+      (let ((install-file (expand-file-name "install" skewed-gen-output-dir))
+            ;; Templated fittings this stack carries: the chief's
+            ;; standing orders (any cyclops-*.sexp, installed under
+            ;; the register-neutral name cyclops.sexp) and the
+            ;; services-init hooks.  They ride into basilisk/templates/
+            ;; so the yard never reaches outside its own directory on
+            ;; the way up.
+            (template-files
+             (append
+              (mapcar (lambda (f) (cons f "cyclops.sexp"))
+                      (directory-files skewed-gen-output-dir nil
+                                       "\\`cyclops-.*\\.sexp\\'"))
+              (mapcar (lambda (f) (cons f f))
+                      (directory-files skewed-gen-output-dir nil
+                                       "-services-init\\.cl\\'")))))
         (with-temp-file install-file
           (insert (skewed--generate-install-script
                    skewed-gen-output-prefix
                    (skewed--has-mcp-services-p config)
                    (plist-get (skewed--get-prop config :meta) :strain)
-                   (skewed--ingress-port-pins config))))
+                   (skewed--ingress-port-pins config)
+                   template-files)))
         (set-file-modes install-file #o755)
         (message "Generated: %s" install-file)))
 

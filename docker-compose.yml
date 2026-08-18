@@ -69,7 +69,7 @@ services:
     container_name: ${BASILISK_PREFIX:-}jr-eng-human
     hostname: jr-eng-human
     labels:
-      basilisk.post: "ships-engineer"
+      basilisk.post: "1st-officer"
       basilisk.requires: "gendl"
     restart: unless-stopped
     stdin_open: true

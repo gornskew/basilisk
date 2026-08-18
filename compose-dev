@@ -321,10 +321,48 @@ EOF
 # =============================================================================
 # SERVICE MANAGEMENT
 # =============================================================================
+
+# TEMPLATE SUBSTITUTION -- the yard rewrites the chief's standing
+# orders (and any other templated fittings) from the current crew, on
+# the way up.  templates/ arrives via a stack's ./install; crew.env is
+# generated from the articles.  A ${BASILISK_POST_<POSTING>}
+# placeholder resolves to the name of the first crew member standing
+# that posting, and ${BASILISK_POST_<POSTING>_<FREQ>_PORT} to the
+# aboard port of that member's named frequency -- so a rule written
+# against a POSTING keeps working when the hand standing it is
+# renamed or relieved.  One hand per posting for now (first declared
+# wins); multiples are a known limitation, deliberately unhandled
+# until the simple case has sailed.
+substitute_templates() {
+    [ -d "${SCRIPT_DIR}/templates" ] || return 0
+    _st_env="${SCRIPT_DIR}/generated/crew.env"
+    if [ ! -f "$_st_env" ]; then
+        log_warning "templates/ present but no generated/crew.env; templates NOT rewritten"
+        return 0
+    fi
+    mkdir -p "${SCRIPT_DIR}/generated"
+    for _st_t in "${SCRIPT_DIR}/templates/"*; do
+        [ -f "$_st_t" ] || continue
+        _st_out="${SCRIPT_DIR}/generated/$(basename "$_st_t")"
+        awk 'NR==FNR {
+                 line=$0; sub(/#.*/,"",line); eq=index(line,"=")
+                 if (eq>1) { k=substr(line,1,eq-1); v=substr(line,eq+1)
+                             gsub(/^[ \t]+|[ \t\r]+$/,"",k); env[k]=v }
+                 next }
+             { for (k in env) gsub("\\$\\{" k "\\}", env[k]); print }' \
+            "$_st_env" "$_st_t" > "$_st_out"
+        if grep -q '${BASILISK_POST_[A-Z0-9_]*}' "$_st_out"; then
+            log_warning "$(basename "$_st_out") still names postings nobody stands: $(grep -o '${BASILISK_POST_[A-Z0-9_]*}' "$_st_out" | sort -u | tr '\n' ' ')"
+        fi
+        log_info "Rewrote $(basename "$_st_t") -> generated/$(basename "$_st_out") from the crew ledger"
+    done
+}
+
 start_services() {
     _ss_services="$*"
     init_env
     ensure_env
+    substitute_templates
 
     # Ensure AI TUI auth placeholder files exist on host.
     # (Docker bind-mounts create directories for missing files, breaking TUIs.)

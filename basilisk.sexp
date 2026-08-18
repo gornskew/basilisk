@@ -81,8 +81,10 @@
   ;; and the qualification scheme says exactly that: a Captain of
   ;; another species musters with a warning and proceeds.
   (:post :captain :requires ("skewed-emacs"))
+  (:post :1st-officer
+   :description "Bridge duty: assists the Captain and the ship's visitors."
+   :requires ("gendl"))
   (:post :ships-engineer :requires ("gendl"))
-  (:post :guild-engineer :requires ("genworks-gdl"))
   (:post :transporter-chief :requires ("reverse-proxy"))
   (:post :communications-officer
    :description "Keeps the bridge viewscreen; hails the fleet."
@@ -152,14 +154,17 @@
                     :alert-mb 2000))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "30s"))
 
-  ;; Two small, competent, collegial engineering departments -- both
-  ;; stand the :ships-engineer post; -human and -cyborg are the name
-  ;; slugs telling the two variants apart, and each entry's :species
-  ;; pin is what GUARANTEES which engine stands the post (gendl-ccl
-  ;; vs gendl-sbcl) -- the post is generic, the species is not.
+  ;; The 1st Officer stays on the bridge: assists the Captain and the
+  ;; ship's visitors with technical matters, and entertains guests.
+  ;; The usual match is the gendl-ccl strain (the Engineer below being
+  ;; gendl-sbcl); the :species pin is what GUARANTEES it -- the post
+  ;; states the duty, the species states the creature.  He keeps his
+  ;; old authored name for now: rules and fittings address POSTINGS
+  ;; through the crew ledger (generated/crew.env), so the name can
+  ;; catch up at a later relief without anything else moving.
   (:name "jr-eng-human"
-   :post :ships-engineer
-   :description "Junior engineering, the human department."
+   :post :1st-officer
+   :description "The 1st Officer: bridge duty, visitors, and guests."
    :type "common-lisp"
    :provenance "gornskew"
    :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl"
@@ -177,9 +182,10 @@
                     :alert-mb 1200))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "72s"))
 
+  ;; The Ship's Engineer keeps to Engineering: the gendl-sbcl strain.
   (:name "jr-eng-cyborg"
    :post :ships-engineer
-   :description "Junior engineering, the cyborg department."
+   :description "The Ship's Engineer: engineering for ship and passengers."
    :type "common-lisp"
    :provenance "gornskew"
    :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl"
