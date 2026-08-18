@@ -1384,9 +1384,12 @@ Examples:
 
     ;; Generate install script -- for host OVERLAYS only.  A base repo is
     ;; the thing you run the stack FROM, not something you install into
-    ;; another checkout, so basilisk is excluded alongside skewed-emacs.
+    ;; another checkout, so the yard's own directory -- whatever a fork
+    ;; named it -- is excluded alongside skewed-emacs.
     (unless (member (file-name-nondirectory (directory-file-name skewed-gen-output-dir))
-                    '("basilisk" "skewed-emacs"))
+                    (list (file-name-nondirectory
+                           (directory-file-name skewed-gen-yard-dir))
+                          "skewed-emacs"))
       (let ((install-file (expand-file-name "install" skewed-gen-output-dir))
             ;; Templated fittings this stack carries: the chief's
             ;; standing orders (any cyclops-*.sexp, installed under
