@@ -70,7 +70,8 @@ well-advised habits.
   multiples.
 
 - A species aboard with **no assigned posting** is considered a
-  **stowaway**. So to refine the previous rule: you need to state _two_
+  **stowaway**, and mustered as `stowaway-<species>` — the name
+  itself is the declaration, legible at a glance. So to refine the previous rule: you need to state _two_
   things (species, posting) if you want to guarantee that crew will
   stand for that posting.
 
@@ -85,10 +86,10 @@ A **posting** says what a hand is *for*; a **species** says what he or
 she or it *is*, and what, purportedly, he/she/it is skilled at doing.
 A _triad_ of namings are permanently Europa-octopus-ink-tattooed onto
 each crew's neck in charming Basinagari script. These namings derive
-from three different sources: the *posting* (declared, or derived from
-the species), the *species* (declared in the articles), and the hand's
+from three different sources: the *posting* (declared, or read off
+the name the hand answers to), the *species* (declared in the articles), and the hand's
 *personal name* to be used while onboard (minted at muster, kept for
-the tour). Each crew may have real name with a real backstory, but at
+the tour). Each crew may have a real name with a real backstory, but at
 this juncture, you will have no way of knowing those. Each crew should
 be considered a fresh face with a fresh name.
 
