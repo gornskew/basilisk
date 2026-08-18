@@ -1,4 +1,4 @@
-;;; generate-configs.el --- Generate configs from services.sexp -*- lexical-binding: t; -*-
+;;; generate-configs.el --- Generate configs from basilisk.sexp -*- lexical-binding: t; -*-
 
 ;; Copyright © 2026 Gornskew Enterprises
 ;;
@@ -17,11 +17,11 @@
 ;;;
 ;;; For overlays (non-skewed-emacs directories), also generates install script.
 ;;;
-;;; This generator reads ONE services.sexp and outputs configs.
+;;; This generator reads ONE basilisk.sexp and outputs configs.
 ;;; Overlay behavior is handled at runtime:
 ;;;   - Docker Compose: native multi-file merge (-f base.yml -f overlay.yml)
 ;;;   - MCP configs: merged at startup via mcp/merge-configs.sh
-;;;   - Install script: auto-generated for overlays (non-empty prefix);;; This generator reads ONE services.sexp and outputs configs.
+;;;   - Install script: auto-generated for overlays (non-empty prefix);;; This generator reads ONE basilisk.sexp and outputs configs.
 ;;; Overlay behavior is handled at runtime:
 ;;;   - Docker Compose: native multi-file merge (-f base.yml -f overlay.yml)
 ;;;   - MCP configs: merged at startup via mcp/merge-configs.sh
@@ -31,8 +31,22 @@
 (require 'cl-lib)
 (require 'json)
 
+(defvar skewed-gen-yard-dir
+  (file-name-directory (or load-file-name buffer-file-name default-directory))
+  "The yard: the directory this generator was loaded from.")
+
+(defvar skewed-gen-articles-filename
+  (concat (file-name-nondirectory (directory-file-name skewed-gen-yard-dir))
+          ".sexp")
+  "The articles filename this yard reads -- the yard's own name with a
+.sexp extension, so the canonical basilisk yard reads basilisk.sexp.
+The file describes a standard ship of the yard's class, and carries the
+class name.  A register fork renames its repo and names its articles to
+match; articles written for a differently-named yard are NOT read, so a
+foreign overlay fails loudly rather than quietly composing.")
+
 (defvar skewed-gen-input-file nil
-  "Input services.sexp file. Set before calling generator.")
+  "Input articles file. Set before calling generator.")
 
 (defvar skewed-gen-output-dir nil
   "Output directory for generated files. Set before calling generator.")
@@ -90,7 +104,7 @@
     (push "# License, or (at your option) any later version.  Distributed WITHOUT" lines)
     (push "# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>." lines)
     (push "" lines)
-    (push "# DO NOT EDIT - Generated from services.sexp" lines)
+    (push (format "# DO NOT EDIT - Generated from %s" skewed-gen-articles-filename) lines)
     (push "# Regenerate with: (skewed-generate-all-configs)" lines)
     (push "" lines)
     
@@ -162,7 +176,7 @@
         ;; Species is the image type -- it is spelled `image:' two lines
         ;; up -- so a second, declarable copy of it could only ever
         ;; disagree with the thing it was describing.  Nothing declared
-        ;; :species in any services.sexp when this came out, and nothing
+        ;; :species in any basilisk.sexp when this came out, and nothing
         ;; read the label but the resolution chain that went with it.
         (let* ((raw-post (skewed--get-prop svc :post))
                ;; :post may be a LIST -- one crew member standing
@@ -451,7 +465,9 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
   (let* ((services (skewed--get-prop config :crew))
          (lines '()))
     
-    (push ";;; services-generated.el --- Generated from services.sexp -*- lexical-binding: t; -*-" lines)
+    (push (format ";;; services-generated.el --- Generated from %s -*- lexical-binding: t; -*-"
+                  skewed-gen-articles-filename)
+          lines)
     ;; The header is EMITTED, not hand-added.  It was hand-added before
     ;; 2026-08-15 and every regeneration silently stripped it again --
     ;; harmless while regenerating was rare, not harmless now that symbolic
@@ -501,7 +517,7 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
         (push "    )" lines)))
     
     (push "   ))" lines)
-    (push ";; Services configuration generated from services.sexp." lines)
+    (push (format ";; Services configuration generated from %s." skewed-gen-articles-filename) lines)
     (push "" lines)
     (push "(provide 'services-generated)" lines)
     (push ";;; services-generated.el ends here" lines)
@@ -527,7 +543,7 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
   "Return host.env pin lines for CONFIG's ingress, as KEY=VALUE strings.
 
 A ship whose ingress fronts the public internet declares its own
-published ports in services.sexp -- sally and shelly publish :80.  That
+published ports in basilisk.sexp -- sally and shelly publish :80.  That
 declaration reaches compose as `${CYCLOPS_HOST_PORT:-80}', and compose
 reads .env FIRST, where generate-env.sh has written the dev port unless
 it inherited a value.  So the overlay's own default never gets a chance:
@@ -966,11 +982,9 @@ swallow it."
               ((equal type "reverse-proxy") "AllegroCL-Runtime")))))
 
 (defvar skewed-gen-base-articles
-  (let ((beside (expand-file-name
-                 "services.sexp"
-                 (file-name-directory (or load-file-name buffer-file-name
-                                          default-directory)))))
-    (if (file-exists-p beside) beside "/projects/basilisk/services.sexp"))
+  (let ((beside (expand-file-name skewed-gen-articles-filename
+                                  skewed-gen-yard-dir)))
+    (if (file-exists-p beside) beside "/projects/basilisk/basilisk.sexp"))
   "The base ship's articles: the crew aboard every Basilisk-class ship.
 Board probe generation reads these alongside each watched stack's own
 overlay, because an overlay declares only its deviation -- the Captain
@@ -1007,7 +1021,7 @@ history); setq it after loading to point elsewhere.")
 Overlay entries restating a base :name merge key-wise over the base
 entry (so a deviation cannot silently shed the base's :probe).  NIL
 when no articles are found at STACK-DIR."
-  (let* ((over-file (expand-file-name "services.sexp" stack-dir))
+  (let* ((over-file (expand-file-name skewed-gen-articles-filename stack-dir))
          (over-config (and (file-exists-p over-file)
                            (skewed--read-articles over-file)))
          (over (and over-config (skewed--get-prop over-config :crew)))
@@ -1096,7 +1110,8 @@ actually carries, which is the guarantee that kills phantom tiles."
           (insert ";;; Every entry here corresponds to a post actually aboard the target\n")
           (insert ";;; ship, so a crew member who is not aboard cannot show up\n")
           (insert ";;; as a permanently red tile.  Change the fleet by editing the\n")
-          (insert ";;; ships' articles, or this board's :eyes-only-board, in services.sexp.\n\n")
+          (insert (format ";;; ships' articles, or this board's :eyes-only-board, in %s.\n\n"
+                          skewed-gen-articles-filename))
           (insert "(in-package :gdl-user)\n\n")
           (insert "(setq eyes-only::*heap-probes*\n      '(")
           (let ((first t))
@@ -1117,17 +1132,18 @@ Generated files:
   - Compose YAML (docker-compose.yml or PREFIX-compose.yml)
   - MCP configs (container, windows, codex)
   - Emacs services discovery
-  - Install script (for overlays only, when prefix is non-empty)  SERVICES-FILE - Path to services.sexp (default: \"services.sexp\" in DIR)
+  - Install script (for overlays only, when prefix is non-empty)  SERVICES-FILE - Path to basilisk.sexp (default: \"basilisk.sexp\" in DIR)
   PREFIX        - Output filename prefix (default: auto-derived from DIR basename)
                   Auto-derived: empty for 'skewed-emacs', 'basename-' for others
 
 Examples:
-  (skewed-generate-configs)                          ; Current dir, services.sexp
+  (skewed-generate-configs)                          ; Current dir, basilisk.sexp
   (skewed-generate-configs \"/projects/betatest/\")   ; Betatest dir, auto-prefix
   (skewed-generate-configs nil \"/tmp/custom.sexp\") ; Current dir, custom file
   (skewed-generate-configs \"/tmp/foo/\" nil \"bar-\") ; Foo dir, override prefix"
   (let* ((skewed-gen-output-dir (expand-file-name (or dir default-directory)))
-         (default-services-file (expand-file-name "services.sexp" skewed-gen-output-dir))
+         (default-services-file (expand-file-name skewed-gen-articles-filename
+                                                  skewed-gen-output-dir))
          (skewed-gen-input-file (expand-file-name (or services-file default-services-file)))
          ;; Auto-derive prefix from directory name if not provided
          ;; The BASE stack generates unprefixed (docker-compose.yml); host
@@ -1146,7 +1162,25 @@ Examples:
          ;; tables, :relieves entries merged over their base crew
          ;; members, and vacant postings (stated, no species, not a
          ;; deviation on a base post) noted and withheld.
-         (config (let* ((raw (skewed--read-articles skewed-gen-input-file))
+         (config (let* ((raw (or (skewed--read-articles skewed-gen-input-file)
+                                 (let* ((dir (file-name-directory
+                                              skewed-gen-input-file))
+                                        (foreign
+                                         (mapcar #'file-name-nondirectory
+                                                 (cl-remove-if
+                                                  (lambda (f)
+                                                    (member (file-name-nondirectory f)
+                                                            (list skewed-gen-articles-filename
+                                                                  "glossary.sexp")))
+                                                  (directory-files dir t "\\.sexp\\'")))))
+                                   (error "Could not read the ship's articles: %s (this yard reads %s, no other name%s)"
+                                          skewed-gen-input-file
+                                          skewed-gen-articles-filename
+                                          (if foreign
+                                              (format "; found %s -- articles named for another yard are not read; rename to %s to sign them over"
+                                                      (string-join foreign ", ")
+                                                      skewed-gen-articles-filename)
+                                            "")))))
                         (base-p (string= (expand-file-name skewed-gen-input-file)
                                          (expand-file-name skewed-gen-base-articles)))
                         (base-config (unless base-p
@@ -1154,6 +1188,13 @@ Examples:
                                         skewed-gen-base-articles)))
                         (base-names (mapcar (lambda (s) (plist-get s :name))
                                             (skewed--get-prop base-config :crew))))
+                   ;; An overlay against no readable base must not quietly
+                   ;; compose baseless: postings would resolve against
+                   ;; nothing and :relieves would merge over nobody.
+                   (when (and (not base-p) (null base-config))
+                     (error "Could not read the base ship's articles: %s (this yard reads %s, no other name)"
+                            skewed-gen-base-articles
+                            skewed-gen-articles-filename))
                    (skewed--filter-berthed
                     (skewed--apply-relieves
                      (skewed--resolve-post-requires raw base-config)
@@ -1163,7 +1204,7 @@ Examples:
          (elisp-dir (expand-file-name "dot-files/emacs.d/etc/" skewed-gen-output-dir)))
     
     (unless config
-      (error "Could not read services file: %s" skewed-gen-input-file))
+      (error "The ship's articles at %s read as empty" skewed-gen-input-file))
     
     ;; Ensure directories exist
     (make-directory mcp-dir t)
@@ -1198,14 +1239,14 @@ Examples:
       (let ((container-json (expand-file-name 
                              (format "%smcp-container.json" skewed-gen-output-prefix) mcp-dir)))
         (with-temp-file container-json
-          (insert "// DO NOT EDIT - Generated from services.sexp\n")
+          (insert (format "// DO NOT EDIT - Generated from %s\n" skewed-gen-articles-filename))
           (insert (skewed--generate-mcp-json-container config)))
         (message "Generated: %s" container-json))
     
       (let ((windows-json (expand-file-name 
                            (format "%smcp-windows.json" skewed-gen-output-prefix) mcp-dir)))
         (with-temp-file windows-json
-          (insert "// DO NOT EDIT - Generated from services.sexp\n")
+          (insert (format "// DO NOT EDIT - Generated from %s\n" skewed-gen-articles-filename))
           (insert "// For Windows: merge with base config or copy to %APPDATA%\\Claude\\\n")
           (insert (skewed--generate-mcp-json-windows config)))
         (message "Generated: %s" windows-json))
@@ -1220,7 +1261,7 @@ Examples:
           (insert "# published by the Free Software Foundation, either version 3 of the\n")
           (insert "# License, or (at your option) any later version.  Distributed WITHOUT\n")
           (insert "# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.\n\n")
-          (insert "# DO NOT EDIT - Generated from services.sexp\n\n")
+          (insert (format "# DO NOT EDIT - Generated from %s\n\n" skewed-gen-articles-filename))
           (insert (skewed--generate-mcp-toml config)))
         (message "Generated: %s" codex-toml))
     ) ;; end when has-mcp-services
@@ -1228,7 +1269,7 @@ Examples:
     ;; Generate Elisp services file (base or overlay, using prefix).
     ;;
     ;; Lands in generated/ ONLY.  This is yard output: it describes what the
-    ;; stack composes to, is derived entirely from services.sexp, and has no
+    ;; stack composes to, is derived entirely from basilisk.sexp, and has no
     ;; business in dot-files/, which is the Captain's Emacs configuration and
     ;; belongs to the skewed-emacs repo.  Keeping the two apart is what let
     ;; the stack machinery be lifted out of that repo cleanly.
@@ -1268,7 +1309,7 @@ Examples:
     (message "=== Generation complete ===")))
 
 (defun skewed-generate-all-configs ()
-  "Generate all configs from services.sexp in current directory.
+  "Generate all configs from basilisk.sexp in current directory.
 This is a convenience wrapper around skewed-generate-configs.
 Automatically derives prefix from directory basename (empty for 'skewed-emacs').
 

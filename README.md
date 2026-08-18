@@ -122,13 +122,13 @@ proxy, a telemetry board, a language runtime the shipped images do not
 carry — arrives as an **overlay**.
 
 An overlay is a directory beside your `basilisk/` clone with its own
-`services.sexp`. That file is the single source of truth and it is
+`basilisk.sexp`. That file is the single source of truth and it is
 **sparse**: declare only what deviates from, or adds to, the base
 roster. Everything you do not mention is inherited.
 
 ```bash
 mkdir ~/projects/my-overlay && cd ~/projects/my-overlay
-$EDITOR services.sexp          # your deviations and additions
+$EDITOR basilisk.sexp          # your deviations and additions
 ```
 
 Generate the rest from it, in the containerized Emacs or any Emacs that
@@ -160,7 +160,7 @@ it repeatedly is safe and is how a clone that missed a step catches up.
 Set `BASILISK_DIR=` if your Basilisk clone is not the sibling directory.
 
 Re-run `skewed-generate-configs` **and** `./install` after every edit to
-`services.sexp` — the generated files are outputs, never edit them
+`basilisk.sexp` — the generated files are outputs, never edit them
 directly.
 
 #### Sidecars: bringing your own runtime
@@ -169,7 +169,7 @@ The shipped containers keep a lean, Lisp-centric runtime: Emacs, Common
 Lisp, and Node.js (which powers the lisply-mcp middleware and the
 bundled AI TUIs). If you need Python, Ruby, or anything else heavy
 enough to deserve its own container, that is not a special case — it is
-just an overlay whose `services.sexp` declares one more service. It
+just an overlay whose `basilisk.sexp` declares one more service. It
 joins the shared network and is reachable by hostname from every other
 container, same as anything the base stack brought up.
 
@@ -213,13 +213,13 @@ level can express "pilot only". An explicit roster can:
 
 **2. Generate with an empty prefix**, which makes the output the base
 `docker-compose.yml` rather than an overlay. Pass all three arguments so
-your `services.sexp` can live in its own directory while the output
+your `basilisk.sexp` can live in its own directory while the output
 lands in the clone:
 
 ```elisp
 (load-file "/projects/basilisk/generate-configs.el")
 (skewed-generate-configs "/projects/basilisk/"              ; where output goes
-                         "/projects/my-cyclops/services.sexp" ; your SSoT
+                         "/projects/my-cyclops/basilisk.sexp" ; your SSoT
                          "")                                ; "" = base, not overlay
 ```
 

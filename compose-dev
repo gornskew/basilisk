@@ -275,7 +275,7 @@ COMMANDS:
 
 SERVICES:
     Services are defined in docker-compose.yml and any other .yml files
-    in this directory (generated from services.sexp, the editable SSoT).
+    in this directory (generated from basilisk.sexp, the editable SSoT).
 
 VARIANT SWITCHES (skewed-emacs image; anywhere on the command line):
     --lite | --default | --tui | --gui | --full
@@ -504,7 +504,7 @@ restart_services() {
 # The two axes come from two different places, on purpose.  SPECIES is
 # the IMAGE TYPE, read off Config.Image and never looked up.  ROLE
 # comes from the POSTING -- the basilisk.post label, falling back to
-# the hostname that services.sexp already assigns.  So renaming a
+# the hostname that basilisk.sexp already assigns.  So renaming a
 # service in an overlay changes what it stands, not what it is, and
 # swapping its image changes what it is, not what it stands.
 #
@@ -544,7 +544,7 @@ restart_services() {
 # alike.  Cute species names, for images we control, are issued as tags.
 #
 # Matched against the running container's own Config.Image (docker
-# inspect), so this needs nothing from services.sexp and works for a
+# inspect), so this needs nothing from basilisk.sexp and works for a
 # service this script has never named.
 _crew_species_from_image() {
     _csi_ref="${1##*/}"         # drop registry/namespace; a registry

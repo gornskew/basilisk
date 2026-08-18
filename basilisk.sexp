@@ -1,4 +1,4 @@
-;;; services.sexp - the base Basilisk-class outfitting
+;;; basilisk.sexp - the base Basilisk-class outfitting
 ;;; -*- mode: lisp-data; -*-
 
 ;; Copyright © 2026 Gornskew Enterprises

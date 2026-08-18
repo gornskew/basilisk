@@ -17,7 +17,7 @@ from a single declaration and brought up with `basilisk up`.
 
 The **stack** is the unit of interest. Not the host, which can carry
 several stacks at once, and not the container, which is one member of
-one stack. A stack is described by `services.sexp`, which every other
+one stack. A stack is described by `basilisk.sexp`, which every other
 config is generated from — compose file, MCP registries, the Emacs
 service table.
 
@@ -35,11 +35,6 @@ they do, and the container's hostname is the post name.
 | **comms** | `eyes-only` | serves the monitoring board |
 | **medic** | `autoheal` | watches container health and restarts what has wedged |
 | **crew** | anything an overlay adds | unrecognized images still participate, by design |
-
-> The transporter chief's post is still spelled `pilot` in
-> `services.sexp` and everything generated from it. The name settled
-> before the configs did; renaming a post and renaming a running
-> container are separate jobs and only the first is done.
 
 
 ## Posts and images are two different axes
