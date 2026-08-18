@@ -1,56 +1,21 @@
 # Basilisk
 
-**An AI-enabled engineering workstation defined in code**
+This pouch is the **yard**: everything needed to lay down, fit out,
+and muster a Basilisk-class ship. What a Basilisk *is* — the vat, the
+articles, the crew — is the overview scroll,
+[BASILISK.md](BASILISK.md). This scroll is the operating manual: how
+to raise him, how to sign on more crew, and how to keep him sailing.
 
-Basilisk is an open-source _Infrastructure as Code_ (IaC) offering
-which can conjure up a live symbolic computing environment that a
-human and an AI agent can both access. It turns a bare box into a
-hosted workstation that sports an Emacs (console + GUI) plus one or
-more Common Lisp engines out of the box, with automatically-wired
-connectivity for HTTP, SLIME/Swank (for use with Emacs), and MCP (for
-your AI agents to be able to drive the sandboxed stack).
-
-## The inversion
-
-Most tooling in this space hands an agent a sandbox and a shell: a
-place to run commands, where every question is answered by starting a
-process and reading what it prints. Basilisk hands it a machine that is
-*already running* — an Emacs and one or more Common Lisp images, live,
-with state, where the REPL is the API. Ask it something and it answers
-out of a running image rather than out of a fresh process.
-
-The corollary reads backwards at first. In most Emacs-and-AI projects
-the agent lives *inside* Emacs: Emacs is the UI, and a model is wired
-into a buffer. Here it is the other way round, and it is not only the
-editor — the whole stack sits inside the **agent**. Every service on
-the roster is an MCP server the agent calls: the Emacs, each Lisp
-engine, and whatever the overlays add. While Emacs is one peer service
-among potentially several, a well-running Basilisk stack typically
-sports an Emacs. 
+A standard rig carries a _Captain_ (the ship's console — visitors
+received over MCP, HTTP, and SLIME/Swank), a _1st Officer_ and a
+_Ship's Engineer_ (the engines: they reckon, they build, and they
+draw), and a _Ship's Doctor_. Human and cyborg visitors hail any hand
+aboard by name. The whole complement is stated in one scroll,
+`basilisk.sexp`, and every other document the ship needs is drawn
+from it.
 
 
-## Naming
-
-Following an in-stack "starship and crew" conceit, service hostnames
-match compose service names and reflect _postings_ (i.e. job roles) on
-a **Basilisk**-class _space vessel_: `captain` (typically the Emacs),
-`jr-eng-human` and `jr-eng-cyborg` for the ship's own engineers and
-`guild-master-human` / `guild-master-cyborg` for commissioned ones
-(these are the Common Lisp KBE-oriented services), a `medic` (autoheal
-or similar), an optional `pilot` (an HTTP reverse proxy such as
-Gornskew Cyclops), and an optional Comms Officer (telemetry — could be
-a Gornskew Eyes Only service).
-
-The `-human` / `-cyborg` suffix distinguishes single-threaded from
-multithreaded builds of the same engine; `fittings.sexp` is the
-authority on which postings a given crew level brings up.
-
-The details behind the naming conceit are optional reading in
-[BASILISK.md](BASILISK.md), [LORE.md](LORE.md) and
-[GLOSSARY.md](GLOSSARY.md).
-
-
-## Running it
+## Raising a ship
 
 ### Requirements
 
@@ -65,45 +30,47 @@ cd basilisk
 ./basilisk up
 ```
 
-If you have a `~/projects/` directory, it will end up mounted at
-`/projects` in the containers, and will be created if missing. The
-only intentional side effect on the host is that `eskew` and `egskew`
-become available commands in your shell.
+The hull forms, the crew musters, and he floats out under a name the
+yard bestows — the name is minted at fitting-out and his whole galaxy
+knows him by it.
 
-Cloning this repository is the only known repeatable way to bring a
-stack up. There is no bootstrap path that extracts the compose
-machinery out of an image. So you need to clone this repository but
-not the `skewed-emacs` or `gendl` ones nor those for any other
-component container -- component containers come from the hosted
-registry at Docker Hub.
+If you have a `~/projects/` directory it ends up stowed at
+`/projects` aboard every crew member, and is created if missing. The
+only intentional side effect ashore is that `eskew` and `egskew`
+become available commands in your shell — they hail the Captain's
+console.
 
+Cloning this pouch is the only known repeatable way to raise a ship.
+There is no path that conjures the yard back out of a crew member;
+the creatures themselves come from their home worlds (Docker Hub) on
+their own, so you need this pouch and no other.
 
 ### Custom projects directory
 
-`./basilisk` generates `.env` via `./generate-env.sh`. Do not edit `.env`
-directly. To use a non-default projects directory:
+`./basilisk` drafts `.env` via `./generate-env.sh`. Do not edit
+`.env` directly. To stow a different directory:
 
 ```bash
 PROJECTS_DIR=/path/to/projects ./basilisk up
 ```
 
-### Several instances on one box
+### Several ships in one galaxy
 
 ```bash
 BASILISK_INSTANCE=alpha BASILISK_PORT_OFFSET=100 ./basilisk up
 ```
 
-Container names take the prefix, but in-network hostnames stay
-canonical — `captain` and `jr-eng-human` resolve the same inside every
-instance, so nothing configured against a hostname needs to know which
-instance it is in.
+Each ship gets his own name and his own waters. Aboard any of them
+the crew answer to the same names — `captain` hails the Captain on
+every ship of the class — so nothing configured against a crew name
+needs to know which ship it sails in.
 
 ### Pulling updates
 
-`./basilisk up` pulls missing images only. For fresh images use
-`./basilisk up --pull` (or set `PULL_ALWAYS=1`). Bring the composition
-down before pulling the repo, in case the pull changes compose config
-that a running stack would shut down against:
+`./basilisk up` fetches only missing creatures. For fresh ones use
+`./basilisk up --pull` (or set `PULL_ALWAYS=1`). Stand the ship down
+before pulling the pouch, in case the pull changes papers a running
+ship would refuse to stand down against:
 
 ```bash
 cd ~/projects/basilisk
@@ -113,202 +80,187 @@ git pull
 ```
 
 
-### Supplemental service overlays
+## The articles, and the yard's paperwork
 
-A base default Basilisk stack brings up _skewed-emacs_ (Emacs Lisp via
-MCP) plus one or more AGPL-licensed Gendl variants, with image builds
-maintained by Gornskew. Everything beyond that — an extra engine, a
-proxy, a telemetry board, a language runtime the shipped images do not
-carry — arrives as an **overlay**.
+The ship's articles are `basilisk.sexp` — the one scroll written by
+hand. The yard reads that name and **no other**: articles written for
+a differently-named yard are not read, and the error names both the
+file it wanted and any stranger's scroll it found.
 
-An overlay is a directory beside your `basilisk/` clone with its own
-`basilisk.sexp`. That file is the single source of truth and it is
-**sparse**: declare only what deviates from, or adds to, the base
-roster. Everything you do not mention is inherited.
+After editing the articles, have the yard redraw the paperwork:
+
+```elisp
+(load-file "/projects/basilisk/generate-configs.el")
+(skewed-generate-configs "/projects/basilisk/")
+```
+
+That writes, among others:
+
+| drawn document | what it is |
+|---|---|
+| `docker-compose.yml` | the vat's own instructions |
+| `mcp/mcp*.json`, `mcp/mcp.toml` | hailing directories for cyborg visitors |
+| `generated/services-generated.el` | the Captain's copy of the complement |
+| `generated/crew.env` | the **crew ledger**: each posting, and the hand standing it |
+
+The drawn documents are outputs. Never edit them directly; edit the
+articles and redraw.
+
+
+## Signing on more crew
+
+A base ship carries the standard rig. Everything beyond that — an
+extra engine, an ingress, a board, a runtime the shipped creatures do
+not carry — arrives by **overlay**: a pouch beside this one, one
+pouch per ship design, carrying its own `basilisk.sexp` (same name;
+the yard reads no other). Overlay articles are **sparse**: state only
+what deviates from, or adds to, the standard rig. Everything you do
+not mention is inherited.
 
 ```bash
 mkdir ~/projects/my-overlay && cd ~/projects/my-overlay
 $EDITOR basilisk.sexp          # your deviations and additions
 ```
 
-Generate the rest from it, in the containerized Emacs or any Emacs that
-can see both directories:
+Have the yard draw the overlay's paperwork, then carry it in and
+raise the ship:
 
 ```elisp
 (load-file "/projects/basilisk/generate-configs.el")
 (skewed-generate-configs "/projects/my-overlay/")
 ```
 
-That writes, all prefixed with your directory's name:
-
-| generated | what it is |
-|---|---|
-| `my-overlay-compose.yml` | the compose overlay; docker merges it with the base |
-| `mcp/my-overlay-mcp*.json`, `mcp/my-overlay-mcp.toml` | MCP client configs for the services you added |
-| `generated/my-overlay-services-generated.el` | service discovery for the Emacs dashboard and SLIME |
-| `install` | **the install script itself — you do not write this** |
-
-Then install and bring the stack up:
-
 ```bash
-./install                      # copies the generated files into ../basilisk/
+./install                      # carries the papers into ../basilisk/
 cd ../basilisk && ./basilisk up
 ```
 
-`./install` copies rather than symlinks, and starts nothing, so running
-it repeatedly is safe and is how a clone that missed a step catches up.
-Set `BASILISK_DIR=` if your Basilisk clone is not the sibling directory.
+`./install` copies rather than points, and starts nothing, so running
+it repeatedly is safe and is how a pouch that missed a step catches
+up. Set `BASILISK_DIR=` if your Basilisk clone is not the sibling
+directory. Re-run the drawing **and** `./install` after every edit to
+the articles.
 
-Re-run `skewed-generate-configs` **and** `./install` after every edit to
-`basilisk.sexp` — the generated files are outputs, never edit them
-directly.
+### Standing orders and templated fittings
 
-#### Sidecars: bringing your own runtime
+Some fittings — an ingress's standing orders, a services-init hook —
+need to name other crew members. They never do so directly: a
+templated fitting names a **posting**, and the yard resolves it
+against the crew ledger on the way up, so the orders survive renames
+and reliefs untouched.
 
-The shipped containers keep a lean, Lisp-centric runtime: Emacs, Common
-Lisp, and Node.js (which powers the lisply-mcp middleware and the
-bundled AI TUIs). If you need Python, Ruby, or anything else heavy
-enough to deserve its own container, that is not a special case — it is
-just an overlay whose `basilisk.sexp` declares one more service. It
-joins the shared network and is reachable by hostname from every other
-container, same as anything the base stack brought up.
+`./install` carries such fittings into `templates/`; at `./basilisk
+up` the yard rewrites each one from the ledger into `generated/`,
+and the rewritten copy is what the crew member carries. A placeholder
+naming a posting nobody stands draws a warning at up-time. One hand
+per posting for now — where several stand one posting, the first
+declared answers the hail.
 
-#### Host overlays
+### Bringing your own species
 
-A `<host>-stack/` directory is the same mechanism used to pin one
-physical machine's deviations — ports, image variant, per-host config
-files. It installs identically, and additionally writes
-`basilisk/systemd/host.env`, the image-variant and host-port pins read
-by `basilisk.service`.
+If you need Python, Ruby, or anything else heavy enough to deserve
+its own berth, that is not a special case — it is an overlay whose
+articles sign on one more hand. He joins the ship's waters and
+answers to his name from every other berth, like anyone the standard
+rig brought aboard. A species aboard with no posting musters as a
+**stowaway**: comprehended, fed, and assigned to nothing.
 
-**A stack overlay maps to a host, and the directory name is how.** One
-machine, one `<hostname>-stack/`, named for the box it configures —
-deploy tooling finds a host's overlay by that name and no other, so the
-name is load-bearing rather than descriptive.
 
-#### Standalone deployments: only your own services
+## A class of your own
 
-An overlay can only **add**. `./basilisk` loads `docker-compose.yml`
-plus every other `.yml` beside it, and the Captain, the ship's
-engineers and the Medic are defined in that base file — so no overlay,
-however sparse, can take them away.
+An overlay can only **add**: the standard rig is stated in the base
+articles, and no overlay, however sparse, can take a hand away. To
+raise a ship that carries *only* what you declare — a lone ingress,
+a single engine and nothing else — fork the pouch and gut the
+articles to taste. Name the fork's pouch for its class, and name its
+articles to match: the yard reads the scroll named for itself, which
+is what keeps one class's articles from quietly composing in
+another's yard.
 
-To ship a stack that runs *only* what you declare — a standalone
-Cyclops with nothing but a proxy, or a lone KBE server with nothing but
-an engine — you replace the base instead of overlaying it. Two things
-make that work:
-
-**1. Declare a `:roster`, not a `:crew-level`.** Every defined crew
-level (`:standard`, `:piloted`, `:guild`) includes a Captain, so no
-level can express "pilot only". An explicit roster can:
-
-```lisp
-(:meta (:version "3.0"
-        :class "basilisk"
-        :roster (:pilot)          ; just the proxy; nobody else
-        :description "Standalone Cyclops")
- :defaults (...)
- :services (...))                 ; deviations from the :pilot fitting
-```
-
-**2. Generate with an empty prefix**, which makes the output the base
-`docker-compose.yml` rather than an overlay. Pass all three arguments so
-your `basilisk.sexp` can live in its own directory while the output
-lands in the clone:
-
-```elisp
-(load-file "/projects/basilisk/generate-configs.el")
-(skewed-generate-configs "/projects/basilisk/"              ; where output goes
-                         "/projects/my-cyclops/basilisk.sexp" ; your SSoT
-                         "")                                ; "" = base, not overlay
-```
-
-The empty prefix also matters for a second reason: an overlay skips
-posts already defined in the base, on the grounds that restating them
-would fight it. A base generation has nothing to fight, so it emits
-every post the roster names — which is what lets a one-post roster
-produce a one-service stack.
-
-The generator **warns and proceeds** for every post you left out, e.g.
+The muster **grumbles and proceeds** for every posting you left out —
 `no Captain: no MCP tooling and no eskew/egskew — a standalone
 deployment rather than a crewed ship`. That is a note, not an error:
 these are real shapes, and a Captain is recommended rather than
 required.
 
-> **Watch the clone.** `docker-compose.yml` is a *tracked* file.
-> Regenerating it in place leaves the clone permanently dirty, and
+> **Watch the pouch.** `docker-compose.yml` is a *tracked* scroll.
+> Redrawing it in place leaves the pouch permanently dirty, and
 > anything that pulls before it starts — a deploy script, `git pull`,
 > your own muscle memory — will either refuse to pull or clobber your
-> generated stack. Commit the generated `docker-compose.yml` in your own
-> clone or fork, so it is tracked-and-correct rather than
-> tracked-and-modified. A standalone deployment's clone *is* the yard
-> for that ship; treat it as one.
+> drawn papers. Commit the drawn `docker-compose.yml` in your own
+> pouch or fork, so it is tracked-and-correct rather than
+> tracked-and-modified. A standalone ship's pouch *is* the yard for
+> that ship; treat it as one.
 
 
-#### Pro Tip: Overlays mount individual files — pull, THEN restart
+## Pro tip: single scrolls bind by substance — pull, THEN restart
 
-A base stack mounts whole directories — `${PROJECTS_DIR}` onto
-`/projects` — and a whole-directory mount tracks its contents, so an
-edit to an application's source while a container is running lands
-immediately. Overlays are different: they mount **individual files** —
-each container gets its initialization script, and the proxy its
-`.sexp` config, mounted as a single file rather than as a directory.
+A base ship stows whole shelves — `${PROJECTS_DIR}` at `/projects` —
+and a stowed shelf tracks its contents, so an edit ashore lands
+aboard immediately. Fittings are different: a crew member carries an
+individual scroll — his init hook, the ingress's standing orders —
+bound as a single scroll rather than a shelf.
 
-Docker binds a single file by **inode**, and `git pull` does not edit
-a file in place — it replaces it with a new one. A container running
-across the pull therefore keeps reading the file that existed when it
-started: the old content, at a path that now holds different bytes.
+A single scroll is bound by its **physical substance**, not its
+name, and `git pull` does not edit a scroll in place — it replaces
+it with a new one. A hand reading across the exchange keeps reading
+the substance that existed when he came aboard: the old words, at a
+name that now holds different ones.
 
-Nothing announces this. The stack is healthy, the file on disk is
-correct, and a hot reload cheerfully re-reads the stale inode and
+Nothing announces this. The ship is healthy, the scroll ashore is
+correct, and a hot reload cheerfully re-reads the stale substance and
 reports success:
 
 ```bash
-git pull                                  # the .sexp gets a new inode
+git pull                                  # the .sexp gets new substance
 curl -X POST .../_cyclops/reload-config   # re-reads the OLD one, says ok
 ```
 
-Solution: pull first, then restart the stack (`sudo systemctl restart
-basilisk`, or `./basilisk down && ./basilisk up`) so the mounts
-re-resolve.  Restarting before the pull is the same as not restarting
+Solution: pull first, then relieve the ship (`sudo systemctl restart
+basilisk`, or `./basilisk down && ./basilisk up`) so the bindings
+re-resolve. Relieving before the pull is the same as not relieving
 at all.
 
 When you verify, check the **thing you changed**, not a summary
 statistic near it — a rule count does not move when you edit an
-existing rule, so grep the live routes for the actual rule, and
-`docker exec <container> cat <mounted-file>` settles any doubt.
+existing rule, so ask the live ship for the actual rule, and
+
+```bash
+docker exec <crew-member> cat <the-scroll-aboard>
+```
+
+settles any doubt.
 
 
+## Cyborg visitors (MCP clients)
 
-## Driving it from an MCP (Model Context Protocol) client
-
-`./basilisk up` generates mcp client configurations into the `mcp/`
+`./basilisk up` drafts hailing directories into the `mcp/`
 subdirectory, detecting the platform as it goes:
 
-| file | for |
+| scroll | for |
 |---|---|
 | `mcp/claude_desktop_config.json` | Claude Desktop — invokes `mcp/mcp-exec` directly on Linux/macOS, through `wsl` on Windows |
-| `mcp/mcp.toml`, `mcp/mcp-container.json`, `mcp/mcp-windows.json` | other clients and the in-container agents |
+| `mcp/mcp.toml`, `mcp/mcp-container.json`, `mcp/mcp-windows.json` | other clients and the agents aboard |
 
 See [docs/CLAUDE_DESKTOP.md](docs/CLAUDE_DESKTOP.md) for the Claude
 Desktop walkthrough on all three platforms.
 
+**Agents aboard.** The `full` strain of the Captain's species carries
+terminal agents — Claude Code, Gemini CLI, Codex, Grok Build —
+already acquainted with the rest of the crew, so an agent you talk to
+at the Captain's console reaches the same hands an off-ship visitor
+would. `./basilisk up` issues each of them the merged hailing
+directory. The `lite` strain carries none, and an off-ship client
+such as Claude Desktop works identically either way.
 
-**In-container AI terminal agents.** The `full` image variant carries
-terminal agents — Claude Code, Gemini CLI, Codex, Grok Build — already
-wired to the rest of the stack, so an agent you talk to in a shell
-inside the Captain reaches the same services an external client would.
-`./basilisk up` installs the merged config for each of them. The `lite`
-variant ships none, and an external client such as Claude Desktop works
-identically either way.
-
-Which agents, how they are built in, and where each keeps its
-credentials belong to the image that carries them: see
+Which agents, how they come aboard, and where each keeps its papers
+belong to the species that carries them: see
 [skewed-emacs/docker/README.md](https://github.com/gornskew/skewed-emacs/blob/devo/docker/README.md).
 
-Once a client is connected,
+Once a visitor is aboard,
 [`mcp/opening-prompt.md`](mcp/opening-prompt.md) is a suitable
-ready-made first message.
+ready-made first hail.
+
 
 ## License
 
@@ -325,7 +277,5 @@ own agreement.
 
 The origin of record for this repository is maintained by **Gornskew
 Enterprises**, and mirrored to
-[github.com/gornskew/basilisk](https://github.com/gornskew/basilisk). Public
-Issues and PRs may be lodged against this github mirror. 
-
-
+[github.com/gornskew/basilisk](https://github.com/gornskew/basilisk).
+Public Issues and PRs may be lodged against this github mirror.

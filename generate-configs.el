@@ -670,11 +670,17 @@ Returns the install script content as a string."
     ;; before any container starts; the rewritten copies land in
     ;; generated/ and are what the articles mount.
     (unless is-base
+      ;; The overlay ledger keeps its PREFIXED name in the clone: the
+      ;; base generated/crew.env is a tracked yard output, and an
+      ;; install that overwrote it left every host's clone permanently
+      ;; dirty, blocking every future pull (shelly, 2026-08-17).
+      ;; compose-dev layers generated/crew.env + generated/*-crew.env,
+      ;; later keys winning.
       (push (format "if [ -f \"$SCRIPT_DIR/generated/%screw.env\" ]; then" prefix) lines)
-      (push "    echo \"Installing crew ledger (generated/crew.env)...\"" lines)
+      (push (format "    echo \"Installing crew ledger (generated/%screw.env)...\"" prefix) lines)
       (push "    mkdir -p \"$TARGET_DIR/generated\"" lines)
-      (push (format "    cp \"$SCRIPT_DIR/generated/%screw.env\" \"$TARGET_DIR/generated/crew.env\""
-                    prefix)
+      (push (format "    cp \"$SCRIPT_DIR/generated/%screw.env\" \"$TARGET_DIR/generated/%screw.env\""
+                    prefix prefix)
             lines)
       (push "fi" lines)
       (push "" lines)

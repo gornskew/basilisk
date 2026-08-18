@@ -335,9 +335,23 @@ EOF
 # until the simple case has sailed.
 substitute_templates() {
     [ -d "${SCRIPT_DIR}/templates" ] || return 0
-    _st_env="${SCRIPT_DIR}/generated/crew.env"
-    if [ ! -f "$_st_env" ]; then
-        log_warning "templates/ present but no generated/crew.env; templates NOT rewritten"
+    # The ledger arrives in layers: the base ship's generated/crew.env
+    # (tracked yard output) plus any installed overlay ledger
+    # (generated/<stack>-crew.env, carried in by that stack's
+    # ./install under its own name -- an install must never overwrite
+    # a tracked base file, or the clone goes permanently dirty and
+    # blocks every future pull).  Later files win key-wise; one
+    # overlay ledger is the expected case.
+    _st_env=$(mktemp) || return 0
+    _st_found=0
+    for _st_e in "${SCRIPT_DIR}/generated/crew.env" "${SCRIPT_DIR}/generated/"*-crew.env; do
+        [ -f "$_st_e" ] || continue
+        cat "$_st_e" >> "$_st_env"
+        _st_found=1
+    done
+    if [ "$_st_found" = 0 ]; then
+        log_warning "templates/ present but no crew ledger in generated/; templates NOT rewritten"
+        rm -f "$_st_env"
         return 0
     fi
     mkdir -p "${SCRIPT_DIR}/generated"
@@ -356,6 +370,7 @@ substitute_templates() {
         fi
         log_info "Rewrote $(basename "$_st_t") -> generated/$(basename "$_st_out") from the crew ledger"
     done
+    rm -f "$_st_env"
 }
 
 start_services() {

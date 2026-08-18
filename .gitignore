@@ -96,6 +96,21 @@ systemd/host.env
 # ship's roster in every ship's repo.
 generated/*-stack-services-generated.el
 
+# The overlay crew ledger and templated fittings, carried in by
+# <host>-stack/install, plus the copies the yard rewrites from the
+# ledger on every `./basilisk up': per-host state, same as host.env
+# above.  The UNPREFIXED generated/crew.env is the base ship's own
+# ledger and stays tracked.  History rhymed here: the first install
+# flow copied the overlay ledger ONTO tracked generated/crew.env,
+# and `repos deploy' stopped pulling basilisk on shelly, silently --
+# the same failure this file already describes twice above
+# (2026-08-17; see claude_desktop_config.json and the mcp.toml
+# near-miss).  Installs never overwrite tracked files.
+generated/*-crew.env
+templates/
+generated/cyclops.sexp
+generated/*-services-init.cl
+
 # ==============================================================================
 # Build artifacts & caches
 # ==============================================================================
