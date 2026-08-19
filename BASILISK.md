@@ -20,8 +20,16 @@ operating manual — raising, standing down, coming aboard — is
 
 ## The yard, and the pouches
 
-Everything about a ship travels in **courier pouches**, and the
-arrangement is one pouch per idea:
+A **scroll** is a single written document. A **pouch** carries
+scrolls — pouches are versatile, folding in ingenious manners to
+size themselves for a few short scrolls or many long ones, and a
+pouch may carry other pouches. A **scroll chest** is where you keep
+your pouches; every chest has a small gecko-like **guardian** who
+stays with it for life, and sports vivid memories of anything that
+was ever in the chest.
+
+Everything about a ship travels in **courier pouches**, one pouch
+per idea:
 
 - **The Basilisk yard** is the pouch this scroll travels in. It
   carries the base articles, the drawing instruments, and the vat's
