@@ -219,6 +219,16 @@ init_env() {
     PROJECTS_DIR="${PROJECTS_DIR:-${HOME}/projects}"
     export PROJECTS_DIR
 
+    # The instance prefix, derived the same way generate-env.sh writes
+    # it into .env: compose reads .env, but THIS shell does not, so a
+    # BASILISK_INSTANCE run would otherwise muster (and hail) the
+    # wrong -- unprefixed -- containers when several stacks share the
+    # host.
+    if [ -n "${BASILISK_INSTANCE:-}" ] && [ -z "${BASILISK_PREFIX:-}" ]; then
+        BASILISK_PREFIX="${BASILISK_INSTANCE}-"
+    fi
+    export BASILISK_PREFIX
+
     # stat flag differs: Linux -c '%g', macOS -f '%g'
     if [ -S "/var/run/docker.sock" ]; then
         DOCKER_GROUP_ID="$(stat -c '%g' /var/run/docker.sock 2>/dev/null \
@@ -1165,7 +1175,9 @@ crew_muster() {
     # but it has a consequence worth saying out loud.
     if [ "$_cm_have_pilot" -eq 0 ]; then
         log_warning "${BASILISK_VOCAB_NO_INGRESS_WARNING:-no Transporter Chief aboard: nothing fronts HTTP; publish ports directly}"
-        log_warning "  (if this ship is meant to have one, its overlay is missing:"
+        # Register-neutral machinery words only in this hint -- the
+        # line above it speaks whatever register the vocabulary loads.
+        log_warning "  (if one is intended here, the <host>-stack overlay is not installed:"
         log_warning "   run <host>-stack/install, which copies <host>-stack-compose.yml here)"
     fi
 }
