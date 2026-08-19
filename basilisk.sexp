@@ -81,10 +81,10 @@
   ;; and the qualification scheme says exactly that: a Captain of
   ;; another species musters with a warning and proceeds.
   (:post :captain :requires ("skewed-emacs"))
-  (:post :1st-officer
+  (:post :first-officer
    :description "Bridge duty: assists the Captain and the ship's visitors."
    :requires ("gendl"))
-  (:post :ships-engineer :requires ("gendl"))
+  (:post :engineer :requires ("gendl"))
   (:post :transporter-chief :requires ("reverse-proxy"))
   (:post :communications-officer
    :description "Keeps the bridge viewscreen; hails the fleet."
@@ -107,9 +107,8 @@
   ;; else -- as stowaway-<repo>, the designator making one obvious
   ;; from its slug alone.  :provenance is only needed off Docker Hub's
   ;; library; :post only when capabilities are expected of the berth.
-  ;; Explicit names below where derivation could not tell two of a
-  ;; post apart (-human/-cyborg), or where an abbreviated slug earns
-  ;; its keep.
+  ;; No entry below states a :name: every hand answers to the slug
+  ;; derived from the posting he stands.
   (:post :captain
    :description "The ship's console, and the longest-lived process aboard."
    :type "emacs-lisp"
@@ -155,17 +154,13 @@
                     :alert-mb 2000))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "30s"))
 
-  ;; The 1st Officer stays on the bridge: assists the Captain and the
-  ;; ship's visitors with technical matters, and entertains guests.
-  ;; The usual match is the gendl-ccl strain (the Engineer below being
-  ;; gendl-sbcl); the :species pin is what GUARANTEES it -- the post
-  ;; states the duty, the species states the creature.  He keeps his
-  ;; old authored name for now: rules and fittings address POSTINGS
-  ;; through the crew ledger (generated/crew.env), so the name can
-  ;; catch up at a later relief without anything else moving.
-  (:name "jr-eng-human"
-   :post :1st-officer
-   :description "The 1st Officer: bridge duty, visitors, and guests."
+  ;; The First Officer stays on the bridge: assists the Captain and
+  ;; the ship's visitors with technical matters, and entertains
+  ;; guests.  The usual match is the gendl-ccl strain (the Engineer
+  ;; below being gendl-sbcl); the :species pin is what GUARANTEES it
+  ;; -- the post states the duty, the species states the creature.
+  (:post :first-officer
+   :description "The First Officer: bridge duty, visitors, and guests."
    :type "common-lisp"
    :provenance "gornskew"
    :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl"
@@ -183,10 +178,9 @@
                     :alert-mb 1200))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "72s"))
 
-  ;; The Ship's Engineer keeps to Engineering: the gendl-sbcl strain.
-  (:name "jr-eng-cyborg"
-   :post :ships-engineer
-   :description "The Ship's Engineer: engineering for ship and passengers."
+  ;; The Engineer keeps to Engineering: the gendl-sbcl strain.
+  (:post :engineer
+   :description "The Engineer: engineering for ship and passengers."
    :type "common-lisp"
    :provenance "gornskew"
    :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl"
@@ -195,13 +189,13 @@
    :cyborg-passengers-allowed? t
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "90s"))
 
-  ;; The Medic stands the dead-man's watch (added 2026-07-26, after a
+  ;; The Doctor stands the dead-man's watch (added 2026-07-26, after a
   ;; Captain fell into an unbounded call and could not be roused from
   ;; within).  A fitness check only MARKS a crew member unfit; nothing
   ;; relieves them without an actor, so relief must come from outside
-  ;; the afflicted.  The Medic revives ANY crew member who fails their
+  ;; the afflicted.  The Doctor revives ANY crew member who fails their
   ;; fitness check.
-  (:post :medic
+  (:post :doctor
    :description "Watches for the wedged and revives them."
    :type "utility"
    :provenance "willfarrell"

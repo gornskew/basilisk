@@ -636,7 +636,7 @@ _crew_species_from_image() {
 # stylish name and nothing more.
 #
 # Trailing -N is tolerated so a ship can carry more than one of a post
-# (jr-eng-cyborg-2 is still an engineer).
+# (engineer-2 is still an engineer).
 #
 # transporter-chief is the CURRENT name of the ingress posting (a
 # reverse proxy receives; it never goes anywhere, so "pilot" described
@@ -647,13 +647,23 @@ _crew_species_from_image() {
 # decision (Dave) -- do not rename the role here as a tidy-up.
 _crew_role_for_posting() {
     case "$1" in
+        # Canon postings (captain, first-officer, engineer, doctor;
+        # transporter-chief and communications-officer berthed by
+        # overlay).  The -* arms tolerate -2/-3 collision suffixes and
+        # multi-post slugs (first-officer-comms is still bridge crew).
         captain|captain-[0-9]*)   echo "captain" ;;
+        first-officer|first-officer-*) echo "engineer" ;;
+        engineer|engineer-[0-9]*) echo "engineer" ;;
+        doctor|doctor-[0-9]*)     echo "doctor" ;;
         transporter-chief|transporter-chief-[0-9]*) echo "pilot" ;;
         pilot|pilot-[0-9]*)       echo "pilot" ;;
-        medic|medic-[0-9]*)       echo "doctor" ;;
         communications-officer|communications-officer-[0-9]*) echo "comm" ;;
         comms|comms-[0-9]*)       echo "comm" ;;
         "${BASILISK_VOCAB_STOWAWAY_DESIGNATOR:-stowaway}"-*) echo "stowaway" ;;
+        # Legacy posting names, tolerated for containers created
+        # before the 2026-08-18 rename (medic -> doctor,
+        # ships-engineer -> engineer, jr-eng-* -> derived slugs).
+        medic|medic-[0-9]*)       echo "doctor" ;;
         ships-engineer|ships-engineer-[0-9]*) echo "engineer" ;;
         guild-engineer|guild-engineer-[0-9]*) echo "engineer" ;;
         jr-eng-*|sr-eng-*|guild-*) echo "engineer" ;;
@@ -1117,7 +1127,7 @@ crew_muster() {
             pilot)    _cm_post="${BASILISK_VOCAB_TITLE_PILOT:-T-Chief}" ; _cm_have_pilot=1 ;;
             engineer) _cm_post="${BASILISK_VOCAB_TITLE_ENGINEER:-Engineer}" ;;
             comm)     _cm_post="${BASILISK_VOCAB_TITLE_COMM:-Comm}" ;;
-            doctor)   _cm_post="${BASILISK_VOCAB_TITLE_DOCTOR:-Medic}" ;;
+            doctor)   _cm_post="${BASILISK_VOCAB_TITLE_DOCTOR:-Doctor}" ;;
             stowaway) _cm_post="${BASILISK_VOCAB_TITLE_STOWAWAY:-Stowaway}" ;;
             *)        _cm_post="${BASILISK_VOCAB_TITLE_CREW:-Crew}" ;;
         esac

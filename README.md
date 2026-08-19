@@ -8,7 +8,7 @@ operating manual: raising the ship, standing him down, securing
 passage for your desired passengers, both biological and cyborg.
 
 A standard rig carries a **Captain** at the ship's console, a **First
-Officer** and a **Ship's Engineer**, and a **Medic**. Human and cyborg
+Officer** and an **Engineer**, and a **Doctor**. Human and cyborg
 visitors may hail any hand aboard by name. The whole complement is
 stated in one scroll, `basilisk.sexp`, and every other document the
 ship needs is drawn from this `basilisk.sexp`.

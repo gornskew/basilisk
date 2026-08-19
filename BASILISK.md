@@ -3,7 +3,7 @@
 A **Basilisk** is a craft raised on a hull grown in a **biological
 vat**. Hulls are grown in many forms and sizes; the volkswagen or
 chevrolet of the class is the **standard rig**, with facilities for a
-Captain, a 1st Officer, a Ship's Engineer, and a Medic. Basilisks are
+Captain, a First Officer, an Engineer, and a Doctor. Basilisks are
 capable of various hosting and transit missions, each floating in his
 **galaxy** — a *he*, as Basilisks run male so far as anyone can tell.
 
@@ -135,9 +135,9 @@ papers can show in advance.
 | posting | usual species | the watch |
 |---|---|---|
 | **Captain** | *skewed-emacs* | keeps the ship's console and receives and directs special visitors, especially cyborgs, personally. He typically goes down with the ship (if the ship ever goes down), and is the last to go. |
-| **1st Officer** | *gendl*, the `ccl` strain | bridge duty: assists the Captain, the ship's visitors, and the guests |
-| **Ship's Engineer** | *gendl*, the `sbcl` strain | keeps to Engineering: reckoning, building, and drawing, for ship and passengers alike |
-| **Medic** | *autoheal* | constantly on "rounds" for the sickly and the wedged, and revives or dispatches them |
+| **First Officer** | *gendl*, the `ccl` strain | bridge duty: assists the Captain, the ship's visitors, and the guests |
+| **Engineer** | *gendl*, the `sbcl` strain | keeps to Engineering: reckoning, building, and drawing, for ship and passengers alike |
+| **Doctor** | *autoheal* | constantly on "rounds" for the sickly and the wedged, and revives or dispatches them |
 
 Two further postings are on the books with **no berth in the
 standard rig** — their qualifications are stated in the articles, and
@@ -155,9 +155,9 @@ flowchart TB
       subgraph ship["the ship — wearing his minted name"]
         direction TB
         CPT["Captain<br/><i>skewed-emacs</i>"]
-        FO["1st Officer<br/><i>gendl</i> · ccl strain"]
-        SE["Ship's Engineer<br/><i>gendl</i> · sbcl strain"]
-        MED["Medic<br/><i>autoheal</i><br/>(watches all hands)"]
+        FO["First Officer<br/><i>gendl</i> · ccl strain"]
+        SE["Engineer<br/><i>gendl</i> · sbcl strain"]
+        MED["Doctor<br/><i>autoheal</i><br/>(watches all hands)"]
         TC["Transporter Chief<br/><i>(berth by stack pouch)</i>"]
       end
       SHELF[("the dockside shelf<br/><code>/projects</code>")]

@@ -829,7 +829,7 @@ the repo half of its species, so one is obvious from its slug alone.
 The designator is \"stowaway\" -- the yard's native word -- unless a
 fork's glossary :vocabulary overrides it (:stowaway-designator), which
 changes it without touching shipped code.  Collisions get -2, -3 ...
-suffixes, which the role machinery already tolerates (jr-eng-cyborg-2
+suffixes, which the role machinery already tolerates (engineer-2
 is still an engineer)."
   (let ((taken (delq nil (mapcar (lambda (s) (plist-get s :name))
                                  (skewed--get-prop config :crew))))
@@ -870,9 +870,9 @@ joined, missing names derived.  Every consumer sees the same names."
 ;;;
 ;;; A rule in a templated fitting (templates/, substituted by
 ;;; compose-dev on the way up) names a POSTING, never a crew member:
-;;; ${BASILISK_POST_1ST_OFFICER} resolves to whatever name the hand
-;;; standing :1st-officer answers to, and
-;;; ${BASILISK_POST_1ST_OFFICER_HTTP_PORT} to the aboard port of his
+;;; ${BASILISK_POST_FIRST_OFFICER} resolves to whatever name the hand
+;;; standing :first-officer answers to, and
+;;; ${BASILISK_POST_FIRST_OFFICER_HTTP_PORT} to the aboard port of his
 ;;; http frequency.  So the chief's standing orders survive renames
 ;;; and reliefs untouched.  ONE hand per posting for now: the first
 ;;; declared wins (base order, then overlay additions); ships with
@@ -975,7 +975,7 @@ several posts (narad's human junior engineer also stands
 :communications-officer, the ability arriving with his services-init
 hook at boot or later, not with his species).  Per-post requirements
 come from the :postings qualification tables -- this file's own, then
-the base articles' -- e.g. :ships-engineer requires \"gendl\",
+the base articles' -- e.g. :engineer requires \"gendl\",
 :guild-engineer requires \"genworks-gdl\".  The muster's manifest
 check stays WARNING severity, so a capability that arrives by
 arrangement rather than manifest costs a warning and nothing more."
