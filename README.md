@@ -1,8 +1,8 @@
 # Basilisk
 
-This pouch is the **yard**: the directions for laying down, fitting
-out, and mustering a Basilisk-class ship. More detail about what a
-Basilisk *is* can be found in the overview scroll,
+This scroll chest is ship's blueprints for laying down, fitting out,
+and mustering a Basilisk-class ship. More detail about what a Basilisk
+*is* can be found in the overview scroll,
 [BASILISK.md](BASILISK.md). This scroll is both the fabrication and
 operating manual: raising the ship, standing him down, securing
 passage for your desired passengers, both biological and cyborg.
