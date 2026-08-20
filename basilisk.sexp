@@ -88,7 +88,10 @@
   (:post :transporter-chief :requires ("reverse-proxy"))
   (:post :communications-officer
    :description "Keeps the bridge viewscreen; hails the fleet."
-   :requires ("bridge viewscreen operations")))
+   :requires ("bridge viewscreen operations"))
+  (:post :navigator
+   :description "Keeps the chartroom: orbits, transfers, ephemerides."
+   :requires ("astrodynamics")))
 
  :crew
  (
@@ -206,5 +209,39 @@
    ;; The galaxy's own docker socket: how the Medic reaches the crew.
    :cargo-bays ((:dockside "/var/run/docker.sock"
                  :stowed-at "/var/run/docker.sock")))
+
+  ;; The Navigator keeps the chartroom.  The class is named in homage
+  ;; to the venerable astrodynamics engine, and every Basilisk-class
+  ;; hull houses a compartment for a ship's charting and navigation
+  ;; department -- a hull without the full apparatus does not qualify
+  ;; as a proper Basilisk (class ruling, 2026-08-20).  The room is the
+  ;; address and the Navigator answers: hail chartroom:9110, aboard
+  ;; only, no galaxy-side frequency.  The species carries its own
+  ;; fitness check; the register adds none.
+  (:name "navigator"
+   :post :navigator
+   :description "Keeps the chartroom: orbits, transfers, ephemerides."
+   :type "utility"
+   :species "chartroom:trial"
+   :network-alias "chartroom"
+   :hailing-frequencies ((:name "http" :aboard 9110)))
+
+  ;; The museum chamber: airgapped and atmosphere-filtered, grown into
+  ;; every Basilisk-class hull, and part of the same class ruling --
+  ;; the chamber honors the ancestor the way the chartroom honors the
+  ;; engine.  Its sole keeper is the Ken Thompson droid, tending an
+  ;; antique machine with a long-running deployment of Space Travel.
+  ;; Sealed: no network, sealed hull, nothing stowed from dockside;
+  ;; /tmp is the one breathable volume.  Visitors come by transporter
+  ;; only, and a halted machine abandons ship so the hull's restart
+  ;; policy re-boots the exhibit.
+  (:name "ken-thompson-droid"
+   :description "Keeper of the museum chamber and its antique machine."
+   :type "utility"
+   :species "museum-chamber:trial"
+   :network-mode "none"
+   :sealed-hull? t
+   :breathable-volumes ("/tmp")
+   :no-default-cargo? t)
   )
  )

@@ -211,6 +211,16 @@ foreign overlay fails loudly rather than quietly composing.")
         (push (format "    restart: %s" restart) lines)
         (push "    stdin_open: true" lines)
         (push "    tty: true" lines)
+        ;; A sealed hull takes no writes; whatever must stay breathable
+        ;; rides tmpfs and is gone at power-down.  (The museum
+        ;; chamber's atmospheric filtering.)
+        (when (skewed--get-prop svc :sealed-hull?)
+          (push "    read_only: true" lines))
+        (let ((breathable (skewed--get-prop svc :breathable-volumes)))
+          (when breathable
+            (push "    tmpfs:" lines)
+            (dolist (vol breathable)
+              (push (format "      - %s" vol) lines))))
         (when network-mode
           (push (format "    network_mode: %s" network-mode) lines))
         
@@ -265,10 +275,14 @@ foreign overlay fails loudly rather than quietly composing.")
               (push (format "      - path: %s" path) lines)
               (push (format "        required: %s" (if required "true" "false")) lines))))
         
-        ;; Volumes
-        (let ((default-vols (skewed--get-prop defaults :cargo-bays))
+        ;; Volumes.  A crew entry with :no-default-cargo? takes nothing
+        ;; from dockside: the default cargo bays stay ashore (the sealed
+        ;; museum chamber -- an airgap alone does not refuse a mount).
+        (let ((default-vols (unless (skewed--get-prop svc :no-default-cargo?)
+                              (skewed--get-prop defaults :cargo-bays)))
               (svc-vols vols))
-          (push "    volumes:" lines)
+          (when (or default-vols svc-vols)
+            (push "    volumes:" lines))
           (dolist (vol default-vols)
             (let ((src (skewed--get-prop vol :dockside))
                   (tgt (skewed--get-prop vol :stowed-at)))

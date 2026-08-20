@@ -155,3 +155,42 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - skewed-network
+
+  navigator:
+    image: chartroom:trial
+    container_name: ${BASILISK_PREFIX:-}navigator
+    hostname: navigator
+    labels:
+      basilisk.post: "navigator"
+      basilisk.requires: "astrodynamics"
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      - HTTP_PORT=9110
+      - START_HTTP=true
+      - TZ=${TZ:-Etc/UTC}
+    volumes:
+      - type: bind
+        source: ${PROJECTS_DIR}
+        target: /projects
+        bind:
+          create_host_path: true
+    networks:
+      skewed-network:
+        aliases:
+          - chartroom
+
+  ken-thompson-droid:
+    image: museum-chamber:trial
+    container_name: ${BASILISK_PREFIX:-}ken-thompson-droid
+    hostname: ken-thompson-droid
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    network_mode: none
+    environment:
+      - TZ=${TZ:-Etc/UTC}
