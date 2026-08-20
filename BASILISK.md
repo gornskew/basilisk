@@ -106,6 +106,10 @@ the tour). Each crew may have a real name with a real backstory, but at
 this juncture, you will have no way of knowing those. Each crew should
 be considered a fresh face with a fresh name.
 
+Droid crew are the one exception to minted names: a droid's personal
+name is its serial — ordinals in order of manufacture — so the Ken
+Thompson line runs kt-402, kt-403, and so on.
+
 - Each posting lists its required qualifications in the `:postings`
   table of the articles. Requirements only — the table is not a
   catalogue of fittings.
@@ -143,6 +147,8 @@ papers can show in advance.
 | **First Officer** | *gendl*, the `ccl` strain | bridge duty: assists the Captain, the ship's visitors, and the guests |
 | **Engineer** | *gendl*, the `sbcl` strain | keeps to Engineering: reckoning, building, and drawing, for ship and passengers alike |
 | **Doctor** | *autoheal* | constantly on "rounds" for the sickly and the wedged, and revives or dispatches them |
+| **Navigator** | *chartroom* | keeps the chartroom and its engine: orbits, transfers, and ephemerides, reckoned for any berth that hails the room |
+| **Museum Curator** | a *Ken Thompson droid* | sole keeper of the sealed museum chamber: boots the antique machine, works its console, and makes the docent's rounds |
 
 Two further postings are on the books with **no berth in the
 standard rig** — their qualifications are stated in the articles, and
@@ -164,6 +170,8 @@ flowchart TB
         SE["Engineer<br/><i>gendl</i> · sbcl strain"]
         MED["Doctor<br/><i>autoheal</i><br/>(watches all hands)"]
         TC["Transporter Chief<br/><i>(berth by stack pouch)</i>"]
+        NAV["Navigator<br/><i>chartroom</i>"]
+        CUR["Museum Curator<br/><i>Ken Thompson droid</i><br/>(sealed chamber — no lines in or out)"]
       end
       SHELF[("the dockside shelf<br/><code>/projects</code>")]
     end
@@ -171,7 +179,8 @@ flowchart TB
     G(["invited guests"]) --> CPT
     G -.by name.-> FO & SE
     TC --> CPT & FO & SE
-    SHELF -.stowed aboard every berth.-> CPT & FO & SE
+    FO & SE -.hail the room.-> NAV
+    SHELF -.stowed aboard every unsealed berth.-> CPT & FO & SE & NAV
 ```
 
 
@@ -189,17 +198,42 @@ of their own:
 - **Navigation** — deciding where the ship should go, is stood from
   ashore, by you, the proud ship's owner. No seat aboard carries it.
 
-Yet the department is not without quarters. Every Basilisk-class hull
-grows one special compartment — **the chartroom** — set aside
-expressly for a Basilisk-based charting and navigation department, in
-honor of the engine the class is named for. The chartroom stands
-grown and waiting before any such department ever musters, as is the
-custom of the class with empty seats.
+Yet the department is no longer without quarters, nor without a hand.
+Every Basilisk-class hull grows one special compartment — **the
+chartroom** — set aside expressly for a Basilisk-based charting and
+navigation department, in honor of the engine the class is named for,
+and a **Navigator** musters with the base complement to keep it:
+orbits, transfers, and ephemerides, reckoned on the engine itself and
+served to any berth that hails the room. The navigation *seat* stays
+ashore all the same — the chartroom is quarters and instrument, not
+the decision seat — and no proper Basilisk leaves the yard without
+the full apparatus.
 
 Although used relatively rarely, Basilisk ships come with several
 propulsion mechanisms, whereby they may move around within their
 galaxy, or even hop between galaxies while still in commission.
 
+
+
+## The museum chamber
+
+Every Basilisk-class hull also grows an **airgapped,
+atmosphere-filtered museum chamber**, and no hull qualifies as a
+proper Basilisk without one. The chamber houses an antique PDP-7
+running a long-lived deployment of Ken Thompson's *Space Travel* —
+the game whose port to that machine begat Unix, and so, in the long
+run, most of what sails today. The chartroom honors the engine the
+class is named for; the museum chamber honors the ancestor.
+
+Its sole keeper is the **Museum Curator**, a droid of the Ken
+Thompson line. The Curator boots the antique machine, works its
+console, starts the game himself, and makes the docent's rounds,
+photographing the scope for visitors. The chamber's seals are
+absolute: nothing is stowed aboard from dockside, the hull takes no
+writes, and no hailing frequency reaches it — visitors come in
+person or not at all. Should the antique machine ever halt, the
+Curator abandons the chamber, and the hull grows it afresh, exhibit
+and all.
 
 
 ## The transporter room

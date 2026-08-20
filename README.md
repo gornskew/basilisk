@@ -8,10 +8,15 @@ operating manual: raising the ship, standing him down, securing
 passage for your desired passengers, both biological and cyborg.
 
 A standard rig carries a **Captain** at the ship's console, a **First
-Officer** and an **Engineer**, and a **Doctor**. Human and cyborg
-visitors may hail any hand aboard by name. The whole complement is
-stated in one scroll, `basilisk.sexp`, and every other document the
-ship needs is drawn from this `basilisk.sexp`.
+Officer** and an **Engineer**, a **Doctor**, a **Navigator** in the
+chartroom, and a **Museum Curator** — a droid of the Ken Thompson
+line — keeping the sealed museum chamber. Human and cyborg visitors
+may hail any hand aboard by name, save the Curator: no hail reaches
+the museum chamber, and visits happen in person or not at all
+(`./basilisk logs ken-thompson-droid` shows the chamber's console
+record). The whole complement is stated in one scroll,
+`basilisk.sexp`, and every other document the ship needs is drawn
+from this `basilisk.sexp`.
 
 
 ## Raising a ship
