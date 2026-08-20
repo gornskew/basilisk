@@ -91,7 +91,10 @@
    :requires ("bridge viewscreen operations"))
   (:post :navigator
    :description "Keeps the chartroom: orbits, transfers, ephemerides."
-   :requires ("astrodynamics")))
+   :requires ("astrodynamics"))
+  (:post :museum-curator
+   :description "Keeps the museum chamber and its antique machine."
+   :requires ("museum keeping")))
 
  :crew
  (
@@ -236,6 +239,7 @@
   ;; only, and a halted machine abandons ship so the hull's restart
   ;; policy re-boots the exhibit.
   (:name "ken-thompson-droid"
+   :post :museum-curator
    :description "Keeper of the museum chamber and its antique machine."
    :type "utility"
    :species "museum-chamber:trial"

@@ -185,6 +185,9 @@ services:
     image: museum-chamber:trial
     container_name: ${BASILISK_PREFIX:-}ken-thompson-droid
     hostname: ken-thompson-droid
+    labels:
+      basilisk.post: "museum-curator"
+      basilisk.requires: "museum keeping"
     restart: unless-stopped
     stdin_open: true
     tty: true
