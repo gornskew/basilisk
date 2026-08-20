@@ -11,6 +11,11 @@ The Shipyard bestows each ship's name at fitting-out, and he keeps it
 for life. That name is the one his whole galaxy hails him and his crew
 by.
 
+The class name itself is a debt gladly worn: **Basilisk** was chosen
+for this hull class in homage to the venerable Basilisk astrodynamics
+computation engine, and every hull of the class repays the homage in
+his own frame — see the chartroom, below.
+
 This scroll describes the architecture which, if followed earnestly by
 the vat shipwrights, will imbue upon a freshly grown bio-hull the
 moral and legal right to call itself a "Basilisk-class" ship. The
@@ -183,6 +188,13 @@ of their own:
 
 - **Navigation** — deciding where the ship should go, is stood from
   ashore, by you, the proud ship's owner. No seat aboard carries it.
+
+Yet the department is not without quarters. Every Basilisk-class hull
+grows one special compartment — **the chartroom** — set aside
+expressly for a Basilisk-based charting and navigation department, in
+honor of the engine the class is named for. The chartroom stands
+grown and waiting before any such department ever musters, as is the
+custom of the class with empty seats.
 
 Although used relatively rarely, Basilisk ships come with several
 propulsion mechanisms, whereby they may move around within their
