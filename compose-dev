@@ -1253,7 +1253,21 @@ validate_services() {
     VALIDATED_FAILED=""
 
     _vs_ids="$(run_compose ps -q 2>/dev/null)"
-    [ -n "$_vs_ids" ] || { log_warning "No running containers to validate"; return 0; }
+    if [ -z "$_vs_ids" ]; then
+        # A ship with no crew gets a LOUD flag either way: either the
+        # crew catastrophically failed to board (the muster went
+        # sideways -- read the compose output and journal above), or the
+        # owner is deliberately floating an empty ship for reasons only
+        # he would know.  Success is still reported -- an empty ship is
+        # not a failed one -- but never silently.
+        log_warning "=================================================================="
+        log_warning "SHIP IS CREWLESS: compose reports NO running containers."
+        log_warning "Either no one boarded (check the compose output and the journal"
+        log_warning "above) or she is deliberately riding empty at anchor."
+        log_warning "Nothing to validate; reporting success on an EMPTY ship."
+        log_warning "=================================================================="
+        return 0
+    fi
 
     # Build the watch list: containers that declare a usable healthcheck.
     _vs_watched=""
