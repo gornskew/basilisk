@@ -73,7 +73,7 @@ the way up — so the orders survive renames and reliefs untouched.
 
 ## The vat hall, and the vatcycle
 
-A Basilisk is grown, not built. Every working yard keeps a **vat
+A Basilisk is grown, not built. The growing happens in a **vat
 hall** — an immense growing-house, its vats set out at successive
 stations. A hull is seeded as a slender **embryoid cylinder** and
 swells, station by station, until he fills one of the great
@@ -102,10 +102,9 @@ growing, so a Basilisk floats out staffed and commissioned, not
 waiting empty at a fitting-out pier.
 
 In the flesh, the class runs long, low, and reptilian — a great
-yellow-eyed dirigible of a creature. The portraits and vat-hall
-studies in [artwork/](artwork/) show the look, in varying degrees
-of faithfulness; the scroll kept there says which are to be
-believed.
+yellow-eyed dirigible of a creature. The settled likenesses live
+in [artwork/](artwork/); the scroll kept there says what to
+believe.
 
 
 ## The articles
