@@ -10,11 +10,12 @@ passage for your desired passengers, both biological and cyborg.
 A standard rig carries a **Captain** at the ship's console, a **First
 Officer** and an **Engineer**, a **Doctor**, a **Navigator** in the
 chartroom, and a **Museum Curator** — a droid of the Ken Thompson
-line — keeping the sealed museum chamber. Human and cyborg visitors
-may hail any hand aboard by name, save the Curator: no hail reaches
-the museum chamber, and visits happen in person or not at all
-(`./basilisk logs ken-thompson-droid` shows the chamber's console
-record). The whole complement is stated in one scroll,
+line — keeping the filtered museum chamber. Human and cyborg
+visitors may hail any hand aboard by name, and even the chamber's
+antique machine itself: **the museum terminal** (`telnet
+ken-thompson-droid 1052`, from any berth aboard) seats one visitor
+at a time at the old machine's own console, the recent record
+replayed on connect. The whole complement is stated in one scroll,
 `basilisk.sexp`, and every other document the ship needs is drawn
 from this `basilisk.sexp`.
 

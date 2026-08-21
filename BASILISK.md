@@ -148,7 +148,7 @@ papers can show in advance.
 | **Engineer** | *gendl*, the `sbcl` strain | keeps to Engineering: reckoning, building, and drawing, for ship and passengers alike |
 | **Doctor** | *autoheal* | constantly on "rounds" for the sickly and the wedged, and revives or dispatches them |
 | **Navigator** | *chartroom* | keeps the chartroom and its engine: orbits, transfers, and ephemerides, reckoned for any berth that hails the room |
-| **Museum Curator** | a *Ken Thompson droid* | sole keeper of the sealed museum chamber: boots the antique machine, works its console, and makes the docent's rounds |
+| **Museum Curator** | a *Ken Thompson droid* | sole keeper of the filtered museum chamber: boots the antique machine, tends the museum terminal, and makes the docent's rounds |
 
 Two further postings are on the books with **no berth in the
 standard rig** — their qualifications are stated in the articles, and
@@ -171,7 +171,7 @@ flowchart TB
         MED["Doctor<br/><i>autoheal</i><br/>(watches all hands)"]
         TC["Transporter Chief<br/><i>(berth by stack pouch)</i>"]
         NAV["Navigator<br/><i>chartroom</i>"]
-        CUR["Museum Curator<br/><i>Ken Thompson droid</i><br/>(sealed chamber — no lines in or out)"]
+        CUR["Museum Curator<br/><i>Ken Thompson droid</i><br/>(filtered chamber — one line in:<br/>the museum terminal)"]
       end
       SHELF[("the dockside shelf<br/><code>/projects</code>")]
     end
@@ -180,6 +180,7 @@ flowchart TB
     G -.by name.-> FO & SE
     TC --> CPT & FO & SE
     FO & SE -.hail the room.-> NAV
+    CPT & FO & SE -.the museum terminal.-> CUR
     SHELF -.stowed aboard every unsealed berth.-> CPT & FO & SE & NAV
 ```
 
@@ -217,9 +218,8 @@ galaxy, or even hop between galaxies while still in commission.
 
 ## The museum chamber
 
-Every Basilisk-class hull also grows an **airgapped,
-atmosphere-filtered museum chamber**, and no hull qualifies as a
-proper Basilisk without one. The chamber houses an antique PDP-7
+Every Basilisk-class hull also grows an **atmosphere-filtered museum
+chamber**, and no hull qualifies as a proper Basilisk without one. The chamber houses an antique PDP-7
 running a long-lived deployment of Ken Thompson's *Space Travel* —
 the game whose port to that machine begat Unix, and so, in the long
 run, most of what sails today. The chartroom honors the engine the
@@ -228,12 +228,14 @@ class is named for; the museum chamber honors the ancestor.
 Its sole keeper is the **Museum Curator**, a droid of the Ken
 Thompson line. The Curator boots the antique machine, works its
 console, starts the game himself, and makes the docent's rounds,
-photographing the scope for visitors. The chamber's seals are
-absolute: nothing is stowed aboard from dockside, the hull takes no
-writes, and no hailing frequency reaches it — visitors come in
-person or not at all. Should the antique machine ever halt, the
-Curator abandons the chamber, and the hull grows it afresh, exhibit
-and all.
+photographing the scope for visitors. The chamber's filters are
+strict — nothing is stowed aboard from dockside, and the hull takes
+no writes — but the chamber is filtered, not sealed: the antique
+machine's own console rides the ship's lines as **the museum
+terminal**, one line, first come first seated, and any hand aboard
+may hail it and sit at the old machine itself. The Doctor's rounds
+include the chamber: should the machine halt, or the exhibit go
+dark, the hull grows the chamber afresh, exhibit and all.
 
 
 ## The transporter room

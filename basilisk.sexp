@@ -229,21 +229,23 @@
    :network-alias "chartroom"
    :hailing-frequencies ((:name "http" :aboard 9110)))
 
-  ;; The museum chamber: airgapped and atmosphere-filtered, grown into
-  ;; every Basilisk-class hull, and part of the same class ruling --
-  ;; the chamber honors the ancestor the way the chartroom honors the
+  ;; The museum chamber: atmosphere-filtered, grown into every
+  ;; Basilisk-class hull, and part of the same class ruling -- the
+  ;; chamber honors the ancestor the way the chartroom honors the
   ;; engine.  Its sole keeper is the Ken Thompson droid, tending an
   ;; antique machine with a long-running deployment of Space Travel.
-  ;; Sealed: no network, sealed hull, nothing stowed from dockside;
-  ;; /tmp is the one breathable volume.  Visitors come by transporter
-  ;; only, and a halted machine abandons ship so the hull's restart
+  ;; Filtered, not sealed (ruling 2026-08-20): the hull takes no
+  ;; writes and nothing is stowed from dockside, /tmp the one
+  ;; breathable volume -- but the antique machine's own console rides
+  ;; the ship's lines as THE MUSEUM TERMINAL, telnet 1052, aboard
+  ;; only.  A halted machine abandons ship so the hull's restart
   ;; policy re-boots the exhibit.
   (:name "ken-thompson-droid"
    :post :museum-curator
    :description "Keeper of the museum chamber and its antique machine."
    :type "utility"
    :species "museum-chamber:trial"
-   :network-mode "none"
+   :hailing-frequencies ((:name "telnet" :aboard 1052))
    :sealed-hull? t
    :breathable-volumes ("/tmp")
    :no-default-cargo? t)

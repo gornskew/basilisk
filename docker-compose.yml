@@ -194,6 +194,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    network_mode: none
     environment:
       - TZ=${TZ:-Etc/UTC}
+    networks:
+      - skewed-network
