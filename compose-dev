@@ -1409,7 +1409,7 @@ connect_emacs() {
 
 pull_images() {
     if [ -n "${NO_PULL}" ]; then
-        log_info "Skipping pull (NO_PULL set)"
+        log_info "Skipping pull (NO_PULL set; explicit './basilisk pull' or 'up --pull' overrides)"
         return
     fi
 
@@ -1716,7 +1716,12 @@ main() {
             for _up_arg in "$@"; do
                 case "$_up_arg" in
                     --daemon|-d) _up_daemon=true ;;
-                    --pull)      PULL_ALWAYS=1 ;;
+                    # The operator at the helm outranks the standing
+                    # order: an explicit --pull clears NO_PULL (which
+                    # host.env may set on a provisioned ship), or the
+                    # documented deploy step `up --pull' would silently
+                    # stop pulling on exactly the ships it matters for.
+                    --pull)      PULL_ALWAYS=1; NO_PULL="" ;;
                     *)           _up_remaining="${_up_remaining:+$_up_remaining }$_up_arg" ;;
                 esac
             done
@@ -1741,7 +1746,10 @@ main() {
         logs)   shift; show_logs "$@" ;;
         status|ps) show_status ;;
         emacs)  connect_emacs ;;
-        pull)   pull_images ;;
+        # Typing `pull' IS the explicit request, so it too outranks a
+        # host.env NO_PULL -- a provisioned ship still takes on stores
+        # when told to.
+        pull)   NO_PULL=""; pull_images ;;
         clean)  clean_all ;;
         install-shell-functions) install_shell_functions ;;
         init)
