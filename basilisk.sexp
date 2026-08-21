@@ -231,16 +231,23 @@
   ;; MUSEUM TERMINAL: hail the room, museum-chamber:1052, aboard
   ;; only, and the machine itself answers.  A halted machine abandons
   ;; ship so the hull's restart policy re-boots the exhibit.
-  (;; :name derives from the post -- "museum-curator".
-   :post :museum-curator
-   :description "Keeper of the museum chamber and its antique machine."
-   :type "utility"
-   :provenance "gornskew"
-   :species "museum-chamber:trial"
-   :network-alias "museum-chamber"
-   :hailing-frequencies ((:name "telnet" :aboard 1052))
-   :sealed-hull? t
-   :breathable-volumes ("/tmp")
-   :no-default-cargo? t)
+  ;;
+  ;; CURATOR STOOD DOWN FROM THE BASE RIG (2026-08-21, temporary):
+  ;; the trial species is not yet settled in his duties, so the berth
+  ;; below is struck from the articles until the refit lands -- the
+  ;; :museum-curator posting stays on the books, and the chamber
+  ;; remains grown into the hull.  Uncomment the entry to restore him.
+  ;;
+  ;; (;; :name derives from the post -- "museum-curator".
+  ;;  :post :museum-curator
+  ;;  :description "Keeper of the museum chamber and its antique machine."
+  ;;  :type "utility"
+  ;;  :provenance "gornskew"
+  ;;  :species "museum-chamber:trial"
+  ;;  :network-alias "museum-chamber"
+  ;;  :hailing-frequencies ((:name "telnet" :aboard 1052))
+  ;;  :sealed-hull? t
+  ;;  :breathable-volumes ("/tmp")
+  ;;  :no-default-cargo? t)
   )
  )
