@@ -43,12 +43,7 @@
     (:name "doctor"
      :type "utility"
     )
-    (:name "navigator"
-     :type "utility"
-     :http-host "navigator"
-     :http-port 9110
-    )
-    (:name "ken-thompson-droid"
+    (:name "museum-curator"
      :type "utility"
     )
    ))

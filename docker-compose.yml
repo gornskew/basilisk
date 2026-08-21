@@ -156,35 +156,10 @@ services:
     networks:
       - skewed-network
 
-  navigator:
-    image: gornskew/chartroom:trial
-    container_name: ${BASILISK_PREFIX:-}navigator
-    hostname: navigator
-    labels:
-      basilisk.post: "navigator"
-      basilisk.requires: "astrodynamics"
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-    environment:
-      - HTTP_PORT=9110
-      - START_HTTP=true
-      - TZ=${TZ:-Etc/UTC}
-    volumes:
-      - type: bind
-        source: ${PROJECTS_DIR}
-        target: /projects
-        bind:
-          create_host_path: true
-    networks:
-      skewed-network:
-        aliases:
-          - chartroom
-
-  ken-thompson-droid:
+  museum-curator:
     image: gornskew/museum-chamber:trial
-    container_name: ${BASILISK_PREFIX:-}ken-thompson-droid
-    hostname: ken-thompson-droid
+    container_name: ${BASILISK_PREFIX:-}museum-curator
+    hostname: museum-curator
     labels:
       basilisk.post: "museum-curator"
       basilisk.requires: "museum keeping"
@@ -197,4 +172,6 @@ services:
     environment:
       - TZ=${TZ:-Etc/UTC}
     networks:
-      - skewed-network
+      skewed-network:
+        aliases:
+          - museum-chamber

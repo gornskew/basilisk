@@ -213,40 +213,31 @@
    :cargo-bays ((:dockside "/var/run/docker.sock"
                  :stowed-at "/var/run/docker.sock")))
 
-  ;; The Navigator keeps the chartroom.  The class is named in homage
-  ;; to the venerable astrodynamics engine, and every Basilisk-class
-  ;; hull houses a compartment for a ship's charting and navigation
-  ;; department -- a hull without the full apparatus does not qualify
-  ;; as a proper Basilisk (class ruling, 2026-08-20).  The room is the
-  ;; address and the Navigator answers: hail chartroom:9110, aboard
-  ;; only, no galaxy-side frequency.  The species carries its own
-  ;; fitness check; the register adds none.
-  (:name "navigator"
-   :post :navigator
-   :description "Keeps the chartroom: orbits, transfers, ephemerides."
-   :type "utility"
-   :provenance "gornskew"
-   :species "chartroom:trial"
-   :network-alias "chartroom"
-   :hailing-frequencies ((:name "http" :aboard 9110)))
+  ;; NO NAVIGATOR IN THE BASE RIG (ruling 2026-08-21): the chartroom
+  ;; species is heavy, so the :navigator posting stays on the books
+  ;; with no berth -- like the Transporter Chief, a hand to stand it
+  ;; arrives by stack pouch.  The chartroom compartment itself is
+  ;; grown in every hull regardless, per the class homage.
 
   ;; The museum chamber: atmosphere-filtered, grown into every
-  ;; Basilisk-class hull, and part of the same class ruling -- the
-  ;; chamber honors the ancestor the way the chartroom honors the
-  ;; engine.  Its sole keeper is the Ken Thompson droid, tending an
-  ;; antique machine with a long-running deployment of Space Travel.
-  ;; Filtered, not sealed (ruling 2026-08-20): the hull takes no
-  ;; writes and nothing is stowed from dockside, /tmp the one
-  ;; breathable volume -- but the antique machine's own console rides
-  ;; the ship's lines as THE MUSEUM TERMINAL, telnet 1052, aboard
-  ;; only.  A halted machine abandons ship so the hull's restart
-  ;; policy re-boots the exhibit.
-  (:name "ken-thompson-droid"
+  ;; Basilisk-class hull -- the chamber honors the ancestor the way
+  ;; the chartroom honors the engine, and no hull qualifies as a
+  ;; proper Basilisk without it.  Its sole keeper is the Museum
+  ;; Curator, a museum droid tending an antique machine with a
+  ;; long-running deployment of Space Travel.  Filtered, not sealed
+  ;; (ruling 2026-08-20): the hull takes no writes and nothing is
+  ;; stowed from dockside, /tmp the one breathable volume -- but the
+  ;; antique machine's own console rides the ship's lines as THE
+  ;; MUSEUM TERMINAL: hail the room, museum-chamber:1052, aboard
+  ;; only, and the machine itself answers.  A halted machine abandons
+  ;; ship so the hull's restart policy re-boots the exhibit.
+  (;; :name derives from the post -- "museum-curator".
    :post :museum-curator
    :description "Keeper of the museum chamber and its antique machine."
    :type "utility"
    :provenance "gornskew"
    :species "museum-chamber:trial"
+   :network-alias "museum-chamber"
    :hailing-frequencies ((:name "telnet" :aboard 1052))
    :sealed-hull? t
    :breathable-volumes ("/tmp")

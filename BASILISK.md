@@ -107,8 +107,7 @@ this juncture, you will have no way of knowing those. Each crew should
 be considered a fresh face with a fresh name.
 
 Droid crew are the one exception to minted names: a droid's personal
-name is its serial — ordinals in order of manufacture — so the Ken
-Thompson line runs kt-402, kt-403, and so on.
+name is its serial — ordinals in order of manufacture.
 
 - Each posting lists its required qualifications in the `:postings`
   table of the articles. Requirements only — the table is not a
@@ -147,8 +146,7 @@ papers can show in advance.
 | **First Officer** | *gendl*, the `ccl` strain | bridge duty: assists the Captain, the ship's visitors, and the guests |
 | **Engineer** | *gendl*, the `sbcl` strain | keeps to Engineering: reckoning, building, and drawing, for ship and passengers alike |
 | **Doctor** | *autoheal* | constantly on "rounds" for the sickly and the wedged, and revives or dispatches them |
-| **Navigator** | *chartroom* | keeps the chartroom and its engine: orbits, transfers, and ephemerides, reckoned for any berth that hails the room |
-| **Museum Curator** | a *Ken Thompson droid* | sole keeper of the filtered museum chamber: boots the antique machine, tends the museum terminal, and makes the docent's rounds |
+| **Museum Curator** | *museum-chamber* (a museum droid) | sole keeper of the filtered museum chamber: boots the exhibits, tends the museum terminal, and makes the docent's rounds |
 
 Two further postings are on the books with **no berth in the
 standard rig** — their qualifications are stated in the articles, and
@@ -158,6 +156,7 @@ a hand to stand them arrives by stack pouch:
 |---|---|
 | **Transporter Chief** | Comes with a fully equipped _transporter room_. From this room, the Chief greets, screens, and directs everything and everyone transporting aboard and abroad; knows who is who and what is what and where they all belong |
 | **Communications Officer** | Demands constant reports from crew members as well as from other ships and galaxies of interest; synthesizes these onto ship's main bridge viewscreen |
+| **Navigator** | Keeps the chartroom and its engine: orbits, transfers, and ephemerides, reckoned for any berth that hails the room. His species runs heavy, so his berth is elective — the chartroom stands grown and waiting on ships that sail without him |
 
 
 ```mermaid
@@ -170,8 +169,8 @@ flowchart TB
         SE["Engineer<br/><i>gendl</i> · sbcl strain"]
         MED["Doctor<br/><i>autoheal</i><br/>(watches all hands)"]
         TC["Transporter Chief<br/><i>(berth by stack pouch)</i>"]
-        NAV["Navigator<br/><i>chartroom</i>"]
-        CUR["Museum Curator<br/><i>Ken Thompson droid</i><br/>(filtered chamber — one line in:<br/>the museum terminal)"]
+        NAV["Navigator<br/><i>(berth by stack pouch)</i>"]
+        CUR["Museum Curator<br/><i>museum droid</i><br/>(filtered chamber — one line in:<br/>the museum terminal)"]
       end
       SHELF[("the dockside shelf<br/><code>/projects</code>")]
     end
@@ -181,7 +180,7 @@ flowchart TB
     TC --> CPT & FO & SE
     FO & SE -.hail the room.-> NAV
     CPT & FO & SE -.the museum terminal.-> CUR
-    SHELF -.stowed aboard every unsealed berth.-> CPT & FO & SE & NAV
+    SHELF -.stowed aboard every unsealed berth.-> CPT & FO & SE
 ```
 
 
@@ -199,16 +198,17 @@ of their own:
 - **Navigation** — deciding where the ship should go, is stood from
   ashore, by you, the proud ship's owner. No seat aboard carries it.
 
-Yet the department is no longer without quarters, nor without a hand.
-Every Basilisk-class hull grows one special compartment — **the
-chartroom** — set aside expressly for a Basilisk-based charting and
-navigation department, in honor of the engine the class is named for,
-and a **Navigator** musters with the base complement to keep it:
-orbits, transfers, and ephemerides, reckoned on the engine itself and
-served to any berth that hails the room. The navigation *seat* stays
-ashore all the same — the chartroom is quarters and instrument, not
-the decision seat — and no proper Basilisk leaves the yard without
-the full apparatus.
+Yet the department is not without quarters. Every Basilisk-class hull
+grows one special compartment — **the chartroom** — set aside
+expressly for a Basilisk-based charting and navigation department, in
+honor of the engine the class is named for. A **Navigator** to keep
+it is on the books but elective — his species runs heavy, and he
+signs on by stack pouch like the Transporter Chief. Where he musters,
+orbits, transfers, and ephemerides are reckoned on the engine itself
+and served to any berth that hails the room; where he doesn't, the
+chartroom stands grown and waiting, as is the custom of the class
+with empty seats. The navigation *seat* stays ashore either way —
+the chartroom is quarters and instrument, not the decision seat.
 
 Although used relatively rarely, Basilisk ships come with several
 propulsion mechanisms, whereby they may move around within their
@@ -219,23 +219,25 @@ galaxy, or even hop between galaxies while still in commission.
 ## The museum chamber
 
 Every Basilisk-class hull also grows an **atmosphere-filtered museum
-chamber**, and no hull qualifies as a proper Basilisk without one. The chamber houses an antique PDP-7
-running a long-lived deployment of Ken Thompson's *Space Travel* —
-the game whose port to that machine begat Unix, and so, in the long
-run, most of what sails today. The chartroom honors the engine the
-class is named for; the museum chamber honors the ancestor.
+chamber**, and no hull qualifies as a proper Basilisk without one.
+Its founding exhibit — the first, and so far the only — is an
+antique PDP-7 running a long-lived deployment of *Space Travel*, Ken
+Thompson's 1969 game whose port to that machine begat Unix, and so,
+in the long run, most of what sails today. The chartroom honors the
+engine the class is named for; the museum chamber honors the
+ancestors, and keeps room for more antiques as they are acquired.
 
-Its sole keeper is the **Museum Curator**, a droid of the Ken
-Thompson line. The Curator boots the antique machine, works its
-console, starts the game himself, and makes the docent's rounds,
-photographing the scope for visitors. The chamber's filters are
-strict — nothing is stowed aboard from dockside, and the hull takes
-no writes — but the chamber is filtered, not sealed: the antique
-machine's own console rides the ship's lines as **the museum
-terminal**, one line, first come first seated, and any hand aboard
-may hail it and sit at the old machine itself. The Doctor's rounds
-include the chamber: should the machine halt, or the exhibit go
-dark, the hull grows the chamber afresh, exhibit and all.
+Its sole keeper is the **Museum Curator** — a museum droid, and a
+professional: he boots the exhibits, works their consoles, starts
+the game himself, and makes the docent's rounds, photographing the
+scope for visitors. The chamber's filters are strict — nothing is
+stowed aboard from dockside, and the hull takes no writes — but the
+chamber is filtered, not sealed: the founding exhibit's own console
+rides the ship's lines as **the museum terminal**. Hail the room and
+the antique machine itself answers — one line, first come first
+seated. The Doctor's rounds include the chamber: should an exhibit
+halt or go dark, the hull grows the chamber afresh, exhibits and
+all.
 
 
 ## The transporter room

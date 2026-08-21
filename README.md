@@ -8,16 +8,17 @@ operating manual: raising the ship, standing him down, securing
 passage for your desired passengers, both biological and cyborg.
 
 A standard rig carries a **Captain** at the ship's console, a **First
-Officer** and an **Engineer**, a **Doctor**, a **Navigator** in the
-chartroom, and a **Museum Curator** — a droid of the Ken Thompson
-line — keeping the filtered museum chamber. Human and cyborg
-visitors may hail any hand aboard by name, and even the chamber's
-antique machine itself: **the museum terminal** (`telnet
-ken-thompson-droid 1052`, from any berth aboard) seats one visitor
-at a time at the old machine's own console, the recent record
-replayed on connect. The whole complement is stated in one scroll,
-`basilisk.sexp`, and every other document the ship needs is drawn
-from this `basilisk.sexp`.
+Officer** and an **Engineer**, a **Doctor**, and a **Museum
+Curator** — a museum droid — keeping the filtered museum chamber.
+Human and cyborg visitors may hail any hand aboard by name, and even
+the chamber's founding exhibit itself: **the museum terminal**
+(`telnet museum-chamber 1052`, from any berth aboard) seats one
+visitor at a time at the antique machine's own console, the recent
+record replayed on connect. A **Navigator** for the chartroom is on
+the books but elective — his species runs heavy, so he signs on by
+stack pouch, like the Transporter Chief. The whole complement is
+stated in one scroll, `basilisk.sexp`, and every other document the
+ship needs is drawn from this `basilisk.sexp`.
 
 
 ## Raising a ship
