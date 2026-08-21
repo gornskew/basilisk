@@ -215,6 +215,17 @@ foreign overlay fails loudly rather than quietly composing.")
                     lines))))
         (when user (push (format "    user: %s" user) lines))
         (push (format "    restart: %s" restart) lines)
+        ;; :init? t berths docker's own tiny init as PID 1.  For a
+        ;; species whose entrypoint is a bare interpreter process (a
+        ;; python or node serving as PID 1 gets no default signal
+        ;; dispositions from the kernel, so SIGTERM is silently
+        ;; ignored), this is what lets the hand answer a stop order
+        ;; instead of eating the whole stop_grace_period and taking
+        ;; the SIGKILL -- whose late endpoint cleanup then races
+        ;; compose's network rm at down (see release_ship in
+        ;; compose-dev).
+        (when (skewed--get-prop svc :init?)
+          (push "    init: true" lines))
         (push "    stdin_open: true" lines)
         (push "    tty: true" lines)
         ;; A sealed hull takes no writes; whatever must stay breathable

@@ -541,9 +541,62 @@ PYEOF
     return 0
 }
 
+# =============================================================================
+# SHIP RELEASE AFTER DOWN
+#
+# compose removes the ship (the network) last, and a hand that had to be
+# SIGKILLed at the stop_grace_period deadline can leave the daemon's
+# endpoint cleanup a beat behind the network rm.  down then prints
+# "Resource is still in use" in yellow and sails on, leaving the ship
+# adrift -- observed on narad 2026-08-21 (tmp/startup-glitch.txt): the
+# navigator ate SIGTERM for the full 10s grace, and by the time a human
+# retyped `docker network rm vyesk` it succeeded, which is the signature
+# of the race rather than of a genuine holder.  So: retry briefly, and
+# if the ship really is held (a container from outside the articles
+# still plugged in), say who has the line instead of a silent yellow.
+# =============================================================================
+_ship_network_name() {
+    # Same precedence generate-env.sh uses when minting: an inherited
+    # BASILISK_SHIP wins, then the per-instance .ship file, then .env's
+    # DOCKER_NETWORK_NAME, then the compose fallback.
+    _snn=""
+    _snn_file="${SCRIPT_DIR}/.ship${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
+    if [ -n "${BASILISK_SHIP:-}" ]; then
+        _snn="$BASILISK_SHIP"
+    elif [ -f "$_snn_file" ]; then
+        _snn="$(head -1 "$_snn_file")"
+    elif [ -f "${SCRIPT_DIR}/.env" ]; then
+        _snn="$(sed -n 's/^DOCKER_NETWORK_NAME=//p' "${SCRIPT_DIR}/.env" | head -1)"
+    fi
+    [ -n "$_snn" ] || _snn="skewed-network"
+    printf '%s' "$_snn" | tr 'A-Z' 'a-z'
+}
+
+release_ship() {
+    _rls_net="$(_ship_network_name)"
+    docker network inspect "$_rls_net" > /dev/null 2>&1 || return 0
+    _rls_tries=0
+    while [ "$_rls_tries" -lt 5 ]; do
+        if docker network rm "$_rls_net" > /dev/null 2>&1; then
+            log_info "Ship's network '${_rls_net}' was left in use by down; released it (try $((_rls_tries + 1)))"
+            return 0
+        fi
+        _rls_tries=$((_rls_tries + 1))
+        sleep 1
+    done
+    _rls_holders="$(docker network inspect \
+        --format '{{range .Containers}}{{.Name}} {{end}}' "$_rls_net" 2>/dev/null)"
+    log_warning "Ship's network '${_rls_net}' is still in use after down${_rls_holders:+ -- held by: ${_rls_holders}}"
+    log_warning "  release it once free: docker network rm ${_rls_net}"
+    return 0
+}
+
 stop_services() {
     log_info "Stopping all services"
     run_compose down
+    _sts_rc=$?
+    release_ship
+    return "$_sts_rc"
 }
 
 restart_services() {
@@ -1394,6 +1447,7 @@ clean_all() {
         [Yy]*)
             log_info "Cleaning up..."
             run_compose down --rmi all --volumes --remove-orphans
+            release_ship
             docker system prune -f
             log_success "Cleanup complete"
             ;;
