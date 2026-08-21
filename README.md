@@ -35,9 +35,10 @@ cd basilisk
 ./basilisk up
 ```
 
-The hull forms, the ship's facilities get installed, the crew musters,
-and finally the ship (a "he") engages its innate anti-gravity
-properties and floats out from the vat. He will have been christened
+The **vatcycle** runs its course: the hull forms, the ship's
+facilities get installed, the crew musters, and finally the ship (a
+"he") engages its innate anti-gravity properties and floats out from
+the vat. He will have been christened
 with a name the yard bestows — minted at fitting-out, kept in a scroll
 named `.ship`.  He and each of his crew will thenceforth be known by
 that name throughout the whole galaxy. 

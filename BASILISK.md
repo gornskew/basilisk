@@ -71,6 +71,43 @@ Standing orders and other fittings that must name crew name
 the way up — so the orders survive renames and reliefs untouched.
 
 
+## The vat hall, and the vatcycle
+
+A Basilisk is grown, not built. Every working yard keeps a **vat
+hall** — an immense growing-house, its vats set out at successive
+stations. A hull is seeded as a slender **embryoid cylinder** and
+swells, station by station, until he fills one of the great
+drum-shaped **maturation vats** at the far end of the line. The
+whole run, from seeding to float-out, is a **vatcycle**.
+
+**Vatwrights** direct the vatcycle from their rune consoles. A
+vatwright knows what a ship needs in order to function: he takes
+his orders from the ship's **commissioner** — the owner — and puts
+in what the commissioner demands, plus whatever that entrains, plus
+the required basics of the class. He works through the articles,
+and does not meddle in the innards of any particular creature:
+species are grown elsewhere, and arrive at the hall as species.
+
+Not every growth takes. An **aborted vatcycle** leaves a malformed
+hull in the vat, and the hall's custom is the same soberness that
+governs the muster: no panic, no grounding, no delay. The wrights
+hail loudly over a hull that comes up crewless or misgrown, note
+the particulars, and the line moves on.
+
+A hull that passes muster and validation **floats out**: he rises
+from his vat horizontally, belly-down, on his innate anti-gravity,
+already wearing the name the yard minted him. Prospective crew are
+recruited and transported to the hall while the hull is still
+growing, so a Basilisk floats out staffed and commissioned, not
+waiting empty at a fitting-out pier.
+
+In the flesh, the class runs long, low, and reptilian — a great
+yellow-eyed dirigible of a creature. The portraits and vat-hall
+studies in [artwork/](artwork/) show the look, in varying degrees
+of faithfulness; the scroll kept there says which are to be
+believed.
+
+
 ## The articles
 
 Every hand aboard is listed in the articles, and only one thing must

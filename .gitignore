@@ -120,3 +120,12 @@ generated/*-services-init.cl
 # nothing, so there is no "keep it THERE" to point at.  It is simply
 # gone.  See the header.)
 tmp/
+
+# ==============================================================================
+# Art-direction working papers
+# ==============================================================================
+# Conversations with the painters.  They mix raw brainstorm with
+# settled canon and are not written for the public books; what they
+# establish is distilled into the canon scrolls (and the owner's own
+# ledgers).  The images they produce graduate into artwork/ proper.
+artwork/direction/
