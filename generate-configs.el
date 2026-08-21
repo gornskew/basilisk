@@ -604,7 +604,7 @@ hosts stay offsettable."
               (push (format "%s=%s" var val) pins))))))
     (nreverse pins)))
 
-(defun skewed--generate-install-script (prefix &optional has-mcp variant port-pins template-files)
+(defun skewed--generate-install-script (prefix &optional has-mcp variant port-pins template-files no-pull)
   "Generate install script for overlay or base repository with PREFIX.
 When PREFIX is empty, generates a base install (copies docker-compose.yml).
 When HAS-MCP is non-nil, include MCP config copy commands.
@@ -613,6 +613,11 @@ written into host.env alongside the image variant.
 TEMPLATE-FILES is a list of (SRC-BASENAME . DEST-BASENAME) copied into
 the basilisk clone's templates/ directory, for compose-dev to rewrite
 from the crew ledger on the way up.
+When NO-PULL is non-nil (the articles' :meta :no-pull?), NO_PULL=1 rides
+host.env: a provisioned ship puts to sea on what is already aboard --
+boot never contacts a registry, even for a missing image, and it also
+outranks a stray PULL_ALWAYS.  Deploys take on stores explicitly with
+`basilisk pull' / `up --pull'.
 Returns the install script content as a string."
   (let ((lines '())
         (is-base (string-empty-p prefix))
@@ -737,12 +742,13 @@ Returns the install script content as a string."
     ;; hand it the dev port (see `skewed--ingress-port-pins').
     (unless is-base
       (progn
-        (when (or variant port-pins)
+        (when (or variant port-pins no-pull)
           (push "# --- systemd host injection ------------------------------------" lines)
           (push (format "echo \"Injecting systemd host.env (%s)...\""
                         (string-join
                          (append (when variant (list (format "image variant: %s" variant)))
-                                 (mapcar (lambda (pin) (format "pin %s" pin)) port-pins))
+                                 (mapcar (lambda (pin) (format "pin %s" pin)) port-pins)
+                                 (when no-pull (list "no boot-time pulls")))
                          ", "))
                 lines)
           (push "mkdir -p \"$TARGET_DIR/systemd\"" lines)
@@ -753,6 +759,9 @@ Returns the install script content as a string."
             (push (format "  echo \"EMACS_IMAGE_VARIANT=%s\"" variant) lines))
           (dolist (pin port-pins)
             (push (format "  echo \"%s\"" pin) lines))
+          (when no-pull
+            (push "  echo \"# Provisioned ship: boot never contacts a registry.\"" lines)
+            (push "  echo \"NO_PULL=1\"" lines))
           (push "} > \"$TARGET_DIR/systemd/host.env\"" lines)
           (push "echo \"  wrote $TARGET_DIR/systemd/host.env\"" lines)
           (push "echo \"  install/refresh the units with: (cd $TARGET_DIR && sh systemd/install)\"" lines)
@@ -1442,7 +1451,8 @@ Examples:
                    (skewed--has-mcp-services-p config)
                    (plist-get (skewed--get-prop config :meta) :strain)
                    (skewed--ingress-port-pins config)
-                   template-files)))
+                   template-files
+                   (plist-get (skewed--get-prop config :meta) :no-pull?))))
         (set-file-modes install-file #o755)
         (message "Generated: %s" install-file)))
 
