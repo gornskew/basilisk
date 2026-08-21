@@ -157,7 +157,7 @@ services:
       - skewed-network
 
   navigator:
-    image: chartroom:trial
+    image: gornskew/chartroom:trial
     container_name: ${BASILISK_PREFIX:-}navigator
     hostname: navigator
     labels:
@@ -182,7 +182,7 @@ services:
           - chartroom
 
   ken-thompson-droid:
-    image: museum-chamber:trial
+    image: gornskew/museum-chamber:trial
     container_name: ${BASILISK_PREFIX:-}ken-thompson-droid
     hostname: ken-thompson-droid
     labels:

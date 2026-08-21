@@ -1228,7 +1228,22 @@ validate_services() {
         esac
         eval "_vs_svc_${_vs_san}=\$_vs_svc"
         eval "_vs_probe_cmd_${_vs_san}=\$_vs_probe_tmp"
-        eval "_vs_budget_${_vs_san}=\${HEALTH_BUDGET_${_vs_san}:-\$_vs_budget_default}"
+        # A hand whose healthcheck declares a start_period has stated
+        # its own warm-up (the museum chamber's antique machine takes a
+        # minute to boot and photograph itself); the budget honors it.
+        # An env override still wins; the default remains the floor.
+        # (StartPeriod renders as a Go duration ("2m0s"); .Seconds gives
+        # a plain number.)
+        _vs_sp_s="$(docker inspect --format \
+            '{{if .Config.Healthcheck}}{{.Config.Healthcheck.StartPeriod.Seconds}}{{end}}' \
+            "$_vs_id" 2>/dev/null)"
+        _vs_sp_s="${_vs_sp_s%.*}"
+        _vs_sp_budget="$_vs_budget_default"
+        case "$_vs_sp_s" in
+            ''|*[!0-9]*) : ;;
+            *) [ "$_vs_sp_s" -gt "$_vs_sp_budget" ] && _vs_sp_budget="$_vs_sp_s" ;;
+        esac
+        eval "_vs_budget_${_vs_san}=\${HEALTH_BUDGET_${_vs_san}:-\$_vs_sp_budget}"
         eval "_vs_state_${_vs_san}=pending"
         eval "_vs_elapsed_${_vs_san}=0"
         eval "_vs_tries_${_vs_san}=0"

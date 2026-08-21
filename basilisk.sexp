@@ -225,6 +225,7 @@
    :post :navigator
    :description "Keeps the chartroom: orbits, transfers, ephemerides."
    :type "utility"
+   :provenance "gornskew"
    :species "chartroom:trial"
    :network-alias "chartroom"
    :hailing-frequencies ((:name "http" :aboard 9110)))
@@ -244,6 +245,7 @@
    :post :museum-curator
    :description "Keeper of the museum chamber and its antique machine."
    :type "utility"
+   :provenance "gornskew"
    :species "museum-chamber:trial"
    :hailing-frequencies ((:name "telnet" :aboard 1052))
    :sealed-hull? t

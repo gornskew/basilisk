@@ -152,6 +152,12 @@ foreign overlay fails loudly rather than quietly composing.")
         (push (format "  %s:" name) lines)
         (when image
           (push (format "    image: %s" image) lines))
+        ;; :pull-policy "never" marks a species grown in the local vat
+        ;; only (a trial tag not yet published to any home planet), so
+        ;; a --pull raising does not go begging the registries for it.
+        (let ((pull-policy (skewed--get-prop svc :pull-policy)))
+          (when pull-policy
+            (push (format "    pull_policy: %s" pull-policy) lines)))
         ;; N INSTANCES ON ONE HOST.  These two look redundant and are not.
         ;;
         ;; container_name is GLOBAL to the docker daemon, so it is the one
