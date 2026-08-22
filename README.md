@@ -14,7 +14,10 @@ Human and cyborg visitors may hail any hand aboard by name, and even
 the chamber's founding exhibit itself: **the museum terminal**
 (`telnet museum-chamber 1052`, from any berth aboard) seats one
 visitor at a time at the antique machine's own console, the recent
-record replayed on connect. A **Navigator** for the chartroom is on
+record replayed on connect. The exhibit keeps its own **placard** —
+what it is, how it is worked, and how the game is flown (`docker exec
+museum-curator cat /museum/PLACARD.md`); the machine-room record
+announces it at every power-up. A **Navigator** for the chartroom is on
 the books but elective — his species runs heavy, so he signs on by
 stack pouch, like the Transporter Chief. The whole complement is
 stated in one scroll, `basilisk.sexp`, and every other document the
