@@ -158,19 +158,27 @@ foreign overlay fails loudly rather than quietly composing.")
         (let ((pull-policy (skewed--get-prop svc :pull-policy)))
           (when pull-policy
             (push (format "    pull_policy: %s" pull-policy) lines)))
-        ;; N INSTANCES ON ONE HOST.  These two look redundant and are not.
+        ;; ROOMS ARE KNOWN BY THEIR KEEPERS (ruling 2026-08-23).
         ;;
-        ;; container_name is GLOBAL to the docker daemon, so it is the one
-        ;; thing that genuinely collides between instances; it carries
-        ;; ${BASILISK_PREFIX}, empty by default so a lone stack is named
-        ;; exactly as before.
+        ;; container_name carries the PRIMARY RESIDENT'S MINTED NAME --
+        ;; docker's native name field is the crew name, nothing invented.
+        ;; The muster (compose-dev's muster_crew) mints it at up-time,
+        ;; persists it in .muster, and exports BASILISK_CREW_<MODULE>;
+        ;; the fallback is the module slug, so a bare compose invocation
+        ;; still raises an unmustered but working ship.  A recreate under
+        ;; a fresh name IS a relief: new face, new name, same room.
+        ;; ${BASILISK_PREFIX} still guards the one genuinely daemon-global
+        ;; collision between instances.
         ;;
-        ;; hostname is per-NETWORK, and each instance gets its own network,
-        ;; so it stays canonical -- every instance's Captain answers to
-        ;; "skewed-emacs" inside its own fleet.  That is what lets
-        ;; `run_compose exec skewed-emacs`, in-network DNS, and mcp-exec's
-        ;; --backend-host keep working unchanged in every instance.
-        (push (format "    container_name: ${BASILISK_PREFIX:-}%s" name) lines)
+        ;; hostname stays the MODULE SLUG -- the room's own address.
+        ;; Service key, hostname and in-network DNS all answer to the
+        ;; plain room type (the type-hail: ready-room, bridge,
+        ;; museum-chamber), so mcp-exec's --backend-host, probes and the
+        ;; chief's standing orders reference rooms, never residents, and
+        ;; survive every relief untouched.
+        (push (format "    container_name: ${BASILISK_PREFIX:-}${%s:-%s}"
+                      (skewed--crew-env-name name) name)
+              lines)
         (push (format "    hostname: %s" name) lines)
         ;; DECLARED TAXONOMY, as a label (Dave, 2026-08-16).  A service
         ;; must say which :post it stands.  Emitting it as a label is
@@ -204,11 +212,18 @@ foreign overlay fails loudly rather than quietly composing.")
                ;; can do (Dave, 2026-08-17).  Already unioned with the
                ;; requirements of every stood posting by
                ;; `skewed--resolve-post-requires'.
-               (requires (skewed--get-prop svc :requires)))
-          (when (or post requires)
+               (requires (skewed--get-prop svc :requires))
+               ;; The MODULE TYPE rides as a label so the muster can
+               ;; render "Thweed's ready room" from the container alone,
+               ;; and tooling can find a room by type regardless of who
+               ;; keeps it this tour (docker ps -f label=basilisk.module=...).
+               (module (skewed--get-prop svc :module)))
+          (when (or post requires module)
             (push "    labels:" lines)
             (when post
               (push (format "      basilisk.post: \"%s\"" post) lines))
+            (when module
+              (push (format "      basilisk.module: \"%s\"" module) lines))
             (when requires
               (push (format "      basilisk.requires: \"%s\""
                             (mapconcat #'identity requires ","))
@@ -862,38 +877,55 @@ rode along in the string is dropped."
   "Fill in each crew entry's :name where the articles left it out.
 Only :species is required of a service.  An explicit :name wins -- it
 is the author's slug, and the license to abbreviate lives there.
-Absent one: a posted crew member takes the slug of every post it
-stands (full post names, hyphen-joined; no post is primary); a
-species aboard with NO assigned posting takes a designator prefix on
-the repo half of its species, so one is obvious from its slug alone.
-The designator is \"stowaway\" -- the yard's native word -- unless a
-fork's glossary :vocabulary overrides it (:stowaway-designator), which
-changes it without touching shipped code.  Collisions get -2, -3 ...
-suffixes, which the role machinery already tolerates (engineer-2
-is still an engineer)."
+Absent one, ROOMS TAKE TYPE SLUGS (ruling 2026-08-23): an entry
+declaring its :module takes the slug of its module type -- the
+service key, hostname and in-network hail are all the room's plain
+type (ready-room, bridge, guild-workshop), while the CONTAINER name
+carries the resident's minted personal name via the muster (see the
+container_name emission).  An entry with no :module falls back to the
+slug of every post it stands (full post names, hyphen-joined; no post
+is primary); a species aboard with NO assigned posting takes a
+designator prefix on the repo half of its species, so one is obvious
+from its slug alone.  The designator is \"stowaway\" -- the yard's
+native word -- unless a fork's glossary :vocabulary overrides it
+(:stowaway-designator), which changes it without touching shipped
+code.  Collisions get -2, -3 ... suffixes: a hull with two guild
+workshops carries guild-workshop and guild-workshop-2, in declaration
+order."
   (let ((taken (delq nil (mapcar (lambda (s) (plist-get s :name))
                                  (skewed--get-prop config :crew))))
         (designator (or (skewed--glossary-vocab glossary :stowaway-designator)
                         "stowaway")))
     (dolist (svc (skewed--get-prop config :crew))
       (unless (plist-get svc :name)
-        (let* ((posts (skewed--ensure-list (plist-get svc :post)))
-               (stem (if posts
-                         (mapconcat (lambda (p) (substring (symbol-name p) 1))
-                                    posts "-")
-                       (let ((repo (skewed--species-repo
-                                    (plist-get svc :species))))
-                         (if (string-empty-p repo) ""
-                           (concat designator "-" repo)))))
+        (let* ((module (plist-get svc :module))
+               (posts (skewed--ensure-list (plist-get svc :post)))
+               (stem (cond (module module)
+                           (posts
+                            (mapconcat (lambda (p) (substring (symbol-name p) 1))
+                                       posts "-"))
+                           (t
+                            (let ((repo (skewed--species-repo
+                                         (plist-get svc :species))))
+                              (if (string-empty-p repo) ""
+                                (concat designator "-" repo))))))
                (name stem)
                (n 1))
           (when (string-empty-p stem)
-            (error "Crew entry with no :name, no :post and no :species -- nothing to derive a name from"))
+            (error "Crew entry with no :name, no :module, no :post and no :species -- nothing to derive a name from"))
           (while (member name taken)
             (setq n (1+ n) name (format "%s-%d" stem n)))
           (push name taken)
           (plist-put svc :name name)))))
   config)
+
+(defun skewed--crew-env-name (name)
+  "The muster variable for service NAME: BASILISK_CREW_<NAME sanitized>.
+Its value is the resident's minted personal name; compose interpolates
+it into container_name.  Minting and persistence live in compose-dev's
+muster_crew, keyed by these same names."
+  (concat "BASILISK_CREW_"
+          (upcase (replace-regexp-in-string "[^A-Za-z0-9]" "_" name))))
 
 (defun skewed--read-articles (services-file)
   "Read SERVICES-FILE translated through its own glossary, species
@@ -927,7 +959,14 @@ joined, missing names derived.  Every consumer sees the same names."
 
 (defun skewed--generate-crew-env (crew)
   "KEY=VALUE lines resolving each posting to its first-declared hand.
-CREW is the ship's full merged complement."
+CREW is the ship's full merged complement.
+
+Besides the posting rows, the ledger carries a MODULE stanza: one
+_NAME/_SPECIES pair per room aboard, which is what compose-dev's
+muster_crew iterates to mint each room's resident a personal name
+(species-flavored pools) before the vat runs.  The species is emitted
+with compose defaults resolved -- close enough for name flavor, which
+keys on the repo half and broad tag features."
   (let ((seen '()) (lines '()))
     (dolist (svc crew)
       (dolist (p (skewed--ensure-list (plist-get svc :post)))
@@ -944,6 +983,15 @@ CREW is the ship's full merged complement."
                                          "-" "_" fname))
                                 port)
                         lines))))))))
+    ;; The module stanza: every room aboard, for the muster's minting.
+    (dolist (svc crew)
+      (let* ((name (plist-get svc :name))
+             (san (upcase (replace-regexp-in-string "[^A-Za-z0-9]" "_" name)))
+             (image (skewed--resolve-compose-defaults
+                     (or (plist-get svc :image) ""))))
+        (when name
+          (push (format "BASILISK_MOD_%s_NAME=%s" san name) lines)
+          (push (format "BASILISK_MOD_%s_SPECIES=%s" san image) lines))))
     (mapconcat #'identity (nreverse lines) "\n")))
 
 (defun skewed--generate-vocabulary-env (glossary)

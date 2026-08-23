@@ -129,3 +129,8 @@ tmp/
 # establish is distilled into the canon scrolls (and the owner's own
 # ledgers).  The images they produce graduate into artwork/ proper.
 artwork/direction/
+
+# The standing muster roll (muster_crew): the minted name of each
+# room's keeper, per instance -- per-clone identity like .ship above.
+.muster
+.muster-*

@@ -98,24 +98,30 @@
 
  :crew
  (
-  ;; NAMES ARE POSTINGS, not species (Dave, 2026-08-16).  :name becomes
-  ;; the compose service name, the container_name and the hostname; the
-  ;; SPECIES is the image type, repo:tag, with the provenance (registry
-  ;; and namespace -- the home planet) split off beside it; and the
-  ;; officer's PERSONAL name is minted into the container at up-time.
-  ;; Three namespaces, three different sources -- see BASILISK.md,
-  ;; "Postings and species".
+  ;; ROOMS TAKE TYPE SLUGS, CREW TAKE MINTED NAMES (Dave, 2026-08-23;
+  ;; supersedes the 2026-08-16 names-are-postings law).  Each entry is
+  ;; an INTERIOR-MODULE -- a residential module the vatwright plugs
+  ;; into the hull, arriving PRE-STAFFED from its catalog.  :module is
+  ;; the module type; its slug becomes the compose service key, the
+  ;; hostname and the in-network hail (the type-hail: ready-room,
+  ;; bridge...).  The CONTAINER NAME carries the primary resident's
+  ;; personal name, minted at muster by compose-dev's muster_crew and
+  ;; persisted in .muster -- so a recreate under a fresh name IS a
+  ;; relief: new face, new name, same room.  The module-sku is the
+  ;; image type, repo:tag (the register key remains :species for now),
+  ;; with the provenance -- the home planet -- split off beside it.
+  ;; See BASILISK.md, "The articles" and "Postings, skus, and crew".
   ;;
   ;; ONLY :species IS REQUIRED of a crew entry (Dave, 2026-08-17).
   ;; :name is the author's slug and optional: absent, the yard derives
-  ;; it from the posts stood (hyphen-joined), or, for a species aboard
-  ;; with NO assigned posting -- a STOWAWAY, comprehended like anyone
-  ;; else -- as stowaway-<repo>, the designator making one obvious
-  ;; from its slug alone.  :provenance is only needed off Docker Hub's
-  ;; library; :post only when capabilities are expected of the berth.
-  ;; No entry below states a :name: every hand answers to the slug
-  ;; derived from the posting he stands.
+  ;; it from :module, else from the posts stood (hyphen-joined), or,
+  ;; for a module aboard with NO assigned posting -- a STOWAWAY
+  ;; residence, comprehended like anyone else -- as stowaway-<repo>,
+  ;; the designator making one obvious from its slug alone.
+  ;; :provenance is only needed off Docker Hub's library; :post only
+  ;; when capabilities are expected of the berth.
   (:post :captain
+   :module "ready-room"
    :description "The ship's console, and the longest-lived process aboard."
    :type "emacs-lisp"
    :cyborg-passengers-allowed? t
@@ -153,7 +159,7 @@
    ;; (publish-emacs-metrics!), which is gated.
    :probe (:tile "heap skewed-emacs"
            :in-stack (:kind :emacs
-                      :url "http://captain:7080/lisply/lisp-eval"
+                      :url "http://ready-room:7080/lisply/lisp-eval"
                       :alert-mb 2000)
            :remote (:kind :metrics
                     :path "/eyes-only-metrics/skewed-emacs"
@@ -166,6 +172,7 @@
   ;; below being gendl-sbcl); the :species pin is what GUARANTEES it
   ;; -- the post states the duty, the species states the creature.
   (:post :first-officer
+   :module "bridge"
    :description "The First Officer: bridge duty, visitors, and guests."
    :type "common-lisp"
    :provenance "gornskew"
@@ -186,6 +193,7 @@
 
   ;; The Engineer keeps to Engineering: the gendl-sbcl strain.
   (:post :engineer
+   :module "engineering-nexus"
    :description "The Engineer: engineering for ship and passengers."
    :type "common-lisp"
    :provenance "gornskew"
@@ -202,6 +210,7 @@
   ;; the afflicted.  The Doctor revives ANY crew member who fails their
   ;; fitness check.
   (:post :doctor
+   :module "sick-bay"
    :description "Watches for the wedged and revives them."
    :type "utility"
    :provenance "willfarrell"
@@ -236,13 +245,14 @@
   ;; proven: the chamber idles near-silent now, and the species on
   ;; the register is verified before it ever ships.  The museum flies
   ;; with every hull of the class -- preservation by replication.
-  (;; :name derives from the post -- "museum-curator".
+  (;; :name derives from the module -- "museum-chamber"; the room IS
+   ;; the hail, so the old :network-alias is simply the name now.
    :post :museum-curator
+   :module "museum-chamber"
    :description "Keeper of the museum chamber and its antique machine."
    :type "utility"
    :provenance "gornskew"
    :species "museum-chamber:trial"
-   :network-alias "museum-chamber"
    :hailing-frequencies ((:name "telnet" :aboard 1052))
    :sealed-hull? t
    :breathable-volumes ("/tmp")

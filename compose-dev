@@ -407,6 +407,10 @@ start_services() {
 
     pull_images
 
+    # The muster: mint/refresh each room's resident name BEFORE the vat
+    # runs -- compose interpolates the names into container_name.
+    muster_crew
+
     log_info "Starting services: ${_ss_services:-all}"
     # shellcheck disable=SC2086  (word-split intentional: service names)
     run_compose up -d $_ss_services
@@ -798,6 +802,12 @@ _crew_onsets_for() {
         gdl:*)          echo 'Ost Ven Kal Rhe Sig Tor Wex Yar' ;;
         autoheal:*)     echo 'Om Sal Vel Lum Mir Ana Eir Thea' ;;
         eyes-only:*)    echo 'Nil Myr Len Vael Sion Nyel Lir Nao' ;;
+        # The Curator riffs on the greybeards (Dave's ruling,
+        # 2026-08-23: the persona inside the chamber may cycle
+        # through riffs on famous unix & lisp names).
+        museum-chamber:*) echo 'Ken Rit Kern Thom Mc Den Bri Stal' ;;
+        # The Navigator sounds like the astronomers he steers by.
+        chartroom:*)    echo 'Kep Tych Gal Hip Cass Ori Hal Alt' ;;
         *)              echo 'X Yz Qm' ;;
     esac
 }
@@ -811,6 +821,8 @@ _crew_finals_for() {
         gdl:*)          echo 'holm gate forge crest march stead vale bury' ;;
         autoheal:*)     echo 'a une is oon ara elle ios em' ;;
         eyes-only:*)    echo 'am een ion um ain oem un yn' ;;
+        museum-chamber:*) echo 'ompson itchie ighan psen arthy istow ansen lman' ;;
+        chartroom:*)    echo 'ler o ileo parchus iopeia on ley air' ;;
         *)              echo 'ar il ot' ;;
     esac
 }
@@ -855,11 +867,119 @@ _crew_unique_name() {
     _crew_unique_name_result="$_cun_name"
 }
 
+# =============================================================================
+# THE MUSTER (ruling 2026-08-23): ROOMS ARE KNOWN BY THEIR KEEPERS.
+#
+# container_name is the PRIMARY RESIDENT'S minted personal name --
+# docker's native name field carries the crew name, nothing invented --
+# while the service key / hostname / in-network DNS stay the room's
+# module slug (the type-hail).  The generated compose interpolates
+#     container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_<MODULE>:-<module>}
+# so these vars must be exported before ANY invocation that could
+# create a container.  muster_crew mints them (species-flavored pools
+# above) and persists the roll in .muster (per instance, uncommitted,
+# beside .ship); muster_load re-exports a standing roll for every other
+# command, so a recreate during e.g. `restart' validation does not
+# quietly rename anyone.
+#
+# RELIEF SEMANTICS: a name is kept while a container bearing it exists.
+# No container (first raise, after a down, after a docker rm) -> a
+# fresh name is minted: the relief in place, fresh face, fresh name,
+# same room.  A kill+recreate during validation keeps the name (the
+# wedged hand is revived, not relieved); whether an image change should
+# force a relief is deliberately left simple for now -- the name
+# follows the container's existence, nothing subtler.
+# =============================================================================
+_muster_file() {
+    printf '%s/.muster%s' "$SCRIPT_DIR" "${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
+}
+
+muster_load() {
+    _ml_f="$(_muster_file)"
+    [ -f "$_ml_f" ] || return 0
+    while IFS='=' read -r _ml_k _ml_v; do
+        case "$_ml_k" in
+            BASILISK_CREW_*) export "$_ml_k=$_ml_v" ;;
+        esac
+    done < "$_ml_f"
+}
+
+muster_crew() {
+    _mc_ledger=$(mktemp) || return 0
+    _mc_found=0
+    for _mc_e in "${SCRIPT_DIR}/generated/crew.env" "${SCRIPT_DIR}/generated/"*-crew.env; do
+        [ -f "$_mc_e" ] || continue
+        cat "$_mc_e" >> "$_mc_ledger"
+        _mc_found=1
+    done
+    if [ "$_mc_found" = 0 ]; then
+        log_warning "no crew ledger in generated/; the vat raises unmustered rooms (module-slug container names)"
+        rm -f "$_mc_ledger"
+        return 0
+    fi
+
+    _mc_muster="$(_muster_file)"
+    _mc_out=$(mktemp) || { rm -f "$_mc_ledger"; return 0; }
+    _mc_existing="$(docker ps -a --format '{{.Names}}' 2>/dev/null)"
+    _crew_minted_names=""
+
+    # Module rows out of the layered ledgers, last file winning key-wise
+    # (same layering substitute_templates uses).  Each row: NAME<TAB>SPECIES.
+    _mc_rows=$(awk -F= '
+        /^BASILISK_MOD_[A-Z0-9_]*_NAME=/    { k=$1; sub(/_NAME$/,"",k);    name[k]=$2 }
+        /^BASILISK_MOD_[A-Z0-9_]*_SPECIES=/ { k=$1; sub(/_SPECIES$/,"",k); spec[k]=$2 }
+        END { for (k in name) print name[k] "\t" spec[k] }' "$_mc_ledger" | sort)
+    rm -f "$_mc_ledger"
+
+    log_info "Mustering the crew (rooms are known by their keepers):"
+    while IFS='	' read -r _mc_room _mc_species; do
+        [ -n "$_mc_room" ] || continue
+        # The ledger species carries provenance (gornskew/gendl:devo-ccl);
+        # the name pools key on bare repo:tag, so strip the home planet
+        # the same way identity minting does.
+        _mc_species="$(_crew_species_from_image "$_mc_species")"
+        _mc_var="BASILISK_CREW_$(printf '%s' "$_mc_room" | tr 'a-z' 'A-Z' | tr -c 'A-Z0-9\n' '_')"
+        _mc_cur=""
+        [ -f "$_mc_muster" ] && \
+            _mc_cur="$(sed -n "s/^${_mc_var}=//p" "$_mc_muster" | head -1)"
+        if [ -n "$_mc_cur" ] && printf '%s\n' "$_mc_existing" | \
+            grep -qxF "${BASILISK_PREFIX:-}${_mc_cur}"; then
+            # The hand is aboard: same name, same room, watch continues.
+            _crew_minted_names="${_crew_minted_names:+$_crew_minted_names }${_mc_cur}"
+            _mc_name="$_mc_cur"
+            log_info "  ${_mc_name}'s $(printf '%s' "$_mc_room" | tr '-' ' ') stands its watch"
+        else
+            # No container bearing the name: mint a relief.  Unique per
+            # run via _crew_minted_names, and against every name the
+            # docker daemon already knows.
+            _mc_tries=0
+            while :; do
+                _crew_unique_name "$_mc_species"
+                _mc_name="$_crew_unique_name_result"
+                printf '%s\n' "$_mc_existing" | \
+                    grep -qxF "${BASILISK_PREFIX:-}${_mc_name}" || break
+                _mc_tries=$((_mc_tries + 1))
+                [ "$_mc_tries" -ge 20 ] && break
+            done
+            if [ -n "$_mc_cur" ]; then
+                log_info "  ${_mc_name} relieves ${_mc_cur} in the $(printf '%s' "$_mc_room" | tr '-' ' ')"
+            else
+                log_info "  ${_mc_name} musters into the $(printf '%s' "$_mc_room" | tr '-' ' ')"
+            fi
+        fi
+        printf '%s=%s\n' "$_mc_var" "$_mc_name" >> "$_mc_out"
+        export "$_mc_var=$_mc_name"
+    done << _MC_ROWS
+$_mc_rows
+_MC_ROWS
+
+    mv "$_mc_out" "$_mc_muster"
+}
+
 mint_crew_identities() {
     _ci_ids="$(run_compose ps -q 2>/dev/null)"
     [ -n "$_ci_ids" ] || return 0
 
-    _crew_minted_names=""
     for _ci_id in $_ci_ids; do
         _ci_name="$(docker inspect --format "{{.Name}}" "$_ci_id" 2>/dev/null)" || continue
         _ci_name="${_ci_name#/}"
@@ -895,8 +1015,11 @@ _ci_image="$(docker inspect --format \
         [ -n "$_ci_post" ] && _ci_posting="$_ci_post"
 
         _ci_role="$(_crew_role_for_postings "$_ci_posting")"
-        _crew_unique_name "$_ci_species"
-        _ci_mint_name="$_crew_unique_name_result"
+        # The container name IS the minted name now (ruling 2026-08-23:
+        # rooms are known by their keepers) -- the muster minted it
+        # before the vat ran, so the identity file simply records it.
+        # No second minting here: one hand, one name.
+        _ci_mint_name="${_ci_name#${BASILISK_PREFIX:-}}"
 
         # NAME= stays FIRST: every reader is key-based except
         # skewed-emacs's dashboard, which reads line 1 and requires the
@@ -931,12 +1054,13 @@ merge_mcp_configs() {
     log_info "Preparing MCP configurations (JSON + TOML)..."
 
     case " ${VALIDATED_OK:-} " in
-        *" captain "*) ;;
+        *" ready-room "*) ;;
         *)
-            # The Captain was not validated this run (single-service up,
-            # failed validation, or already running from before): probe the
-            # daemon once directly instead of looping blind.
-            if ! run_compose exec -T captain emacsclient --eval t \
+            # The ready room was not validated this run (single-service
+            # up, failed validation, or already running from before):
+            # probe the Captain's daemon once directly instead of
+            # looping blind.
+            if ! run_compose exec -T ready-room emacsclient --eval t \
                 > /dev/null 2>&1
             then
                 log_warning "Captain daemon not available; skipping MCP config merge"
@@ -950,7 +1074,7 @@ merge_mcp_configs() {
     # create time (a recreate reintroduces them; host-side chown cannot
     # reach container-fs dirs).  The merge writes config.toml into both,
     # so repair ownership first; harmless no-op on full images.
-    run_compose exec -T -u root captain sh -c \
+    run_compose exec -T -u root ready-room sh -c \
         "chown -R emacs-user /home/emacs-user/.codex /home/emacs-user/.grok" \
         > /dev/null 2>&1 || true
 
@@ -968,7 +1092,7 @@ merge_mcp_configs() {
     # Same failure shape as the mcp/entrypoint.sh incident: a split moved
     # files by concept without checking every consumer.
     _mcp_stage="/tmp/basilisk-mcp"
-    run_compose exec -T captain mkdir -p "$_mcp_stage" > /dev/null 2>&1 || {
+    run_compose exec -T ready-room mkdir -p "$_mcp_stage" > /dev/null 2>&1 || {
         log_warning "could not create $_mcp_stage in the Captain; skipping MCP merge"
         return 1
     }
@@ -984,7 +1108,7 @@ merge_mcp_configs() {
     do
         [ -f "$_mcpfile" ] || continue
         log_info "Staging: $(basename "$_mcpfile")"
-        run_compose cp "$_mcpfile" "captain:${_mcp_stage}/" 2>/dev/null \
+        run_compose cp "$_mcpfile" "ready-room:${_mcp_stage}/" 2>/dev/null \
             || log_warning "  could not stage $(basename "$_mcpfile")"
     done
 
@@ -1013,11 +1137,11 @@ merge_mcp_configs() {
         [ -f "$_overlay" ] || continue
         log_info "Copying overlay: $(basename "$_overlay")"
         run_compose cp "$_overlay" \
-            captain:/home/emacs-user/skewed-emacs/dot-files/emacs.d/etc/ 2>/dev/null || true
+            ready-room:/home/emacs-user/skewed-emacs/dot-files/emacs.d/etc/ 2>/dev/null || true
     done
 
     # Step 2: Merge inside container -- one shot; the daemon is ready.
-    if run_compose exec -T captain emacsclient --eval \
+    if run_compose exec -T ready-room emacsclient --eval \
         "(progn (setenv \"SKEWED_CLONE_PATH\" \"${SCRIPT_DIR}\")
                 (load-file \"${_mcp_stage}/merge-mcp-configs.el\")
                 (skewed-merge-all-mcp-configs \"${_mcp_stage}\"))" \
@@ -1041,11 +1165,11 @@ merge_mcp_configs() {
         # its mcpServers key into ~/.claude.json.  Always the host form,
         # never the windows one -- Claude Code runs inside WSL, where
         # the wsl.exe wrapper the Desktop config needs would be wrong.
-        run_compose cp "captain:/tmp/merged-mcp-host.json" \
+        run_compose cp "ready-room:/tmp/merged-mcp-host.json" \
             "${SCRIPT_DIR}/mcp/claude-code-mcp.json" 2>/dev/null \
             || log_warning "could not stage mcp/claude-code-mcp.json"
 
-        if run_compose cp "captain:${_cdc_src}" \
+        if run_compose cp "ready-room:${_cdc_src}" \
             "${SCRIPT_DIR}/mcp/claude_desktop_config.json" 2>/dev/null; then
             log_success "Claude Desktop config ready: mcp/claude_desktop_config.json (see docs/CLAUDE_DESKTOP.md)"
         else
@@ -1155,7 +1279,17 @@ crew_muster() {
     log_info "Crew muster:"
     _cm_have_pilot=0
     for _cm_svc in $_cm_services; do
-        _cm_cname="${BASILISK_PREFIX:-}${_cm_svc}"
+        # The container name is the keeper's minted name now, so resolve
+        # it through compose (service -> container id -> name) rather
+        # than assuming prefix+service.  A room with nobody aboard shows
+        # under its bare type.
+        _cm_cid="$(run_compose ps -q "$_cm_svc" 2>/dev/null | head -1)"
+        if [ -n "$_cm_cid" ]; then
+            _cm_cname="$(docker inspect --format '{{.Name}}' "$_cm_cid" 2>/dev/null)"
+            _cm_cname="${_cm_cname#/}"
+        else
+            _cm_cname="${BASILISK_PREFIX:-}${_cm_svc}"
+        fi
         # Roles come from the DECLARED posting label when there is one
         # (a comma list -- no posting primary), from the service name
         # for containers created before labels, via the SAME
@@ -1184,11 +1318,19 @@ crew_muster() {
             stowaway) _cm_post="${BASILISK_VOCAB_TITLE_STOWAWAY:-Stowaway}" ;;
             *)        _cm_post="${BASILISK_VOCAB_TITLE_CREW:-Crew}" ;;
         esac
-        _cm_ports=$(docker ps --filter "name=^${BASILISK_PREFIX:-}${_cm_svc}\$" \
+        _cm_ports=$(docker ps --filter "name=^${_cm_cname}\$" \
                               --format '{{.Ports}}' 2>/dev/null \
                         | tr ',' '\n' | sed -n 's/.*0\.0\.0\.0:\([0-9]*\)->\([0-9]*\).*/\1->\2/p' \
                         | sort -u | tr '\n' ' ')
-        printf '  %-8s %-24s %s\n' "$_cm_post" "$_cm_svc" "${_cm_ports:-(no published ports)}"
+        # Rooms are known by their keepers: "Thweed's ready room".
+        _cm_keeper="${_cm_cname#${BASILISK_PREFIX:-}}"
+        _cm_room="$(printf '%s' "$_cm_svc" | tr '-' ' ')"
+        if [ "$_cm_keeper" = "$_cm_svc" ]; then
+            _cm_shown="$_cm_room (unkept)"
+        else
+            _cm_shown="${_cm_keeper}'s ${_cm_room}"
+        fi
+        printf '  %-8s %-30s %s\n' "$_cm_post" "$_cm_shown" "${_cm_ports:-(no published ports)}"
 
         # REQUIREMENTS vs CAPABILITIES (Dave, 2026-08-17).  A posting
         # states its requirements (basilisk.requires, emitted by the
@@ -1341,7 +1483,12 @@ validate_services() {
                     log_success "  ${_vs_name}: validated at ${_vs_total}s"
                 fi
                 eval "_vs_state_${_vs_san}=ok"
-                VALIDATED_OK="${VALIDATED_OK:+$VALIDATED_OK }$_vs_name"
+                # VALIDATED_OK carries SERVICE names (the room slugs):
+                # container names are minted per-muster now, so a later
+                # phase checking for the ready-room must not have to
+                # know who keeps it this tour.
+                eval "_vs_okname=\$_vs_svc_${_vs_san}"
+                VALIDATED_OK="${VALIDATED_OK:+$VALIDATED_OK }${_vs_okname:-$_vs_name}"
                 continue
             fi
 
@@ -1403,8 +1550,8 @@ show_status() {
 }
 
 connect_emacs() {
-    log_info "Connecting to Emacs via emacsclient"
-    run_compose exec captain emacsclient -t
+    log_info "Connecting to Emacs via emacsclient (the ready room)"
+    run_compose exec ready-room emacsclient -t
 }
 
 pull_images() {
@@ -1499,13 +1646,19 @@ install_shell_functions() {
 # Both helpers are `docker exec` into the Captain's container.  A box may
 # legitimately be running a hull with no Captain aboard -- a minimal
 # roster, or a standalone Cyclops or KBE-server deployment -- and in that
-# case docker's own "No such container: skewed-emacs" says nothing about
-# what is actually going on.  Answer in the ship's own terms.
-# Which Captain?  With more than one Basilisk on a box, container names
-# carry the instance prefix, so reach another instance's Emacs with:
-#     BASILISK_PREFIX=alpha- eskew
-# Unset, this is exactly the historical "skewed-emacs".
-_skew_captain() { printf '%s%s' "${BASILISK_PREFIX:-}" "${BASILISK_CAPTAIN:-captain}"; }
+# case docker's own "No such container" says nothing about what is
+# actually going on.  Answer in the ship's own terms.
+# The container name is the ready room keeper's MINTED name (it changes
+# at each relief), so it is read off the standing muster roll in the
+# basilisk clone this helper was generated from.  BASILISK_CAPTAIN
+# overrides for an exotic rig; with more than one Basilisk on a box,
+# container names carry the instance prefix:
+#     BASILISK_PREFIX=alpha- BASILISK_INSTANCE=alpha eskew
+_skew_captain() {
+    _sc_roll="@BASILISK_DIR@/.muster${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
+    _sc_name="${BASILISK_CAPTAIN:-$(sed -n 's/^BASILISK_CREW_READY_ROOM=//p' "$_sc_roll" 2>/dev/null | head -1)}"
+    printf '%s%s' "${BASILISK_PREFIX:-}" "${_sc_name:-ready-room}"
+}
 
 _skew_captain_aboard() {
     command -v docker >/dev/null 2>&1 || return 1
@@ -1542,6 +1695,12 @@ egskew() {
     fi
 }
 SNIPPET
+
+    # The snippet heredoc is quoted (no interpolation at write time), so
+    # the clone's own path rides in via a placeholder: the helpers must
+    # find THIS clone's muster roll from any shell, anywhere.
+    sed "s|@BASILISK_DIR@|${SCRIPT_DIR}|g" "${_isf_tmp}" > "${_isf_tmp}.sub" \
+        && mv "${_isf_tmp}.sub" "${_isf_tmp}"
 
     if [ -f "${_isf_file}" ] && cmp -s "${_isf_tmp}" "${_isf_file}"; then
         rm -f "${_isf_tmp}"
@@ -1593,7 +1752,7 @@ SNIPPET
 }
 
 refresh_emacs_runtime_config() {
-    _refresh_result="$(run_compose exec -T captain emacsclient --eval \
+    _refresh_result="$(run_compose exec -T ready-room emacsclient --eval \
         "(progn
             (defvar skewed-runtime-services-refresh-armed nil)
             (defvar skewed-runtime-services-refresh-done nil)
@@ -1707,6 +1866,14 @@ main() {
     esac
 
     check_docker_compose
+
+    # Re-export the standing muster roll for EVERY command: compose
+    # interpolates container_name from BASILISK_CREW_* on any invocation
+    # that might create a container (a kill+recreate during `restart'
+    # validation, say), and an unset var would quietly rename the hand
+    # to the bare module slug.  `up' refreshes the roll itself via
+    # muster_crew; everything else sails on the roll as it stands.
+    muster_load
 
     case "${1:-help}" in
         up)

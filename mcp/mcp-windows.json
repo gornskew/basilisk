@@ -2,42 +2,42 @@
 // For Windows: merge with base config or copy to %APPDATA%\Claude\
 {
   "mcpServers": {
-    "captain": {
+    "ready-room": {
       "command": "wsl",
       "args": [
         "${SKEWED_CLONE_PATH}/mcp/mcp-exec",
         "--server-name",
-        "captain",
+        "ready-room",
         "--backend-host",
-        "captain",
+        "ready-room",
         "--http-port",
         "7080",
         "--request-timeout-ms",
         "30000"
       ]
     },
-    "first-officer": {
+    "bridge": {
       "command": "wsl",
       "args": [
         "${SKEWED_CLONE_PATH}/mcp/mcp-exec",
         "--server-name",
-        "first-officer",
+        "bridge",
         "--backend-host",
-        "first-officer",
+        "bridge",
         "--http-port",
         "9080",
         "--request-timeout-ms",
         "30000"
       ]
     },
-    "engineer": {
+    "engineering-nexus": {
       "command": "wsl",
       "args": [
         "${SKEWED_CLONE_PATH}/mcp/mcp-exec",
         "--server-name",
-        "engineer",
+        "engineering-nexus",
         "--backend-host",
-        "engineer",
+        "engineering-nexus",
         "--http-port",
         "9090",
         "--request-timeout-ms",

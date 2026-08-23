@@ -13,37 +13,37 @@
 (defvar skewed-generated-services nil)
 (setq skewed-generated-services
   '(
-    (:name "captain"
+    (:name "ready-room"
      :type "emacs-lisp"
      :lisp-impl "Emacs"
      :mcp t
-     :http-host "captain"
+     :http-host "ready-room"
      :http-port 7080
     )
-    (:name "first-officer"
+    (:name "bridge"
      :type "common-lisp"
      :lisp-impl "CCL"
      :mcp t
-     :http-host "first-officer"
+     :http-host "bridge"
      :http-port 9080
      :http-host-port ${GENDL_CCL_HOST_PORT:-19080}
-     :swank-host "first-officer"
+     :swank-host "bridge"
      :swank-port 4200
     )
-    (:name "engineer"
+    (:name "engineering-nexus"
      :type "common-lisp"
      :lisp-impl "SBCL"
      :mcp t
-     :http-host "engineer"
+     :http-host "engineering-nexus"
      :http-port 9090
      :http-host-port ${GENDL_SBCL_HOST_PORT:-29080}
-     :swank-host "engineer"
+     :swank-host "engineering-nexus"
      :swank-port 4210
     )
-    (:name "doctor"
+    (:name "sick-bay"
      :type "utility"
     )
-    (:name "museum-curator"
+    (:name "museum-chamber"
      :type "utility"
     )
    ))

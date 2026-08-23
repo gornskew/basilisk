@@ -1,42 +1,42 @@
 // DO NOT EDIT - Generated from basilisk.sexp
 {
   "mcpServers": {
-    "captain": {
+    "ready-room": {
       "command": "node",
       "args": [
         "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js",
         "--server-name",
-        "captain",
+        "ready-room",
         "--backend-host",
-        "captain",
+        "ready-room",
         "--http-port",
         "7080",
         "--request-timeout-ms",
         "30000"
       ]
     },
-    "first-officer": {
+    "bridge": {
       "command": "node",
       "args": [
         "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js",
         "--server-name",
-        "first-officer",
+        "bridge",
         "--backend-host",
-        "first-officer",
+        "bridge",
         "--http-port",
         "9080",
         "--request-timeout-ms",
         "30000"
       ]
     },
-    "engineer": {
+    "engineering-nexus": {
       "command": "node",
       "args": [
         "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js",
         "--server-name",
-        "engineer",
+        "engineering-nexus",
         "--backend-host",
-        "engineer",
+        "engineering-nexus",
         "--http-port",
         "9090",
         "--request-timeout-ms",

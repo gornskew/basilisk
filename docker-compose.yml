@@ -21,12 +21,13 @@ networks:
 
 services:
 
-  captain:
+  ready-room:
     image: gornskew/${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}
-    container_name: ${BASILISK_PREFIX:-}captain
-    hostname: captain
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_READY_ROOM:-ready-room}
+    hostname: ready-room
     labels:
       basilisk.post: "captain"
+      basilisk.module: "ready-room"
       basilisk.requires: "skewed-emacs"
     restart: unless-stopped
     stdin_open: true
@@ -64,12 +65,13 @@ services:
       retries: 3
       start_period: 15s
 
-  first-officer:
+  bridge:
     image: gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl
-    container_name: ${BASILISK_PREFIX:-}first-officer
-    hostname: first-officer
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_BRIDGE:-bridge}
+    hostname: bridge
     labels:
       basilisk.post: "first-officer"
+      basilisk.module: "bridge"
       basilisk.requires: "gendl"
     restart: unless-stopped
     stdin_open: true
@@ -98,12 +100,13 @@ services:
       retries: 3
       start_period: 15s
 
-  engineer:
+  engineering-nexus:
     image: gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl
-    container_name: ${BASILISK_PREFIX:-}engineer
-    hostname: engineer
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_ENGINEERING_NEXUS:-engineering-nexus}
+    hostname: engineering-nexus
     labels:
       basilisk.post: "engineer"
+      basilisk.module: "engineering-nexus"
       basilisk.requires: "gendl"
     restart: unless-stopped
     stdin_open: true
@@ -132,12 +135,13 @@ services:
       retries: 3
       start_period: 15s
 
-  doctor:
+  sick-bay:
     image: willfarrell/autoheal:latest
-    container_name: ${BASILISK_PREFIX:-}doctor
-    hostname: doctor
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_SICK_BAY:-sick-bay}
+    hostname: sick-bay
     labels:
       basilisk.post: "doctor"
+      basilisk.module: "sick-bay"
     restart: unless-stopped
     stdin_open: true
     tty: true
@@ -156,12 +160,13 @@ services:
     networks:
       - skewed-network
 
-  museum-curator:
+  museum-chamber:
     image: gornskew/museum-chamber:trial
-    container_name: ${BASILISK_PREFIX:-}museum-curator
-    hostname: museum-curator
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_MUSEUM_CHAMBER:-museum-chamber}
+    hostname: museum-chamber
     labels:
       basilisk.post: "museum-curator"
+      basilisk.module: "museum-chamber"
       basilisk.requires: "museum keeping"
     restart: unless-stopped
     stdin_open: true
@@ -172,6 +177,4 @@ services:
     environment:
       - TZ=${TZ:-Etc/UTC}
     networks:
-      skewed-network:
-        aliases:
-          - museum-chamber
+      - skewed-network

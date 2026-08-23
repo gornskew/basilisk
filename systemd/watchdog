@@ -56,7 +56,7 @@ BACKOFF_SECS="${BASILISK_WATCHDOG_BACKOFF:-1800}"
 #
 # Defaulted through BASILISK_CAPTAIN so this agrees with mcp/mcp-exec, which
 # resolves the same service the same way.  One name, one default.
-CAPTAIN="${BASILISK_WATCHDOG_CAPTAIN:-${BASILISK_CAPTAIN:-captain}}"
+CAPTAIN="${BASILISK_WATCHDOG_CAPTAIN:-${BASILISK_CAPTAIN:-ready-room}}"
 CAPTAIN_PROBE="${BASILISK_WATCHDOG_PROBE:-http://localhost:7080/lisply/ping-lisp}"
 
 DRY=0
