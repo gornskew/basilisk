@@ -43,6 +43,9 @@
     (:name "doctor"
      :type "utility"
     )
+    (:name "museum-curator"
+     :type "utility"
+    )
    ))
 ;; Services configuration generated from basilisk.sexp.
 
