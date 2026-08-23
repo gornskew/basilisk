@@ -168,6 +168,7 @@ services:
       basilisk.post: "museum-curator"
       basilisk.module: "museum-chamber"
       basilisk.requires: "museum keeping"
+      basilisk.unhurried: "true"
     restart: unless-stopped
     stdin_open: true
     tty: true

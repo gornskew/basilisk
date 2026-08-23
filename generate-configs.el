@@ -217,8 +217,13 @@ foreign overlay fails loudly rather than quietly composing.")
                ;; render "Thweed's ready room" from the container alone,
                ;; and tooling can find a room by type regardless of who
                ;; keeps it this tour (docker ps -f label=basilisk.module=...).
-               (module (skewed--get-prop svc :module)))
-          (when (or post requires module)
+               (module (skewed--get-prop svc :module))
+               ;; :unhurried? -- this hand's warm-up does not hold the
+               ;; gangway: validation starts him and moves on, leaving
+               ;; the slow boot to finish in the background under the
+               ;; Doctor's watch (the museum chamber's antique).
+               (unhurried (skewed--get-prop svc :unhurried?)))
+          (when (or post requires module unhurried)
             (push "    labels:" lines)
             (when post
               (push (format "      basilisk.post: \"%s\"" post) lines))
@@ -227,7 +232,9 @@ foreign overlay fails loudly rather than quietly composing.")
             (when requires
               (push (format "      basilisk.requires: \"%s\""
                             (mapconcat #'identity requires ","))
-                    lines))))
+                    lines))
+            (when unhurried
+              (push "      basilisk.unhurried: \"true\"" lines))))
         (when user (push (format "    user: %s" user) lines))
         (push (format "    restart: %s" restart) lines)
         ;; :init? t berths docker's own tiny init as PID 1.  For a

@@ -1509,6 +1509,20 @@ validate_services() {
                 continue
                 ;;
         esac
+        # An UNHURRIED hand does not hold the gangway (the museum
+        # chamber's antique takes the better part of a minute to boot
+        # and light the plate).  He is started and left to warm up in
+        # the background; docker's own healthcheck still runs, the
+        # Doctor revives a boot that goes dark, and `./basilisk status`
+        # shows him healthy when the exhibit lights.  Without this,
+        # every raise held ~44s for the docent -- long enough for an
+        # anonymous visitor to conclude the ship is wedged.
+        if [ "$(docker inspect --format \
+                '{{index .Config.Labels "basilisk.unhurried"}}' \
+                "$_vs_id" 2>/dev/null)" = "true" ]; then
+            log_info "  ${_vs_name}: warming up in the background (unhurried hand; not gating the raise)"
+            continue
+        fi
         _vs_svc="$(docker inspect --format \
             '{{index .Config.Labels "com.docker.compose.service"}}' \
             "$_vs_id" 2>/dev/null)"

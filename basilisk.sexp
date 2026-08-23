@@ -256,6 +256,15 @@
    :hailing-frequencies ((:name "telnet" :aboard 1052))
    :sealed-hull? t
    :breathable-volumes ("/tmp")
-   :no-default-cargo? t)
+   :no-default-cargo? t
+   ;; The exhibit takes the better part of a minute to boot the
+   ;; antique and light the plate.  An UNHURRIED hand does not hold
+   ;; the gangway: the raise validates everyone else and returns,
+   ;; while the chamber warms up in the background under the Doctor's
+   ;; watch -- a boot that goes dark is revived, and the hull grows
+   ;; the chamber afresh.  Without this, every raise sat ~44s waiting
+   ;; on the docent, which is exactly how an anonymous visitor
+   ;; concludes the ship is wedged and scuttles it at 30.
+   :unhurried? t)
   )
  )
