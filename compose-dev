@@ -131,6 +131,39 @@ _FILELIST
     eval "$COMPOSE_CMD $_rc_fargs $_rc_caller"
 }
 
+# The ship's own network name, read from .env where generate-env.sh
+# surfaced it (minted into .ship by the yard).
+ship_network() {
+    sed -n 's/^DOCKER_NETWORK_NAME=//p' "${SCRIPT_DIR}/.env" 2>/dev/null | head -1
+}
+
+# room_container SERVICE -- the container id of the room's current
+# keeper, resolved loudly.  `compose ps -q` is the primary; its stderr
+# used to be discarded, which hid a real intermittent failure for
+# weeks (observed 2026-08-23: base-file services resolving empty
+# mid-raise while overlay services resolved fine, muster board showing
+# rooms "(unkept)" and the MCP merge skipping -- cause unidentified,
+# hence the logging).  When the primary comes back empty, the error is
+# SAID, and a plain `docker ps` label lookup takes over: it needs no
+# compose config evaluation at all, and the ship's own network scopes
+# it to this instance.
+room_container() {
+    _room_tmp=$(mktemp) || return 1
+    _room_id="$(run_compose ps -q "$1" 2>"$_room_tmp" | head -1)"
+    if [ -z "$_room_id" ]; then
+        # Callers capture stdout, so the diagnosis rides stderr.
+        [ -s "$_room_tmp" ] && \
+            log_warning "compose ps -q $1 came back empty: $(head -1 "$_room_tmp")" >&2
+        _room_net="$(ship_network)"
+        _room_id="$(docker ps -q \
+            ${_room_net:+-f "network=${_room_net}"} \
+            -f "label=com.docker.compose.service=$1" 2>/dev/null | head -1)"
+        [ -n "$_room_id" ] && log_info "  ($1 resolved by label lookup instead)" >&2
+    fi
+    rm -f "$_room_tmp"
+    printf '%s' "$_room_id"
+}
+
 # =============================================================================
 # COLOR OUTPUT
 # printf %b interprets \033 escapes; works in bash, dash, zsh, macOS sh.
@@ -1002,7 +1035,15 @@ _MC_ROWS
 }
 
 mint_crew_identities() {
-    _ci_ids="$(run_compose ps -q 2>/dev/null)"
+    _ci_tmp=$(mktemp)
+    _ci_ids="$(run_compose ps -q 2>"$_ci_tmp")"
+    if [ -z "$_ci_ids" ]; then
+        [ -s "$_ci_tmp" ] && log_warning "compose ps -q (minting) came back empty: $(head -1 "$_ci_tmp")"
+        _ci_net="$(ship_network)"
+        _ci_ids="$(docker ps -q ${_ci_net:+-f "network=${_ci_net}"} 2>/dev/null)"
+        [ -n "$_ci_ids" ] && log_info "  (crew found by network lookup instead)"
+    fi
+    rm -f "$_ci_tmp"
     [ -n "$_ci_ids" ] || return 0
 
     for _ci_id in $_ci_ids; do
@@ -1078,6 +1119,17 @@ _ci_image="$(docker inspect --format \
 merge_mcp_configs() {
     log_info "Preparing MCP configurations (JSON + TOML)..."
 
+    # Resolve the ready room's keeper ONCE and drive everything below
+    # through plain docker on the container id: compose-level service
+    # resolution failed intermittently mid-raise (2026-08-23, cause
+    # under observation via room_container's logging), and each of the
+    # seven compose-addressed steps below then failed in its own way.
+    _mcp_cap="$(room_container ready-room)"
+    if [ -z "$_mcp_cap" ]; then
+        log_warning "no keeper found for the ready room; skipping MCP config merge"
+        return 1
+    fi
+
     case " ${VALIDATED_OK:-} " in
         *" ready-room "*) ;;
         *)
@@ -1085,7 +1137,7 @@ merge_mcp_configs() {
             # up, failed validation, or already running from before):
             # probe the Captain's daemon once directly instead of
             # looping blind.
-            if ! run_compose exec -T ready-room emacsclient --eval t \
+            if ! docker exec "$_mcp_cap" emacsclient --eval t \
                 > /dev/null 2>&1
             then
                 log_warning "Captain daemon not available; skipping MCP config merge"
@@ -1099,7 +1151,7 @@ merge_mcp_configs() {
     # create time (a recreate reintroduces them; host-side chown cannot
     # reach container-fs dirs).  The merge writes config.toml into both,
     # so repair ownership first; harmless no-op on full images.
-    run_compose exec -T -u root ready-room sh -c \
+    docker exec -u root "$_mcp_cap" sh -c \
         "chown -R emacs-user /home/emacs-user/.codex /home/emacs-user/.grok" \
         > /dev/null 2>&1 || true
 
@@ -1117,7 +1169,7 @@ merge_mcp_configs() {
     # Same failure shape as the mcp/entrypoint.sh incident: a split moved
     # files by concept without checking every consumer.
     _mcp_stage="/tmp/basilisk-mcp"
-    run_compose exec -T ready-room mkdir -p "$_mcp_stage" > /dev/null 2>&1 || {
+    docker exec "$_mcp_cap" mkdir -p "$_mcp_stage" > /dev/null 2>&1 || {
         log_warning "could not create $_mcp_stage in the Captain; skipping MCP merge"
         return 1
     }
@@ -1133,7 +1185,7 @@ merge_mcp_configs() {
     do
         [ -f "$_mcpfile" ] || continue
         log_info "Staging: $(basename "$_mcpfile")"
-        run_compose cp "$_mcpfile" "ready-room:${_mcp_stage}/" 2>/dev/null \
+        docker cp "$_mcpfile" "${_mcp_cap}:${_mcp_stage}/" > /dev/null 2>&1 \
             || log_warning "  could not stage $(basename "$_mcpfile")"
     done
 
@@ -1161,12 +1213,12 @@ merge_mcp_configs() {
                     "${SCRIPT_DIR}/dot-files/emacs.d/etc/services-discovery.el"; do
         [ -f "$_overlay" ] || continue
         log_info "Copying overlay: $(basename "$_overlay")"
-        run_compose cp "$_overlay" \
-            ready-room:/home/emacs-user/skewed-emacs/dot-files/emacs.d/etc/ 2>/dev/null || true
+        docker cp "$_overlay" \
+            "${_mcp_cap}:/home/emacs-user/skewed-emacs/dot-files/emacs.d/etc/" > /dev/null 2>&1 || true
     done
 
     # Step 2: Merge inside container -- one shot; the daemon is ready.
-    if run_compose exec -T ready-room emacsclient --eval \
+    if docker exec "$_mcp_cap" emacsclient --eval \
         "(progn (setenv \"SKEWED_CLONE_PATH\" \"${SCRIPT_DIR}\")
                 (load-file \"${_mcp_stage}/merge-mcp-configs.el\")
                 (skewed-merge-all-mcp-configs \"${_mcp_stage}\"))" \
@@ -1190,12 +1242,12 @@ merge_mcp_configs() {
         # its mcpServers key into ~/.claude.json.  Always the host form,
         # never the windows one -- Claude Code runs inside WSL, where
         # the wsl.exe wrapper the Desktop config needs would be wrong.
-        run_compose cp "ready-room:/tmp/merged-mcp-host.json" \
-            "${SCRIPT_DIR}/mcp/claude-code-mcp.json" 2>/dev/null \
+        docker cp "${_mcp_cap}:/tmp/merged-mcp-host.json" \
+            "${SCRIPT_DIR}/mcp/claude-code-mcp.json" > /dev/null 2>&1 \
             || log_warning "could not stage mcp/claude-code-mcp.json"
 
-        if run_compose cp "ready-room:${_cdc_src}" \
-            "${SCRIPT_DIR}/mcp/claude_desktop_config.json" 2>/dev/null; then
+        if docker cp "${_mcp_cap}:${_cdc_src}" \
+            "${SCRIPT_DIR}/mcp/claude_desktop_config.json" > /dev/null 2>&1; then
             log_success "Claude Desktop config ready: mcp/claude_desktop_config.json (see docs/CLAUDE_DESKTOP.md)"
         else
             log_warning "Could not copy Claude Desktop config from container"
@@ -1308,7 +1360,7 @@ crew_muster() {
         # it through compose (service -> container id -> name) rather
         # than assuming prefix+service.  A room with nobody aboard shows
         # under its bare type.
-        _cm_cid="$(run_compose ps -q "$_cm_svc" 2>/dev/null | head -1)"
+        _cm_cid="$(room_container "$_cm_svc")"
         if [ -n "$_cm_cid" ]; then
             _cm_cname="$(docker inspect --format '{{.Name}}' "$_cm_cid" 2>/dev/null)"
             _cm_cname="${_cm_cname#/}"
@@ -1419,7 +1471,14 @@ validate_services() {
     VALIDATED_OK=""
     VALIDATED_FAILED=""
 
-    _vs_ids="$(run_compose ps -q 2>/dev/null)"
+    _vs_err_tmp=$(mktemp)
+    _vs_ids="$(run_compose ps -q 2>"$_vs_err_tmp")"
+    if [ -z "$_vs_ids" ]; then
+        [ -s "$_vs_err_tmp" ] && log_warning "compose ps -q (validation) came back empty: $(head -1 "$_vs_err_tmp")"
+        _vs_net="$(ship_network)"
+        _vs_ids="$(docker ps -q ${_vs_net:+-f "network=${_vs_net}"} 2>/dev/null)"
+    fi
+    rm -f "$_vs_err_tmp"
     if [ -z "$_vs_ids" ]; then
         # A ship with no crew gets a LOUD flag either way: either the
         # crew catastrophically failed to board (the muster went
@@ -1576,7 +1635,13 @@ show_status() {
 
 connect_emacs() {
     log_info "Connecting to Emacs via emacsclient (the ready room)"
-    run_compose exec ready-room emacsclient -t
+    _ce_cap="$(room_container ready-room)"
+    if [ -n "$_ce_cap" ]; then
+        docker exec -it "$_ce_cap" emacsclient -t
+    else
+        log_error "no keeper found for the ready room -- is the ship up?"
+        return 1
+    fi
 }
 
 pull_images() {
@@ -1777,7 +1842,9 @@ SNIPPET
 }
 
 refresh_emacs_runtime_config() {
-    _refresh_result="$(run_compose exec -T ready-room emacsclient --eval \
+    _rerc_cap="$(room_container ready-room)"
+    [ -n "$_rerc_cap" ] || { log_warning "no keeper for the ready room; skipping Emacs service refresh"; return 0; }
+    _refresh_result="$(docker exec "$_rerc_cap" emacsclient --eval \
         "(progn
             (defvar skewed-runtime-services-refresh-armed nil)
             (defvar skewed-runtime-services-refresh-done nil)
