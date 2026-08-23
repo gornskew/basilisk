@@ -1,6 +1,6 @@
 # BASILISK
 
-A **Basilisk** is class of space ship that is raised on a hull grown
+A **Basilisk** is a class of space ship that is raised on a hull grown
 in a **biological vat**. Hulls are grown in many forms and sizes,
 while the **standard rig** flies with a Ready Room with Captain
 attending, a Bridge with First Officer attending, an Engineering
@@ -50,7 +50,7 @@ chest.
   
 - **A fork chest** is a class of its own: gut the articles to taste,
   name your new pouch chest for the new class and the articles to
-  match.  Unlike ships produced from stack chests, Ships produced
+  match.  Unlike ships produced from stack chests, ships produced
   from basilisk fork chests _cannot_ be guaranteed to comply with the
   Basilisk class designation.
 
@@ -220,7 +220,7 @@ learning, an outcome which no papers can show in advance.
 | **Sick Bay** | *autoheal* | the **Doctor** | constantly on "rounds" for the sickly and the wedged, and revives or dispatches them |
 | **Museum Chamber** | *museum-chamber* | the **Museum Curator** (a museum droid) | sole keeper of the filtered museum chamber: boots the exhibits, tends the museum terminal, and makes the docent's rounds |
 
-Two further postings are on the books with **no berth in the
+Three further postings are on the books with **no berth in the
 standard rig** — their qualifications are stated in the articles, and
 the residence to house them arrives by stack pouch:
 
@@ -268,6 +268,10 @@ walls, and nothing about the work assumes fittings outside them.
 Hail the room and it answers with its resident; ask for a hand by
 title and name and you are put through to his residence — one
 address either way.
+
+Fires burn wherever crew are at work, and the ship keeps his smoke:
+read it, and it tells the tale of every fire aboard long after the
+fire itself has moved on.
 
 
 ## The conn, the helm, and navigation
@@ -374,34 +378,6 @@ categories:
 Any crew may invite any guest at its discretion. Invited guests may
 bypass any Transporter Room and transport directly to the vicinity of
 the inviter.
-
-
-## The herd
-
-*An early sketch: the herd is newly described, much about him
-remains under study, and this section should be expected to change
-more than most.*
-
-Every working Basilisk carries a **herd of cows**, and the
-herd is no cargo: it is an integral organ of the hull's **integrated
-regenerative systems**. The herd is driven aboard from the dockside
-shelf at fitting-out and grazes wherever a berth stands unsealed,
-and the crew work directly among the animals, as the class intends.
-
-The herd earns its keep three ways. Its dung fuels the ship's fires.
-Packed onto the hull, it shields all aboard from radiation. And by
-some property no vatwright has ever satisfactorily explained, a
-healthy regenerative dung cycle keeps the hull's gravity-bending
-faculties in trim.
-
-Fires burn wherever crew are at work, and the ship keeps his smoke:
-read it, and it tells the tale of every fire aboard long after the
-fire itself has moved on.
-
-A ship neglects his herd at his peril. Let the cows sicken and the
-gravity-bending slackens with them; let the herd go extinct and the
-ship can do nothing but fall back to the nearest gravitational body
-and wait for a new herd.
 
 
 ## The Captain's belt
