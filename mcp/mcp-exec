@@ -16,10 +16,15 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE_DIR="${SCRIPT_DIR}/.."
-# The Captain's POSTING, not its species: every backend is reached by
-# exec'ing the MCP wrapper inside the Captain, whatever backend
-# --backend-host then names.  Overridable for the same reasons eskew is.
-SERVICE_NAME="${BASILISK_CAPTAIN:-captain}"
+# The Captain's ROOM, not his name: every backend is reached by
+# exec'ing the MCP wrapper inside the ready room, whatever backend
+# --backend-host then names.  Container names are minted per muster
+# now (rooms are known by their keepers), so the stable address is
+# the compose SERVICE -- the room's type slug -- and compose exec
+# resolves it to whoever keeps the room this tour.  Overridable for
+# the same reasons eskew is.  (Was `captain` before the third relief,
+# 2026-08-23 -- the stale default made every MCP server time out.)
+SERVICE_NAME="${BASILISK_CAPTAIN:-ready-room}"
 LOG_FILE="/tmp/mcp-exec.log"
 LOCK_DIR="/tmp/mcp-exec.lock"
 LOCK_PID_FILE="${LOCK_DIR}/pid"
