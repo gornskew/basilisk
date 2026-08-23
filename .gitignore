@@ -134,3 +134,4 @@ artwork/direction/
 # room's keeper, per instance -- per-clone identity like .ship above.
 .muster
 .muster-*
+.conn

@@ -383,8 +383,31 @@ substitute_templates() {
     rm -f "$_st_env"
 }
 
+# ONE RAISE HOLDS THE CONN AT A TIME.  Fixed container names used to
+# make concurrent raises self-blocking: the second `up` collided on
+# container_name and failed loudly.  Minted names removed that
+# accidental interlock -- two concurrent raises each mint their own
+# complement and docker happily boards BOTH (observed 2026-08-23:
+# a doubled fleet, two keepers per room, four rooms twinned).  So the
+# raise takes an explicit lock now: flock on .conn beside the compose
+# files.  Stand-downs and restarts take the same lock -- a down racing
+# an up is the same doubled-fleet factory from the other side.
+# Waits briefly rather than failing: back-to-back invocations (a
+# deploy script, an impatient operator) serialize instead of dying.
+take_the_conn() {
+    command -v flock > /dev/null 2>&1 || return 0
+    exec 9>>"${SCRIPT_DIR}/.conn" || return 0
+    flock -n 9 && return 0
+    log_info "another raise or stand-down holds the conn; waiting (up to 120s)..."
+    if ! flock -w 120 9; then
+        log_error "could not take the conn after 120s -- is another raise wedged? (lock: ${SCRIPT_DIR}/.conn)"
+        exit 1
+    fi
+}
+
 start_services() {
     _ss_services="$*"
+    take_the_conn
     init_env
     ensure_env
     substitute_templates
@@ -596,6 +619,7 @@ release_ship() {
 }
 
 stop_services() {
+    take_the_conn
     log_info "Stopping all services"
     run_compose down
     _sts_rc=$?
@@ -604,6 +628,7 @@ stop_services() {
 }
 
 restart_services() {
+    take_the_conn
     log_info "Restarting services: ${*:-all}"
     run_compose restart "$@"
     validate_services
