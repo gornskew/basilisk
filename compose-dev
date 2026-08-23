@@ -468,8 +468,21 @@ start_services() {
     muster_crew
 
     log_info "Starting services: ${_ss_services:-all}"
+    # --remove-orphans: EVERY RENAME EPOCH STRANDS THE OLD COMPLEMENT
+    # (found the hard way, shelly 2026-08-23).  The current config no
+    # longer names containers a previous naming era created (crew-post
+    # names, or a pull-before-down during a config mismatch), so a
+    # plain up steps politely around them forever while they eat the
+    # box -- shelly wedged solid on exactly this; sally carried the
+    # same dead weight and merely had the RAM to hide it.  mcp-exec's
+    # own start path has passed this flag all along.  Known caveat:
+    # two instances raised from same-named clone directories share a
+    # compose project name, so one instance's sweep could in principle
+    # collect the other's crew -- a pre-existing wrinkle of the shared
+    # project name, noted with the instance-isolation question rather
+    # than solved here.
     # shellcheck disable=SC2086  (word-split intentional: service names)
-    run_compose up -d $_ss_services
+    run_compose up -d --remove-orphans $_ss_services
 
     # Started != validated: actively probe every healthchecked service
     # (kill + recreate hung-on-start containers, e.g. the CCL ASLR
@@ -654,7 +667,9 @@ release_ship() {
 stop_services() {
     take_the_conn
     log_info "Stopping all services"
-    run_compose down
+    # --remove-orphans for the same reason up passes it: a stand-down
+    # should not leave a previous naming era's containers running.
+    run_compose down --remove-orphans
     _sts_rc=$?
     release_ship
     return "$_sts_rc"
