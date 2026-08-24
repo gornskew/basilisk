@@ -226,7 +226,7 @@ check_docker_compose() {
         exit 1
     fi
 
-    log_info "Using: $COMPOSE_CMD"
+    [ -n "${BASILISK_VERBOSE:-}" ] && log_info "Using: $COMPOSE_CMD"
     log_info "Compose files (application order - later files override earlier):"
 
     while IFS= read -r _full_path; do
@@ -323,7 +323,7 @@ MODULES:
     The ship's rooms are defined in docker-compose.yml and any other
     .yml files in this directory (generated from basilisk.sexp, the
     editable SSoT — the ship's articles).  Name a room by its type
-    slug: ready-room, bridge, engineering-nexus, sick-bay,
+    slug: ready-room, bridge, engine-room, sick-bay,
     museum-chamber, plus whatever an installed stack pouch adds.
 
 VARIANT SWITCHES (skewed-emacs image; anywhere on the command line):
@@ -466,7 +466,10 @@ start_services() {
            && docker network inspect "$_ss_old_net" >/dev/null 2>&1 \
            && [ -n "$(docker ps -q -f "network=${_ss_old_net}" 2>/dev/null)" ]; then
             log_info "The standing ship '${_ss_old_net}' goes to his rest before the new raising"
-            run_compose down --remove-orphans
+            mkdir -p "${SCRIPT_DIR}/generated"
+            run_compose down --remove-orphans \
+                >"${SCRIPT_DIR}/generated/last-stand-down.log" 2>&1 \
+                || log_warning "the old ship went down protesting (see generated/last-stand-down.log)"
             release_ship
         fi
         BASILISK_MINT_FRESH=1
@@ -498,7 +501,12 @@ start_services() {
     # runs -- compose interpolates the names into container_name.
     muster_crew
 
-    log_info "Starting services: ${_ss_services:-all}"
+    _ss_ship="$(_ship_name)"
+    if [ -n "$_ss_services" ]; then
+        log_info "Rousing on the standing ship${_ss_ship:+ ${_ss_ship}}: ${_ss_services}"
+    else
+        log_info "All hands to stations; the R.V. ${_ss_ship:-Basilisk} takes the slipway"
+    fi
     # --remove-orphans: EVERY RENAME EPOCH STRANDS THE OLD COMPLEMENT
     # (found the hard way, shelly 2026-08-23).  The current config no
     # longer names containers a previous naming era created (crew-post
@@ -512,8 +520,17 @@ start_services() {
     # collect the other's crew -- a pre-existing wrinkle of the shared
     # project name, noted with the instance-isolation question rather
     # than solved here.
+    # Compose's Creating/Created/Starting/Started chatter (4 lines x
+    # every hand, minted names the muster already announced) rides in a
+    # log and surfaces only on failure; the gangway watch below reports
+    # the raise in its own words.
+    mkdir -p "${SCRIPT_DIR}/generated"
+    _ss_up_log="${SCRIPT_DIR}/generated/last-raise.log"
     # shellcheck disable=SC2086  (word-split intentional: service names)
-    run_compose up -d --remove-orphans $_ss_services
+    if ! run_compose up -d --remove-orphans $_ss_services >"$_ss_up_log" 2>&1; then
+        log_error "The raise went wrong; compose says:"
+        sed 's/^/    /' "$_ss_up_log"
+    fi
 
     # Started != validated: actively probe every healthchecked service
     # (kill + recreate hung-on-start containers, e.g. the CCL ASLR
@@ -700,11 +717,25 @@ release_ship() {
 
 stop_services() {
     take_the_slipway
-    log_info "Stopping all services"
+    _sts_ship="$(_ship_name)"
+    if [ -n "$_sts_ship" ]; then
+        log_info "Standing down the ${_sts_ship}: all hands ashore"
+    else
+        log_info "Stopping all services"
+    fi
     # --remove-orphans for the same reason up passes it: a stand-down
     # should not leave a previous naming era's containers running.
-    run_compose down --remove-orphans
+    # Compose's container-by-container chatter (Stopping/Stopped/
+    # Removing/Removed x every hand) carries nothing the muster didn't
+    # already say, so it rides in a log and surfaces only on failure.
+    mkdir -p "${SCRIPT_DIR}/generated"
+    _sts_log="${SCRIPT_DIR}/generated/last-stand-down.log"
+    run_compose down --remove-orphans >"$_sts_log" 2>&1
     _sts_rc=$?
+    if [ "$_sts_rc" -ne 0 ]; then
+        log_error "Stand-down failed; compose says:"
+        sed 's/^/    /' "$_sts_log"
+    fi
     release_ship
     return "$_sts_rc"
 }
@@ -815,25 +846,28 @@ _crew_species_from_image() {
 # decision (Dave) -- do not rename the role here as a tidy-up.
 _crew_role_for_posting() {
     case "$1" in
-        # Canon postings (captain, first-officer, engineer, doctor;
-        # transporter-chief and communications-officer berthed by
-        # overlay).  The -* arms tolerate -2/-3 collision suffixes and
-        # multi-post slugs (first-officer-comms is still bridge crew).
+        # Canon postings (positions ruling 2026-08-24: captain,
+        # first-officer, ships-engineer, doctor; guild-engineer,
+        # transporter-chief and radio-shack berthed by overlay).  The
+        # -* arms tolerate -2/-3 collision suffixes and multi-post
+        # slugs (first-officer-comms is still bridge crew).
         captain|captain-[0-9]*)   echo "captain" ;;
         first-officer|first-officer-*) echo "engineer" ;;
-        engineer|engineer-[0-9]*) echo "engineer" ;;
+        ships-engineer|ships-engineer-[0-9]*) echo "engineer" ;;
+        guild-engineer|guild-engineer-[0-9]*) echo "engineer" ;;
         doctor|doctor-[0-9]*)     echo "doctor" ;;
         transporter-chief|transporter-chief-[0-9]*) echo "pilot" ;;
         pilot|pilot-[0-9]*)       echo "pilot" ;;
-        communications-officer|communications-officer-[0-9]*) echo "comm" ;;
-        comms|comms-[0-9]*)       echo "comm" ;;
+        radio-shack|radio-shack-[0-9]*) echo "comm" ;;
         "${BASILISK_VOCAB_STOWAWAY_DESIGNATOR:-stowaway}"-*) echo "stowaway" ;;
         # Legacy posting names, tolerated for containers created
-        # before the 2026-08-18 rename (medic -> doctor,
-        # ships-engineer -> engineer, jr-eng-* -> derived slugs).
+        # before their renames (medic -> doctor 2026-08-18; engineer ->
+        # ships-engineer and communications-officer -> radio-shack,
+        # positions ruling 2026-08-24; jr-eng-* -> derived slugs).
         medic|medic-[0-9]*)       echo "doctor" ;;
-        ships-engineer|ships-engineer-[0-9]*) echo "engineer" ;;
-        guild-engineer|guild-engineer-[0-9]*) echo "engineer" ;;
+        engineer|engineer-[0-9]*) echo "engineer" ;;
+        communications-officer|communications-officer-[0-9]*) echo "comm" ;;
+        comms|comms-[0-9]*)       echo "comm" ;;
         jr-eng-*|sr-eng-*|guild-*) echo "engineer" ;;
         *)                        echo "crew" ;;
     esac
@@ -866,11 +900,15 @@ _crew_role_for_postings() {
 # between Crew (posted but unrecognized) and Stowaway (no posting at
 # all).  Defaults are canon's words; a fork overrides them via its
 # sourced vocabulary, same as ever.
+# The Cap'n's default title carries an apostrophe, which cannot ride
+# inside a ${...:-default} expansion (the parser reads it as an
+# opening quote); it boards through a plain variable instead.
+_bk_title_capn_default="Cap'n"
 _crew_title_for_posting() {
     case "$1" in
-        captain|captain-[0-9]*)        echo "${BASILISK_VOCAB_TITLE_CAPTAIN:-Captain}" ;;
+        captain|captain-[0-9]*)        echo "${BASILISK_VOCAB_TITLE_CAPTAIN:-$_bk_title_capn_default}" ;;
         first-officer|first-officer-*) echo "${BASILISK_VOCAB_TITLE_FIRST_OFFICER:-1st Off}" ;;
-        engineer|engineer-[0-9]*|ships-engineer|ships-engineer-[0-9]*)
+        ships-engineer|ships-engineer-[0-9]*|engineer|engineer-[0-9]*)
                                        echo "${BASILISK_VOCAB_TITLE_ENGINEER:-Engineer}" ;;
         guild-engineer|guild-engineer-[0-9]*|jr-eng-*|sr-eng-*|guild-*)
                                        echo "${BASILISK_VOCAB_TITLE_ENGINEER:-Engineer}" ;;
@@ -878,8 +916,8 @@ _crew_title_for_posting() {
                                        echo "${BASILISK_VOCAB_TITLE_DOCTOR:-Doctor}" ;;
         transporter-chief|transporter-chief-[0-9]*|pilot|pilot-[0-9]*)
                                        echo "${BASILISK_VOCAB_TITLE_PILOT:-T-Chief}" ;;
-        communications-officer|communications-officer-[0-9]*|comms|comms-[0-9]*)
-                                       echo "${BASILISK_VOCAB_TITLE_COMM:-Comm}" ;;
+        radio-shack|radio-shack-[0-9]*|communications-officer|communications-officer-[0-9]*|comms|comms-[0-9]*)
+                                       echo "${BASILISK_VOCAB_TITLE_COMM:-Radio}" ;;
         navigator|navigator-[0-9]*)    echo "${BASILISK_VOCAB_TITLE_NAVIGATOR:-Navigator}" ;;
         museum-curator|museum-curator-[0-9]*)
                                        echo "${BASILISK_VOCAB_TITLE_CURATOR:-Curator}" ;;
@@ -901,6 +939,37 @@ _crew_title_for_postings() {
     done
     IFS=$_ctp_old_ifs
     echo "$_ctp_title"
+}
+
+# The standing ship's minted name, read from .ship ("Zhuryss").
+# Empty when no ship has been minted yet.
+_ship_name() {
+    head -1 "${SCRIPT_DIR}/.ship" 2>/dev/null
+}
+
+# Pretty room name from a room slug: "engine-room" -> "Engine Room".
+_room_pretty() {
+    printf '%s' "$1" | tr '-' ' ' \
+        | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1'
+}
+
+# Display form for a keeper, from the container's own labels:
+# "Cap'n Thrilk in the Ready Room".  The room is the compose SERVICE
+# key (the room slug -- basilisk.module is the module TYPE, which the
+# second guild workshop shares with the first); a container with no
+# recognizable title or room falls back gracefully to its bare name.
+_crew_display() {
+    _cd_name="$1"
+    _cd_posts="$(docker inspect --format \
+        '{{index .Config.Labels "basilisk.post"}}' "$_cd_name" 2>/dev/null)"
+    _cd_room="$(docker inspect --format \
+        '{{index .Config.Labels "com.docker.compose.service"}}' \
+        "$_cd_name" 2>/dev/null)"
+    _cd_title=""
+    [ -n "$_cd_posts" ] && _cd_title="$(_crew_title_for_postings "$_cd_posts")"
+    _cd_out="${_cd_title:+$_cd_title }${_cd_name#"${BASILISK_PREFIX:-}"}"
+    [ -n "$_cd_room" ] && _cd_out="$_cd_out in the $(_room_pretty "$_cd_room")"
+    printf '%s' "$_cd_out"
 }
 
 # MANNED/DRONE IS GONE FROM HERE, deliberately (Dave, 2026-08-17).
@@ -1151,6 +1220,7 @@ mint_crew_identities() {
     rm -f "$_ci_tmp"
     [ -n "$_ci_ids" ] || return 0
 
+    _ci_ship="$(_ship_name)"
     for _ci_id in $_ci_ids; do
         _ci_name="$(docker inspect --format "{{.Name}}" "$_ci_id" 2>/dev/null)" || continue
         _ci_name="${_ci_name#/}"
@@ -1202,7 +1272,7 @@ _ci_image="$(docker inspect --format \
             "printf 'NAME=%s\nSPECIES=%s\nPOSTING=%s\nROLE=%s\n' '$_ci_mint_name' '$_ci_species' '$_ci_posting' '$_ci_role' > /tmp/skewed-crew-identity" \
             2>/dev/null
         then
-            log_success "  ${_ci_name}: crew identity minted -- ${_ci_mint_name} (${_ci_posting}, ${_ci_species})"
+            log_success "  $(_crew_display "$_ci_name") (module sku ${_ci_species}) takes the Oath of Service${_ci_ship:+ to the R.V. ${_ci_ship}}"
         else
             log_warning "  ${_ci_name}: could not write crew identity (no shell/writable rootfs?)"
         fi
@@ -1222,7 +1292,7 @@ _ci_image="$(docker inspect --format \
 # once, event-driven, replacing the old 5x2s blind retry loop.
 # =============================================================================
 merge_mcp_configs() {
-    log_info "Preparing MCP configurations (JSON + TOML)..."
+    log_info "Opening hailing frequencies for cyborg passengers (MCP configurations, JSON + TOML)..."
 
     # Resolve the ready room's keeper ONCE and drive everything below
     # through plain docker on the container id: compose-level service
@@ -1289,7 +1359,7 @@ merge_mcp_configs() {
         "${SCRIPT_DIR}/mcp/"*-mcp.toml
     do
         [ -f "$_mcpfile" ] || continue
-        log_info "Staging: $(basename "$_mcpfile")"
+        [ -n "${BASILISK_VERBOSE:-}" ] && log_info "Staging: $(basename "$_mcpfile")"
         docker cp "$_mcpfile" "${_mcp_cap}:${_mcp_stage}/" > /dev/null 2>&1 \
             || log_warning "  could not stage $(basename "$_mcpfile")"
     done
@@ -1317,7 +1387,7 @@ merge_mcp_configs() {
     for _overlay in "${SCRIPT_DIR}/generated/"*services-generated.el \
                     "${SCRIPT_DIR}/dot-files/emacs.d/etc/services-discovery.el"; do
         [ -f "$_overlay" ] || continue
-        log_info "Copying overlay: $(basename "$_overlay")"
+        [ -n "${BASILISK_VERBOSE:-}" ] && log_info "Copying overlay: $(basename "$_overlay")"
         docker cp "$_overlay" \
             "${_mcp_cap}:/home/emacs-user/skewed-emacs/dot-files/emacs.d/etc/" > /dev/null 2>&1 || true
     done
@@ -1329,7 +1399,7 @@ merge_mcp_configs() {
                 (skewed-merge-all-mcp-configs \"${_mcp_stage}\"))" \
         > /dev/null 2>&1
     then
-        log_success "MCP configurations merged for container CLI, Windows, Codex, and Grok"
+        log_success "Hailing frequencies posted for container CLI, Windows, Codex, and Grok"
 
         # Copy the platform-appropriate Claude Desktop config back to the
         # host clone (regression fix: the pre-POSIX compose-dev did this).
@@ -1605,7 +1675,7 @@ validate_services() {
             "$_vs_id" 2>/dev/null)"
         case "$_vs_test" in
             ""|NONE|"NONE "*)
-                log_info "  ${_vs_name}: started (no healthcheck; not validated)"
+                log_info "  $(_crew_display "$_vs_name"): started (no healthcheck; not validated)"
                 continue
                 ;;
         esac
@@ -1620,7 +1690,7 @@ validate_services() {
         if [ "$(docker inspect --format \
                 '{{index .Config.Labels "basilisk.unhurried"}}' \
                 "$_vs_id" 2>/dev/null)" = "true" ]; then
-            log_info "  ${_vs_name}: warming up in the background (unhurried hand; not gating the raise)"
+            log_info "  $(_crew_display "$_vs_name"): warming up in the background (an unhurried hand; not gating the raise)"
             continue
         fi
         _vs_svc="$(docker inspect --format \
@@ -1635,6 +1705,10 @@ validate_services() {
         esac
         eval "_vs_svc_${_vs_san}=\$_vs_svc"
         eval "_vs_probe_cmd_${_vs_san}=\$_vs_probe_tmp"
+        # The keeper's display form ("Cap'n Thrilk in the Ready Room"),
+        # computed once here so the watch loop below never shells out.
+        _vs_disp="$(_crew_display "$_vs_name")"
+        eval "_vs_disp_${_vs_san}=\$_vs_disp"
         # A hand whose healthcheck declares a start_period has stated
         # its own warm-up (the museum chamber's antique machine takes a
         # minute to boot and photograph itself); the budget honors it.
@@ -1658,11 +1732,16 @@ validate_services() {
     done
     [ -n "$_vs_watched" ] || return 0
 
-    log_info "Validating services (probe every ${_vs_poll}s; kill+recreate on hung start):"
+    # One line states the watch for everyone; a hand is named here only
+    # when his stated warm-up buys him more than the standard budget.
+    log_info "The gangway watch: hailing each room every ${_vs_poll}s (${_vs_budget_default}s and ${_vs_retries_max} reliefs allowed apiece)"
     for _vs_name in $_vs_watched; do
         _vs_san="$(_vs_sanitize "$_vs_name")"
         eval "_vs_budget=\$_vs_budget_${_vs_san}"
-        log_info "  ${_vs_name}: budget ${_vs_budget}s, retries ${_vs_retries_max}"
+        if [ "$_vs_budget" != "$_vs_budget_default" ]; then
+            eval "_vs_disp=\$_vs_disp_${_vs_san}"
+            log_info "  ${_vs_disp:-$_vs_name}: allowed ${_vs_budget}s (stated warm-up)"
+        fi
     done
 
     _vs_total=0
@@ -1675,10 +1754,11 @@ validate_services() {
 
             if _vs_probe "$_vs_name"; then
                 eval "_vs_tries=\$_vs_tries_${_vs_san}"
+                eval "_vs_disp=\$_vs_disp_${_vs_san}"
                 if [ "$_vs_tries" -gt 0 ]; then
-                    log_success "  ${_vs_name}: validated at ${_vs_total}s (after ${_vs_tries} kill+recreate)"
+                    log_success "  ${_vs_disp:-$_vs_name}: validated at ${_vs_total}s (after ${_vs_tries} kill+recreate)"
                 else
-                    log_success "  ${_vs_name}: validated at ${_vs_total}s"
+                    log_success "  ${_vs_disp:-$_vs_name}: validated at ${_vs_total}s"
                 fi
                 eval "_vs_state_${_vs_san}=ok"
                 # VALIDATED_OK carries SERVICE names (the room slugs):
@@ -1719,7 +1799,7 @@ validate_services() {
     done
 
     if [ -z "$VALIDATED_FAILED" ]; then
-        log_success "All services validated in ${_vs_total}s"
+        log_success "All hands validated in ${_vs_total}s; the ship is away"
         crew_muster
         return 0
     fi
@@ -1765,12 +1845,10 @@ pull_images() {
     fi
 
     if [ -n "${PULL_ALWAYS}" ]; then
-        log_info "Pulling latest images (PULL_ALWAYS set)"
+        log_info "Beaming the whole complement aboard fresh (PULL_ALWAYS set)"
         run_compose pull
         return
     fi
-
-    log_info "Pulling missing images only"
 
     _svc_img_pairs="$(
         run_compose config | awk '
@@ -1785,9 +1863,9 @@ pull_images() {
     _missing=""
     while IFS=" " read -r _svc _img; do
         [ -z "$_svc" ] || [ -z "$_img" ] && continue
-        if docker image inspect "$_img" > /dev/null 2>&1; then
-            log_info "Image present locally, skipping pull: $_svc ($_img)"
-        else
+        # A hand already onboard warrants no line of his own; only the
+        # ones who need the transporter get named below.
+        if ! docker image inspect "$_img" > /dev/null 2>&1; then
             _missing="${_missing:+$_missing }$_svc"
         fi
     done << _PAIRS
@@ -1795,11 +1873,11 @@ $_svc_img_pairs
 _PAIRS
 
     if [ -z "$_missing" ]; then
-        log_success "All images present locally; skipping pull"
+        log_success "All crew already onboard, nobody to be beamed aboard"
         return
     fi
 
-    log_info "Pulling missing services: $_missing"
+    log_info "Beaming aboard: $_missing"
     # shellcheck disable=SC2086  (word-split intentional: service names)
     run_compose pull $_missing
 }
@@ -1910,7 +1988,7 @@ SNIPPET
 
     if [ -f "${_isf_file}" ] && cmp -s "${_isf_tmp}" "${_isf_file}"; then
         rm -f "${_isf_tmp}"
-        log_info "Shell functions already up to date in ${_isf_file}"
+        # already current -- a no-change earns no line
     else
         mv "${_isf_tmp}" "${_isf_file}"
         SHELL_HELPERS_CHANGED=true
@@ -1936,12 +2014,17 @@ SNIPPET
 
     _isf_wrote=false
     _isf_wrote_files=""
-    # Write to primary, .bashrc, and .profile always; .bash_profile / .zprofile if they exist
+    _isf_seen=""
+    # Write to primary, .bashrc, and .profile always; .bash_profile / .zprofile if they exist.
+    # The primary is usually one of the fixed entries, so dedupe -- it
+    # used to earn .bashrc two identical "already in" lines per raise.
     for _isf_rc in "$_isf_primary" "${HOME}/.bashrc" "${HOME}/.profile" \
                    "${HOME}/.bash_profile" "${HOME}/.zprofile"; do
         [ -f "$_isf_rc" ] || continue
+        case " $_isf_seen " in *" $_isf_rc "*) continue ;; esac
+        _isf_seen="$_isf_seen $_isf_rc"
         if grep -qF "skewed-emacs/shell-functions.sh" "$_isf_rc" 2>/dev/null; then
-            log_info "Shell helpers already in ${_isf_rc} (no change needed)"
+            :  # already rigged -- a no-change earns no line
         else
             printf '\n# Skewed Emacs shell helpers\n%s\n' "$_isf_source_line" >> "$_isf_rc"
             log_success "Added skewed-emacs shell helpers to ${_isf_rc}"

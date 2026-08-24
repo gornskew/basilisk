@@ -100,13 +100,13 @@ services:
       retries: 3
       start_period: 15s
 
-  engineering-nexus:
+  engine-room:
     image: gornskew/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl
-    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_ENGINEERING_NEXUS:-engineering-nexus}
-    hostname: engineering-nexus
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_ENGINE_ROOM:-engine-room}
+    hostname: engine-room
     labels:
-      basilisk.post: "engineer"
-      basilisk.module: "engineering-nexus"
+      basilisk.post: "ships-engineer"
+      basilisk.module: "engine-room"
       basilisk.requires: "gendl"
     restart: unless-stopped
     stdin_open: true

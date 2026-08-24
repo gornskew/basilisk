@@ -29,14 +29,14 @@
         "30000"
       ]
     },
-    "engineering-nexus": {
+    "engine-room": {
       "command": "node",
       "args": [
         "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js",
         "--server-name",
-        "engineering-nexus",
+        "engine-room",
         "--backend-host",
-        "engineering-nexus",
+        "engine-room",
         "--http-port",
         "9090",
         "--request-timeout-ms",

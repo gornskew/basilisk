@@ -34,15 +34,15 @@ approval_mode = "approve"
 [mcp_servers.bridge.tools.bridge__lisp_eval]
 approval_mode = "approve"
 
-[mcp_servers.engineering-nexus]
+[mcp_servers.engine-room]
 command = "node"
-args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "engineering-nexus", "--backend-host", "engineering-nexus", "--http-port", "9090", "--request-timeout-ms", "30000"]
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "engine-room", "--backend-host", "engine-room", "--http-port", "9090", "--request-timeout-ms", "30000"]
 
-[mcp_servers.engineering-nexus.tools.engineering-nexus__ping_lisp]
+[mcp_servers.engine-room.tools.engine-room__ping_lisp]
 approval_mode = "approve"
 
-[mcp_servers.engineering-nexus.tools.engineering-nexus__http_request]
+[mcp_servers.engine-room.tools.engine-room__http_request]
 approval_mode = "approve"
 
-[mcp_servers.engineering-nexus.tools.engineering-nexus__lisp_eval]
+[mcp_servers.engine-room.tools.engine-room__lisp_eval]
 approval_mode = "approve"

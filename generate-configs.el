@@ -1078,11 +1078,11 @@ no rosters)."
 (defun skewed--resolve-post-requires (config base-config)
   "Union each crew entry's :requires with those of every post it stands.
 :post may be a single keyword or a LIST -- one crew member can stand
-several posts (narad's human junior engineer also stands
-:communications-officer, the ability arriving with his services-init
+several posts (narad's First Officer also stands
+:radio-shack, the ability arriving with his services-init
 hook at boot or later, not with his species).  Per-post requirements
 come from the :postings qualification tables -- this file's own, then
-the base articles' -- e.g. :engineer requires \"gendl\",
+the base articles' -- e.g. :ships-engineer requires \"gendl\",
 :guild-engineer requires \"genworks-gdl\".  The muster's manifest
 check stays WARNING severity, so a capability that arrives by
 arrangement rather than manifest costs a warning and nothing more."

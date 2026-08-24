@@ -84,10 +84,14 @@
   (:post :first-officer
    :description "Bridge duty: assists the Captain and the ship's visitors."
    :requires ("gendl"))
-  (:post :engineer :requires ("gendl"))
+  (:post :ships-engineer :requires ("gendl"))
   (:post :transporter-chief :requires ("reverse-proxy"))
-  (:post :communications-officer
-   :description "Keeps the bridge viewscreen; hails the fleet."
+  ;; The radio shack is a room still on the drawing board (the Eyes
+  ;; Only refit); until it is grown into the hull, the posting sits on
+  ;; the books like the Navigator's, and the First Officer carries the
+  ;; pocket viewscreen meanwhile.
+  (:post :radio-shack
+   :description "Keeps the radio shack: the viewscreens, and hails to the fleet."
    :requires ("bridge viewscreen operations"))
   (:post :navigator
    :description "Keeps the chartroom: orbits, transfers, ephemerides."
@@ -168,8 +172,8 @@
 
   ;; The First Officer stays on the bridge: assists the Captain and
   ;; the ship's visitors with technical matters, and entertains
-  ;; guests.  The usual match is the gendl-ccl strain (the Engineer
-  ;; below being gendl-sbcl); the :species pin is what GUARANTEES it
+  ;; guests.  The usual match is the gendl-ccl strain (the Ship's
+  ;; Engineer below being gendl-sbcl); the :species pin is what GUARANTEES it
   ;; -- the post states the duty, the species states the creature.
   (:post :first-officer
    :module "bridge"
@@ -191,10 +195,10 @@
                     :alert-mb 1200))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "72s"))
 
-  ;; The Engineer keeps to Engineering: the gendl-sbcl strain.
-  (:post :engineer
-   :module "engineering-nexus"
-   :description "The Engineer: engineering for ship and passengers."
+  ;; The Ship's Engineer keeps the engine room: the gendl-sbcl strain.
+  (:post :ships-engineer
+   :module "engine-room"
+   :description "The Ship's Engineer: engineering for ship and passengers."
    :type "common-lisp"
    :provenance "gornskew"
    :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl"

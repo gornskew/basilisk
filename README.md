@@ -10,7 +10,7 @@ passage for your desired passengers, both biological and cyborg.
 A standard rig flies with five residential modules plugged into the
 hull, each arriving pre-staffed: a **Ready Room** with the Captain at
 the ship's console, a **Bridge** run by the First Officer, an
-**Engineering Nexus** with the Engineer, a **Sick Bay** whence the
+**Engine Room** with the Ship's Engineer, a **Sick Bay** whence the
 Doctor does his rounds, and a filtered **Museum Chamber** kept by the
 Museum Curator, a museum droid. Crew answer to personal names minted
 fresh at every muster, and each room is known by its keeper —

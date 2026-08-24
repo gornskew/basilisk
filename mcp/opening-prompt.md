@@ -5,7 +5,7 @@ MCP. Paste this (or adapt it) into a fresh session with Claude Desktop,
 Claude Code, Codex, or any MCP-capable client.
 
 The MCP servers are named for the ship's rooms: `ready-room` (Emacs —
-the ship's console), `bridge` and `engineering-nexus` (Common Lisp
+the ship's console), `bridge` and `engine-room` (Common Lisp
 with Gendl), plus whatever extra rooms this ship carries
 (`transporter-room`, `guild-workshop`, ...).
 
@@ -55,7 +55,7 @@ Re-read: `ready-room:ready-room__get_docs(id="claude-md")` - this time completel
 
 **If working with Gendl/Common Lisp backends, also read the docs for
 that backend** (the Dashboard lists the Lisply backends aboard — the
-bridge and the engineering nexus in the standard rig, plus any rooms
+bridge and the engine room in the standard rig, plus any rooms
 an overlay adds):
 ```
 bridge:bridge__get_docs(id="claude-md")

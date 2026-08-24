@@ -30,14 +30,14 @@
      :swank-host "bridge"
      :swank-port 4200
     )
-    (:name "engineering-nexus"
+    (:name "engine-room"
      :type "common-lisp"
      :lisp-impl "SBCL"
      :mcp t
-     :http-host "engineering-nexus"
+     :http-host "engine-room"
      :http-port 9090
      :http-host-port ${GENDL_SBCL_HOST_PORT:-29080}
-     :swank-host "engineering-nexus"
+     :swank-host "engine-room"
      :swank-port 4210
     )
     (:name "sick-bay"

@@ -5,7 +5,7 @@ Emacs and Common Lisp images aboard as MCP tools.
 
 This lives in the Basilisk repo rather than in `skewed-emacs` because the
 config being generated registers **every** server on the roster — the
-ship's rooms: `ready-room`, `bridge`, `engineering-nexus`, and whatever
+ship's rooms: `ready-room`, `bridge`, `engine-room`, and whatever
 rooms the overlays add (`transporter-room`, `guild-workshop`, ...).
 No single room's repo can write that file, because none of them
 knows what else is aboard.
@@ -58,7 +58,7 @@ knows what else is aboard.
    connect, named for the ship's rooms:
    - `ready-room` — Emacs Lisp evaluation (the ship's console)
    - `bridge` — Common Lisp (CCL) with Gendl
-   - `engineering-nexus` — Common Lisp (SBCL) with Gendl
+   - `engine-room` — Common Lisp (SBCL) with Gendl
 
    (Plus any additional rooms from overlay repos you have installed.)
 

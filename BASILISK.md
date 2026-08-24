@@ -119,7 +119,7 @@ scroll kept there says what to believe.
 
 The articles list the ship's **interior-modules** — the fitted
 compartments the hull takes aboard: a ready room, a bridge, an
-engineering nexus, a sick bay. One thing must be stated for each:
+engine room, a sick bay. One thing must be stated for each:
 the **module-sku**, the catalog designation of the make and strain
 of module to plug in.
 
@@ -221,7 +221,7 @@ learning, an outcome which no papers can show in advance.
 |---|---|---|---|
 | **Ready Room** | *skewed-emacs* | the **Captain** | keeps the ship's console, writes the standing orders, and receives and directs special visitors, especially cyborgs, personally. He typically goes down with the ship (if the ship ever goes down), and is the last to go |
 | **Bridge** | *gendl* · `ccl` strain | the **First Officer** | runs the bridge: assists the Captain, the ship's visitors, and the guests |
-| **Engineering Nexus** | *gendl* · `sbcl` strain | the **Engineer** | reckoning, building, and drawing, for ship and passengers alike |
+| **Engine Room** | *gendl* · `sbcl` strain | the **Ship's Engineer** | reckoning, building, and drawing, for ship and passengers alike |
 | **Sick Bay** | *autoheal* | the **Doctor** | constantly on "rounds" for the sickly and the wedged, and revives or dispatches them |
 | **Museum Chamber** | *museum-chamber* | the **Museum Curator** (a museum droid) | sole keeper of the filtered museum chamber: boots the exhibits, tends the museum terminal, and makes the docent's rounds |
 
@@ -243,7 +243,7 @@ flowchart TB
         direction TB
         RR["Ready Room — the Captain<br/><i>skewed-emacs</i>"]
         BR["Bridge — the First Officer<br/><i>gendl</i> · ccl strain"]
-        EN["Engineering Nexus — the Engineer<br/><i>gendl</i> · sbcl strain"]
+        EN["Engine Room — the Ship's Engineer<br/><i>gendl</i> · sbcl strain"]
         SB["Sick Bay — the Doctor<br/><i>autoheal</i><br/>(rounds watch every module)"]
         TR["Transporter Room — the Chief<br/><i>(residence by stack pouch)</i>"]
         CH["Chartroom — the Navigator<br/><i>(elective berth)</i>"]
