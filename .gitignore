@@ -131,9 +131,12 @@ tmp/
 artwork/direction/
 
 # The standing muster roll (muster_crew): the minted name of each
-# room's keeper, per instance -- per-clone identity like .ship above.
+# room's keeper, per instance -- uncommitted like .ship above.
 .muster
 .muster-*
+# The log of ships: every ship this galaxy raised and buried, name
+# and dates -- some names go down famous.
+.ships-log
 # The slipway lock (one raise or stand-down at a time); .conn is its
 # retired pre-2026-08-24 name, swept by the first take_the_slipway.
 .slipway

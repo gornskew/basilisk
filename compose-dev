@@ -451,6 +451,28 @@ start_services() {
     _ss_services="$*"
     take_the_slipway
     init_env
+
+    # A NEW SHIP AT EVERY RAISING (ruling 2026-08-24): a full `up`
+    # raises a NEW ship -- fresh minted name, fresh network wearing it
+    # -- and the ship standing before him, if any, is stood down first
+    # and buried under his own name (generate-env.sh writes the log of
+    # ships).  Rousing named rooms (`up <module...>`) works on the
+    # STANDING ship and mints nothing, as do restart and stop.  An
+    # inherited BASILISK_SHIP pin (env or host.env) keeps the old
+    # behavior entirely, for rigs that want one name held.
+    if [ -z "$_ss_services" ] && [ -z "${BASILISK_SHIP:-}" ]; then
+        _ss_old_net="$(_ship_network_name 2>/dev/null)"
+        if [ -n "$_ss_old_net" ] \
+           && docker network inspect "$_ss_old_net" >/dev/null 2>&1 \
+           && [ -n "$(docker ps -q -f "network=${_ss_old_net}" 2>/dev/null)" ]; then
+            log_info "The standing ship '${_ss_old_net}' goes to his rest before the new raising"
+            run_compose down --remove-orphans
+            release_ship
+        fi
+        BASILISK_MINT_FRESH=1
+        export BASILISK_MINT_FRESH
+    fi
+
     ensure_env
     substitute_templates
 
@@ -1084,14 +1106,21 @@ muster_crew() {
             log_info "  ${_mc_name}'s $(printf '%s' "$_mc_room" | tr '-' ' ') stands its watch"
         else
             # No container bearing the name: mint a relief.  Unique per
-            # run via _crew_minted_names, and against every name the
-            # docker daemon already knows.
+            # run via _crew_minted_names, against every name the docker
+            # daemon already knows -- and never the very name being
+            # relieved: a relief is a fresh face, and a re-rolled
+            # "Anaune relieves Anaune" reads as a hand surviving the
+            # ship (drawn live from the 64-name autoheal pool,
+            # 2026-08-24).
             _mc_tries=0
             while :; do
                 _crew_unique_name "$_mc_species"
                 _mc_name="$_crew_unique_name_result"
-                printf '%s\n' "$_mc_existing" | \
-                    grep -qxF "${BASILISK_PREFIX:-}${_mc_name}" || break
+                if [ "$_mc_name" != "$_mc_cur" ] && \
+                   ! printf '%s\n' "$_mc_existing" | \
+                       grep -qxF "${BASILISK_PREFIX:-}${_mc_name}"; then
+                    break
+                fi
                 _mc_tries=$((_mc_tries + 1))
                 [ "$_mc_tries" -ge 20 ] && break
             done
@@ -2062,8 +2091,8 @@ main() {
             for _up_arg in "$@"; do
                 case "$_up_arg" in
                     --daemon|-d) _up_daemon=true ;;
-                    # The operator at the helm outranks the standing
-                    # order: an explicit --pull clears NO_PULL (which
+                    # The operator's explicit order outranks the
+                    # standing one: --pull clears NO_PULL (which
                     # host.env may set on a provisioned ship), or the
                     # documented deploy step `up --pull' would silently
                     # stop pulling on exactly the ships it matters for.
@@ -2079,6 +2108,14 @@ main() {
                 install_shell_functions
                 if [ "$SHELL_HELPERS_CHANGED" = "true" ]; then
                     show_skew_welcome
+                    # Close the slipway before handing over: exec
+                    # replaces this process with the welcome shell,
+                    # which would otherwise inherit fd 9 -- and the
+                    # flock with it -- for the life of the operator's
+                    # session, blocking every later raise (found live,
+                    # 2026-08-24: an eskew attach held the slipway for
+                    # 18 minutes).
+                    exec 9>&- 2>/dev/null || true
                     exec "${SHELL:-sh}" -i
                 fi
             fi

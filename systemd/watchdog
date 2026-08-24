@@ -151,9 +151,16 @@ if [ "$DRY" -eq 1 ]; then
 fi
 
 if [ "$fault" = "ship" ]; then
-    log "recovering ship: ${detail} -- ./basilisk up -d"
-    ./basilisk up -d || log "up failed"
+    # Rouse ONLY the missing rooms: a module-scoped up works on the
+    # STANDING ship.  A bare `up` would be a new raising -- fresh ship,
+    # fresh name, whole complement relieved (per-raising minting,
+    # 2026-08-24) -- which is no way to relight one dark room.
+    log "recovering ship: ${detail} -- ./basilisk up -d${missing}"
+    # shellcheck disable=SC2086  (word-split intentional: service names)
+    ./basilisk up -d $missing || log "up failed"
 else
+    # The wedged ship dies with his wedge: down buries him, and the
+    # up raises a new ship under a new name.
     log "recovering fleet: ${detail} -- ./basilisk down then up -d"
     ./basilisk down || log "down failed"
     ./basilisk up -d || log "up failed"

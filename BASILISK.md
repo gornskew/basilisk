@@ -12,8 +12,13 @@ Each ship floats in a **galaxy** (he needs his galaxy to exist). Yes,
 Basilisk vessels are considered "male," for reasons noöne can trace.
 
 The Shipyard bestows each ship's name at fitting-out, and the ship
-keeps this name for life. Each ship's name is unique **within his own
-galaxy**. So this name is one by which his whole galaxy can hail him.
+keeps this name for life — and a life is exactly one commission:
+**every raising is a new ship**, and the ship before him is buried
+under his own name in the yard's **log of ships**. Each ship's name
+is unique **within his own galaxy**, the buried included — a name is
+never minted twice, so history stays unambiguous and a famous name
+stays its bearer's own. While he flies, his name is the one by which
+his whole galaxy can hail him.
 
 The "Basilisk" class name itself may have been chosen in homage to the
 venerable Basilisk astrodynamics computation code, which indeed gets
@@ -400,8 +405,11 @@ merely the best known:
 
 Ships undergo relief in place, yard periods, and other maintenance
 and administrative events. A hand keeps his minted name across a
-watch change; a **relief in place** musters an all-new complement
-onto the same hull. A tour ends one of four ways:
+watch change; a **relief in place** musters a fresh hand into a room
+of the standing ship. Ships die too: a ship's own tour is his one
+commission, and when the yard raises anew rather than relieving, the
+old ship is buried in the log of ships, his crew's tours ending with
+his. A tour ends one of four ways:
 
 | cause | what happened |
 |---|---|

@@ -50,9 +50,14 @@ The **vatcycle** runs its course: the hull forms, the residential
 modules are plugged in pre-staffed, the muster reads their papers,
 and finally the ship (a "he") engages its innate anti-gravity
 properties and floats out from the vat. He will have been christened
-with a name the yard bestows — minted at fitting-out, kept in a
-scroll named `.ship`. He will thenceforth be known by that name
-throughout the whole galaxy; his crew answer to personal names
+with a name the yard bestows — minted fresh at this raising, kept in
+a scroll named `.ship` — and he will be known by that name for the
+whole of his life, which runs exactly one commission: **every
+raising is a new ship**. The ship standing before him, if any, is
+stood down first and buried under his own name in the yard's **log
+of ships** (`.ships-log`) — his working logs die with him, but the
+name and his dates are kept there, unique forever in this galaxy,
+for some names go down famous. His crew answer to personal names
 minted for them at muster, each room known by its keeper's name,
 and the ship's lines answer to the plain room types as well.
 
@@ -94,9 +99,9 @@ A first `up` also leaves a few deliberate marks in the galaxy:
 
 | command | what it does |
 |---|---|
-| `up [module...]` | raise the ship, or rouse named rooms only; `--pull` fetches fresh residences from the catalogs |
+| `up [module...]` | bare: raise a **new ship** (standing down and burying the old); with modules named: rouse those rooms of the standing ship; `--pull` fetches fresh residences from the catalogs |
 | `down` | stand the whole ship down |
-| `restart [module...]` | relieve the watch — one room, or all |
+| `restart [module...]` | a watch change — one room, or all; ship and crew keep their names |
 | `stop [module...]` | stop without striking the berths |
 | `status`, `ps` | which rooms are aboard and how their residents fare |
 | `logs [module]` | a room's smoke, read back — the tale of every fire that burned there |

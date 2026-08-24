@@ -91,16 +91,20 @@ else
 fi
 
 # =============================================================================
-# THE SHIP'S NAME (Dave, 2026-08-17)
+# THE SHIP'S NAME (2026-08-17; mortality ruled 2026-08-24)
 #
-# THE YARD names a ship the first time he is fitted out from this
-# clone, and he keeps it for life -- per instance: .ship, or
-# .ship-<instance>, beside .env and equally uncommitted.  The docker
-# network IS the ship: the connective tissue every crew member plugs
-# into.  So the network takes the ship's name, which ought to be unique
-# per galaxy (host) -- minting retries against the names docker already
-# knows.  An inherited BASILISK_SHIP (environment or systemd host.env)
-# wins over the minted one, same precedence as every other pin here.
+# THE YARD names each ship at his raising, and he keeps that name for
+# life -- and a life is ONE COMMISSION: every full `up` raises a NEW
+# ship under a fresh name, and the one before him is buried in the
+# log of ships (.ships-log).  The current ship's name rides in .ship
+# (per instance: .ship-<instance>), beside .env and equally
+# uncommitted.  The docker network IS the ship: the connective tissue
+# every crew member plugs into.  So the network takes the ship's
+# name, unique per galaxy (host) among the living AND the buried --
+# minting retries against the names docker knows and the log
+# remembers.  An inherited BASILISK_SHIP (environment or systemd
+# host.env) wins over minting entirely, same precedence as every
+# other pin here, for a rig that wants one name held.
 #
 # The generated compose still falls back to "basilisk" (the class
 # name) when DOCKER_NETWORK_NAME is absent, so a ship fitted out by
@@ -119,10 +123,14 @@ _ship_pick() {
 
 _mint_ship_name() {
     # Basilisk-flavored, serpent under the bow: Vorilisk, Skalyss,
-    # Zhurorath, Thessek ...
+    # Zhurorath, Thessek ...  A name is never re-minted: the living
+    # (docker's networks) and the buried (the log of ships) both
+    # count as taken -- history stays unambiguous, and the famous
+    # names stay their bearers' own.
     _ms_onsets='Bas Vor Skal Zhur Thess Karn Ssyr Drax Vy Or'
     _ms_finals='ilisk yss orath ura ek onn ith esk ala und'
-    _ms_known="$(docker network ls --format '{{.Name}}' 2>/dev/null | tr 'A-Z' 'a-z')"
+    _ms_known="$( { docker network ls --format '{{.Name}}' 2>/dev/null; \
+                    cut -f1 "$SHIPS_LOG" 2>/dev/null; } | tr 'A-Z' 'a-z')"
     _ms_tries=0
     while :; do
         _ms_name="$(_ship_pick "$_ms_onsets")$(_ship_pick "$_ms_finals")"
@@ -141,11 +149,30 @@ _mint_ship_name() {
 }
 
 SHIP_FILE=".ship${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
+SHIPS_LOG=".ships-log"
 if [ -n "${BASILISK_SHIP:-}" ]; then
     :  # inherited pin wins; do not re-mint or overwrite the log entry
-elif [ -f "$SHIP_FILE" ]; then
+elif [ -f "$SHIP_FILE" ] && [ -z "${BASILISK_MINT_FRESH:-}" ]; then
     BASILISK_SHIP="$(head -1 "$SHIP_FILE")"
 else
+    # A NEW SHIP AT EVERY RAISING (ruling 2026-08-24): a full `up`
+    # exports BASILISK_MINT_FRESH=1 and a fresh name is minted here.
+    # The outgoing ship is buried under his own name in the log of
+    # ships: his working logs died with his containers, but the name
+    # and his dates are kept -- some names go down famous.
+    if [ -f "$SHIP_FILE" ]; then
+        _old_ship="$(head -1 "$SHIP_FILE")"
+        _raised_epoch="$(stat -c %Y "$SHIP_FILE" 2>/dev/null \
+            || stat -f %m "$SHIP_FILE" 2>/dev/null || echo '')"
+        _raised="$( [ -n "$_raised_epoch" ] && \
+            ( date -d "@$_raised_epoch" +%Y-%m-%d 2>/dev/null \
+              || date -r "$_raised_epoch" +%Y-%m-%d 2>/dev/null ) \
+            || echo unknown )"
+        printf '%s\traised %s\tburied %s%s\n' \
+            "$_old_ship" "$_raised" "$(date +%Y-%m-%dT%H:%M)" \
+            "${BASILISK_INSTANCE:+	instance $BASILISK_INSTANCE}" >> "$SHIPS_LOG"
+        echo "The ship $_old_ship is buried in the log of ships ($SHIPS_LOG)"
+    fi
     BASILISK_SHIP="$(_mint_ship_name)"
     printf '%s\n' "$BASILISK_SHIP" > "$SHIP_FILE"
     echo "Minted ship's name: $BASILISK_SHIP (kept in $SHIP_FILE)"
