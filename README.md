@@ -54,8 +54,7 @@ with a name the yard bestows — minted at fitting-out, kept in a
 scroll named `.ship`. He will thenceforth be known by that name
 throughout the whole galaxy; his crew answer to personal names
 minted for them at muster, each room known by its keeper's name,
-and the ship's lines answer to the plain room types as well —
-prefixed with his name where several ships share waters.
+and the ship's lines answer to the plain room types as well.
 
 
 If you (ship's owner/commissioner) have a personal scroll chest named
@@ -139,10 +138,13 @@ git pull
 BASILISK_INSTANCE=alpha BASILISK_PORT_OFFSET=100 ./basilisk up
 ```
 
-Each ship gets his own name and his own waters, and his rooms'
-type-hails wear his name as a prefix so no two ships' bridges answer
-to one hail. To reach the second ship's Captain from ashore, prefix
-the incantation: `BASILISK_PREFIX=alpha- eskew`.
+Each ship gets his own name and his own waters — the type-hails
+(`bridge`, `ready-room`) carry only on a ship's own lines, so no two
+ships' bridges ever answer to one hail. Ashore, where the galaxy sees
+every crew member of every ship at once, the second ship's crew wear
+the instance label as a prefix on their minted names (`alpha-`). To
+reach the second ship's Captain from ashore, name the instance:
+`BASILISK_INSTANCE=alpha eskew`.
 
 ## Coming aboard
 

@@ -228,7 +228,7 @@ the residence to house them arrives by stack pouch:
 |---|---|---|
 | **Transporter Room** | **Transporter Chief** | From this fully equipped room, the Chief greets, screens, and directs everything and everyone transporting aboard and abroad; knows who is who and what is what and where they all belong |
 | **Radio Shack** | **Communications Officer** | From his own shack adjoining the bridge — never on it, in the old marine custom — he demands constant reports from crew members as well as from other ships and galaxies of interest, and synthesizes these onto the ship's main bridge viewscreen |
-| **Chartroom** | **Navigator** | Keeps the chartroom and its engine: orbits, transfers, and ephemerides, reckoned for any berth that hails the room. His residence runs heavy, so his berth is elective — the chartroom stands grown and waiting on ships that sail without him |
+| **Chartroom** | **Navigator** | Keeps the chartroom and its engine: orbits, transfers, and ephemerides, reckoned for any berth that hails the room. His residence runs heavy, so his berth is elective — on ships that sail without him the posting stands open on the books, and the chartroom arrives with the hand who signs on to keep it |
 
 
 ```mermaid
@@ -288,17 +288,18 @@ of their own:
 - **Navigation** — deciding where the ship should go, is stood from
   ashore, by you, the proud ship's owner. No seat aboard carries it.
 
-Yet the department is not without quarters. Every Basilisk-class hull
-grows one special compartment — **the chartroom** — set aside
-expressly for a Basilisk-based charting and navigation department, in
-honor of the engine the class is named for. A **Navigator** to keep
-it is on the books but elective — his residence runs heavy, and he
-signs on by stack pouch like the Transporter Chief. Where he musters,
-orbits, transfers, and ephemerides are reckoned on the engine itself
-and served to any berth that hails the room; where he doesn't, the
-chartroom stands grown and waiting, as is the custom of the class
-with empty seats. The navigation *seat* stays ashore either way —
-the chartroom is quarters and instrument, not the decision seat.
+Yet the department is not without a place held for it. Every
+Basilisk-class ship carries **the chartroom** posting on his books,
+set aside expressly for a Basilisk-based charting and navigation
+department, in honor of the engine the class is named for. A
+**Navigator** to stand it is elective — his residence runs heavy,
+and he signs on by stack pouch like the Transporter Chief, his
+chartroom arriving with him. Where he musters, orbits, transfers,
+and ephemerides are reckoned on the engine itself and served to any
+berth that hails the room; where he doesn't, the posting stands open
+on the books, as is the custom of the class with empty seats. The
+navigation *seat* stays ashore either way — the chartroom is
+quarters and instrument, not the decision seat.
 
 Although used relatively rarely, Basilisk ships come with several
 propulsion mechanisms, whereby they may move around within their

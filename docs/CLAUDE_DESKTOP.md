@@ -4,9 +4,10 @@ How to point Claude Desktop at a running Basilisk, so it can drive the
 Emacs and Common Lisp images aboard as MCP tools.
 
 This lives in the Basilisk repo rather than in `skewed-emacs` because the
-config being generated registers **every** server on the roster —
-`skewed-emacs`, `gendl-ccl`, `gendl-sbcl`, and whatever the overlays add.
-No single crew member's repo can write that file, because none of them
+config being generated registers **every** server on the roster — the
+ship's rooms: `ready-room`, `bridge`, `engineering-nexus`, and whatever
+rooms the overlays add (`transporter-room`, `guild-workshop`, ...).
+No single room's repo can write that file, because none of them
 knows what else is aboard.
 
 ## Prerequisites
@@ -54,12 +55,12 @@ knows what else is aboard.
    - Destination: `%APPDATA%\Claude\claude_desktop_config.json`
 
 3. **Restart Claude Desktop** — you should see the roster's MCP servers
-   connect:
-   - `skewed-emacs` — Emacs Lisp evaluation
-   - `gendl-sbcl` — Common Lisp (SBCL) with Gendl
-   - `gendl-ccl` — Common Lisp (CCL) with Gendl
+   connect, named for the ship's rooms:
+   - `ready-room` — Emacs Lisp evaluation (the ship's console)
+   - `bridge` — Common Lisp (CCL) with Gendl
+   - `engineering-nexus` — Common Lisp (SBCL) with Gendl
 
-   (Plus any additional backends from overlay repos you have installed.)
+   (Plus any additional rooms from overlay repos you have installed.)
 
 4. **Optional — prime your first session**: paste the contents of
    [`mcp/opening-prompt.md`](../mcp/opening-prompt.md) as your first

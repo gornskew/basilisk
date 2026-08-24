@@ -225,8 +225,8 @@
   ;; NO NAVIGATOR IN THE BASE RIG (ruling 2026-08-21): the chartroom
   ;; species is heavy, so the :navigator posting stays on the books
   ;; with no berth -- like the Transporter Chief, a hand to stand it
-  ;; arrives by stack pouch.  The chartroom compartment itself is
-  ;; grown in every hull regardless, per the class homage.
+  ;; arrives by stack pouch, his chartroom residence arriving with
+  ;; him.  The posting on the books is the class homage.
 
   ;; The museum chamber: atmosphere-filtered, grown into every
   ;; Basilisk-class hull -- the chamber honors the ancestor the way
@@ -257,14 +257,19 @@
    :sealed-hull? t
    :breathable-volumes ("/tmp")
    :no-default-cargo? t
-   ;; The exhibit takes the better part of a minute to boot the
-   ;; antique and light the plate.  An UNHURRIED hand does not hold
-   ;; the gangway: the raise validates everyone else and returns,
-   ;; while the chamber warms up in the background under the Doctor's
-   ;; watch -- a boot that goes dark is revived, and the hull grows
-   ;; the chamber afresh.  Without this, every raise sat ~44s waiting
-   ;; on the docent, which is exactly how an anonymous visitor
-   ;; concludes the ship is wedged and scuttles it at 30.
+   ;; THE EXHIBIT SLEEPS BETWEEN VISITORS (ruling 2026-08-23): the
+   ;; curator droid keeps the door -- the museum terminal answers at
+   ;; all hours at ~zero cost -- and a visitor's call lights the
+   ;; exhibit (~1 min to boot the antique and light the plate); after
+   ;; MUSEUM_IDLE_SECONDS empty it is put away again.  Dark is
+   ;; healthy BY DESIGN.  An UNHURRIED hand does not hold the gangway
+   ;; regardless: the raise validates everyone else and returns while
+   ;; the chamber comes up in the background under the Doctor's
+   ;; watch.  With the sleeper the door answers within seconds, but
+   ;; the flag stays for MUSEUM_EAGER=1 hulls (the old always-on
+   ;; behavior), where the boot once held every raise ~44s -- which
+   ;; is exactly how an anonymous visitor concludes the ship is
+   ;; wedged and scuttles it at 30.
    :unhurried? t)
   )
  )

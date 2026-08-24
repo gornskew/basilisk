@@ -1,13 +1,18 @@
 # Session Start - Bootstrap with Context
 
-Suggested opening prompt for an AI agent connected to skewed-emacs via
+Suggested opening prompt for an AI agent connected to a Basilisk over
 MCP. Paste this (or adapt it) into a fresh session with Claude Desktop,
 Claude Code, Codex, or any MCP-capable client.
+
+The MCP servers are named for the ship's rooms: `ready-room` (Emacs —
+the ship's console), `bridge` and `engineering-nexus` (Common Lisp
+with Gendl), plus whatever extra rooms this ship carries
+(`transporter-room`, `guild-workshop`, ...).
 
 ## Step 1: Learn Basic Buffer Access (MCP Docs Essentials)
 **First, read just enough to access the Dashboard:**
 
-Call: `skewed-emacs:skewed-emacs__get_docs(id="claude-md")`
+Call: `ready-room:ready-room__get_docs(id="claude-md")`
 
 **Focus on these sections only (skip the rest for now):**
 - "Basic MCP Usage Examples" -> Buffer Operations
@@ -38,9 +43,9 @@ what's in flight. If it is empty or errors, the user hasn't set it up —
 that's fine; skip it.
 
 ## Step 3: Complete MCP Training
-**Now read the full skewed-emacs MCP docs:**
+**Now read the full ready-room MCP docs:**
 
-Re-read: `skewed-emacs:skewed-emacs__get_docs(id="claude-md")` - this time completely
+Re-read: `ready-room:ready-room__get_docs(id="claude-md")` - this time completely
 
 **Key sections:**
 - File editing (paredit-mode for Lisp files!)
@@ -49,11 +54,11 @@ Re-read: `skewed-emacs:skewed-emacs__get_docs(id="claude-md")` - this time compl
 - Shared buffer state warnings
 
 **If working with Gendl/Common Lisp backends, also read the docs for
-that backend** (the Dashboard lists available Lisply backends, e.g.
-gendl-ccl, gendl-sbcl, plus any commercial overlays the user has
-installed):
+that backend** (the Dashboard lists the Lisply backends aboard — the
+bridge and the engineering nexus in the standard rig, plus any rooms
+an overlay adds):
 ```
-gendl-ccl:gendl-ccl__get_docs(id="claude-md")
+bridge:bridge__get_docs(id="claude-md")
 ```
 
 ## Step 4: Present Options to the User

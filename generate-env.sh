@@ -65,9 +65,11 @@ fi
 # than in any generated YAML:
 #
 #   container names  -- GLOBAL to the docker daemon, so this is the one true
-#                       collision.  BASILISK_PREFIX handles it.  In-network
-#                       hostnames stay canonical, so every instance's Captain
-#                       is still "captain" to its own fleet.
+#                       collision.  BASILISK_PREFIX handles it (prefixing the
+#                       minted crew names).  In-network hostnames stay
+#                       canonical, so every ship's rooms answer to their
+#                       plain type slugs (ready-room, bridge) on his own
+#                       network.
 #   network name     -- one bridge per instance, or they share a broadcast
 #                       domain and service DNS becomes ambiguous.  Each
 #                       instance is his own SHIP and carries his own minted
@@ -184,9 +186,9 @@ DOCKER_NETWORK_NAME=$NETWORK_NAME
 
 # Published host ports, offset by BASILISK_PORT_OFFSET.  An inherited
 # value wins, same precedence as EMACS_IMAGE_VARIANT above, because
-# these defaults are DEV ports: a ship whose Pilot fronts the public
-# internet publishes :80, and regenerating .env must not quietly move
-# it to 19069 and take the site off the air.  Host pins ride in
+# these defaults are DEV ports: a ship whose Transporter Chief fronts
+# the public internet publishes :80, and regenerating .env must not
+# quietly move it to 19069 and take the site off the air.  Host pins ride in
 # systemd/host.env, which ./basilisk exports before calling this.
 TTYD_HOST_PORT=${TTYD_HOST_PORT:-$(_off 6942)}
 GENDL_CCL_HOST_PORT=${GENDL_CCL_HOST_PORT:-$(_off 19080)}

@@ -289,36 +289,42 @@ ensure_env() {
 # =============================================================================
 show_help() {
     cat << EOF
-Basilisk — brings up the skewed-emacs stack: Emacs, the Gendl and GDL
-engines, Cyclops and autoheal, crewed onto one network and validated.
+Basilisk — raises a Basilisk-class ship: the standard rig flies a
+Ready Room (skewed-emacs), a Bridge and an Engineering Nexus (gendl),
+a Sick Bay (autoheal), and a Museum Chamber, mustered onto one network
+and validated.  Anything more — a Transporter Room, Guild Workshops —
+arrives by stack pouch (a *-stack repo installed beside this one).
 
-'Basilisk' names the STACK.  'skewed-emacs' keeps meaning the Emacs
-configuration and the image carrying it, which is one container in here.
-This script answers to both names: ./basilisk and ./compose-dev are the
-same file, so nothing that already says compose-dev breaks.  See
-BASILISK.md.
+Rooms answer to their module type slugs (ready-room, bridge, ...);
+containers wear the minted personal name of each room's keeper, fresh
+at every muster (read the roll with '$0 status', or from .muster).
+./basilisk and ./compose-dev are the same file, so nothing that
+already says compose-dev breaks.  See BASILISK.md and README.md.
 
 USAGE:
     $0 <command> [options]
 
 COMMANDS:
-    up [service...]     Start services (default: all services)
-    down               Stop and remove all services
-    restart [service]  Restart service(s)
-    stop [service]     Stop service(s) without removing
-    logs [service]     Show logs for service(s)
-    status             Show status of all services
+    up [module...]     Raise the ship, or named rooms only (default: all)
+    down               Stand the whole ship down
+    restart [module]   Relieve the watch — one room, or all
+    stop [module]      Stop without striking the berths
+    logs [module]      A room's logs
+    status             The muster: each room, its keeper, how they fare
     ps                 Show running containers
-    emacs              Connect to Emacs via emacsclient
+    emacs              Step into the ready room (emacsclient)
     pull               Pull missing images (use PULL_ALWAYS=1 to pull latest)
     clean              Remove containers, networks, and images
     init               Initialize environment (.env setup via generate-env.sh)
     install-shell-functions  Write eskew/egskew helpers to shell RC file(s)
     config             Show merged Docker Compose configuration
 
-SERVICES:
-    Services are defined in docker-compose.yml and any other .yml files
-    in this directory (generated from basilisk.sexp, the editable SSoT).
+MODULES:
+    The ship's rooms are defined in docker-compose.yml and any other
+    .yml files in this directory (generated from basilisk.sexp, the
+    editable SSoT — the ship's articles).  Name a room by its type
+    slug: ready-room, bridge, engineering-nexus, sick-bay,
+    museum-chamber, plus whatever an installed stack pouch adds.
 
 VARIANT SWITCHES (skewed-emacs image; anywhere on the command line):
     --lite | --default | --tui | --gui | --full
@@ -1771,12 +1777,14 @@ install_shell_functions() {
 # at each relief), so it is read off the standing muster roll in the
 # basilisk clone this helper was generated from.  BASILISK_CAPTAIN
 # overrides for an exotic rig; with more than one Basilisk on a box,
-# container names carry the instance prefix:
-#     BASILISK_PREFIX=alpha- BASILISK_INSTANCE=alpha eskew
+# container names carry the instance prefix, derived from the instance
+# label the same way compose-dev derives it:
+#     BASILISK_INSTANCE=alpha eskew
 _skew_captain() {
+    _sc_prefix="${BASILISK_PREFIX:-${BASILISK_INSTANCE:+$BASILISK_INSTANCE-}}"
     _sc_roll="@BASILISK_DIR@/.muster${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
     _sc_name="${BASILISK_CAPTAIN:-$(sed -n 's/^BASILISK_CREW_READY_ROOM=//p' "$_sc_roll" 2>/dev/null | head -1)}"
-    printf '%s%s' "${BASILISK_PREFIX:-}" "${_sc_name:-ready-room}"
+    printf '%s%s' "$_sc_prefix" "${_sc_name:-ready-room}"
 }
 
 _skew_captain_aboard() {
@@ -1794,7 +1802,7 @@ _skew_no_captain() {
     else
         printf '%s: no Captain aboard this ship (no "%s" container).\n' "$1" "$_snc_name" >&2
         printf '  Bring one aboard:  ./basilisk up\n' >&2
-        printf '  Another instance?  BASILISK_PREFIX=<name>- %s\n' "$1" >&2
+        printf '  Another instance?  BASILISK_INSTANCE=<name> %s\n' "$1" >&2
     fi
     return 1
 }
