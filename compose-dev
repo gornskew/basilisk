@@ -2008,7 +2008,8 @@ show_skew_welcome() {
     printf "%b\n" "  \`egskew\` ${BLUE}-- graphical emacsclient (opens new window)${NC}"
     echo ""
     echo "NOTE: Please exit this shell with Ctrl-D before doing './basilisk down'."
-    echo "      (A down + up is a relief in place: same ship, all-new crew.)"
+    echo "      (The next bare 'up' raises a NEW ship: the old one is buried"
+    echo "      under his own name in the log of ships, crew and all.)"
     echo ""
 }
 
