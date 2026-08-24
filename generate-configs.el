@@ -957,18 +957,25 @@ joined, missing names derived.  Every consumer sees the same names."
         (skewed--translate-register config glossary))
        glossary))))
 
-;;; THE CREW LEDGER (crew.env): posting -> the hand standing it.
+;;; THE CREW LEDGER (crew.env): posting -> his room, and his ports.
 ;;;
-;;; A rule in a templated fitting (templates/, substituted by
-;;; compose-dev on the way up) names a POSTING, never a crew member:
-;;; ${BASILISK_POST_FIRST_OFFICER} resolves to whatever name the hand
-;;; standing :first-officer answers to, and
-;;; ${BASILISK_POST_FIRST_OFFICER_HTTP_PORT} to the aboard port of his
-;;; http frequency.  So the chief's standing orders survive renames
-;;; and reliefs untouched.  ONE hand per posting for now: the first
-;;; declared wins (base order, then overlay additions); ships with
-;;; several of a posting are a known limitation, deliberately
-;;; unhandled until the simple case has sailed.
+;;; ROUTINGS NAME A ROOM AND A CREW MEMBER (ruling 2026-08-24):
+;;; containers are ROOMS, and the services answering on ports inside
+;;; are the CREW.  A rule in a templated fitting (templates/,
+;;; substituted by compose-dev on the way up) therefore states both
+;;; halves by lookup: ${BASILISK_POST_FIRST_OFFICER_ROOM} resolves to
+;;; the room where :first-officer stands (the container hostname),
+;;; and ${BASILISK_POST_FIRST_OFFICER_HTTP_PORT} to the aboard port
+;;; his http frequency answers on -- "the captain in the ready room"
+;;; is port 7080 in the skewed-emacs room.  The articles'
+;;; hailing-frequencies are the single source of truth for every
+;;; port: fittings look ports up, never restate them.  So the chief's
+;;; standing orders survive renames and reliefs untouched.  ONE hand
+;;; per posting for now: the first declared wins (base order, then
+;;; overlay additions); ships with several of a posting are a known
+;;; limitation, deliberately unhandled until the simple case has
+;;; sailed.  (The bare ${BASILISK_POST_<P>} key, which yielded the
+;;; room under a crew-sounding name, retired with this ruling.)
 
 (defun skewed--posting-env-name (post)
   "BASILISK_POST_<POSTING> environment name for POST keyword."
@@ -992,7 +999,7 @@ keys on the repo half and broad tag features."
         (unless (memq p seen)
           (push p seen)
           (let ((base (skewed--posting-env-name p)))
-            (push (format "%s=%s" base (plist-get svc :name)) lines)
+            (push (format "%s_ROOM=%s" base (plist-get svc :name)) lines)
             (dolist (f (plist-get svc :hailing-frequencies))
               (let ((fname (plist-get f :name))
                     (port (plist-get f :aboard)))
@@ -1079,7 +1086,7 @@ no rosters)."
   "Union each crew entry's :requires with those of every post it stands.
 :post may be a single keyword or a LIST -- one crew member can stand
 several posts (narad's First Officer also stands
-:radio-shack, the ability arriving with his services-init
+:communications-officer, the ability arriving with his services-init
 hook at boot or later, not with his species).  Per-post requirements
 come from the :postings qualification tables -- this file's own, then
 the base articles' -- e.g. :ships-engineer requires \"gendl\",
@@ -1429,7 +1436,9 @@ Examples:
           (make-directory (file-name-directory crew-env) t)
           (with-temp-file crew-env
             (insert (format "# DO NOT EDIT - Generated from %s\n" skewed-gen-articles-filename)
-                    "# The crew ledger: posting -> first hand standing it, aboard ports per frequency.\n"
+                    "# The crew ledger: posting -> his room (_ROOM) and his aboard ports (_<FREQ>_PORT).\n"
+                    "# Routings name a room and a crew member; the articles' hailing-frequencies\n"
+                    "# are the single source of truth for ports.\n"
                     "# Consumed by compose-dev's substitute_templates on the way up.\n"
                     (skewed--generate-crew-env ledger-crew)
                     "\n"))

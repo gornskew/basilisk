@@ -86,12 +86,13 @@
    :requires ("gendl"))
   (:post :ships-engineer :requires ("gendl"))
   (:post :transporter-chief :requires ("reverse-proxy"))
-  ;; The radio shack is a room still on the drawing board (the Eyes
-  ;; Only refit); until it is grown into the hull, the posting sits on
-  ;; the books like the Navigator's, and the First Officer carries the
-  ;; pocket viewscreen meanwhile.
-  (:post :radio-shack
-   :description "Keeps the radio shack: the viewscreens, and hails to the fleet."
+  ;; The radio shack is the ROOM that comes with a Communications
+  ;; Officer -- still on the drawing board (the Eyes Only refit).
+  ;; Until it is grown into the hull, his posting sits on the books
+  ;; like the Navigator's, and the First Officer carries the pocket
+  ;; viewscreen meanwhile.
+  (:post :communications-officer
+   :description "Keeps the radio shack: demands reports from crew and from ships of interest; synthesizes them onto the bridge viewscreen."
    :requires ("bridge viewscreen operations"))
   (:post :navigator
    :description "Keeps the chartroom: orbits, transfers, ephemerides."

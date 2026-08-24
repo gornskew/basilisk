@@ -374,14 +374,18 @@ EOF
 # TEMPLATE SUBSTITUTION -- the yard rewrites the chief's standing
 # orders (and any other templated fittings) from the current crew, on
 # the way up.  templates/ arrives via a stack's ./install; crew.env is
-# generated from the articles.  A ${BASILISK_POST_<POSTING>}
-# placeholder resolves to the name of the first crew member standing
-# that posting, and ${BASILISK_POST_<POSTING>_<FREQ>_PORT} to the
-# aboard port of that member's named frequency -- so a rule written
-# against a POSTING keeps working when the hand standing it is
-# renamed or relieved.  One hand per posting for now (first declared
-# wins); multiples are a known limitation, deliberately unhandled
-# until the simple case has sailed.
+# generated from the articles.  ROUTINGS NAME A ROOM AND A CREW
+# MEMBER (ruling 2026-08-24): ${BASILISK_POST_<POSTING>_ROOM}
+# resolves to the room where that posting stands (the container
+# hostname), and ${BASILISK_POST_<POSTING>_<FREQ>_PORT} to the aboard
+# port the crew member standing it answers on -- "the captain in the
+# ready room" is port 7080 in the skewed-emacs room.  The articles'
+# hailing-frequencies are the single source of truth for every port;
+# fittings look ports up, never restate them.  A rule written this
+# way keeps working when the hand standing the post is renamed or
+# relieved.  One hand per posting for now (first declared wins);
+# multiples are a known limitation, deliberately unhandled until the
+# simple case has sailed.
 substitute_templates() {
     [ -d "${SCRIPT_DIR}/templates" ] || return 0
     # The ledger arrives in layers: the base ship's generated/crew.env
@@ -848,9 +852,11 @@ _crew_role_for_posting() {
     case "$1" in
         # Canon postings (positions ruling 2026-08-24: captain,
         # first-officer, ships-engineer, doctor; guild-engineer,
-        # transporter-chief and radio-shack berthed by overlay).  The
-        # -* arms tolerate -2/-3 collision suffixes and multi-post
-        # slugs (first-officer-comms is still bridge crew).
+        # transporter-chief and communications-officer berthed by
+        # overlay -- the comms officer's own radio shack room awaits
+        # the Eyes Only refit).  The -* arms tolerate -2/-3 collision
+        # suffixes and multi-post slugs (first-officer-comms is still
+        # bridge crew).
         captain|captain-[0-9]*)   echo "captain" ;;
         first-officer|first-officer-*) echo "engineer" ;;
         ships-engineer|ships-engineer-[0-9]*) echo "engineer" ;;
@@ -858,15 +864,16 @@ _crew_role_for_posting() {
         doctor|doctor-[0-9]*)     echo "doctor" ;;
         transporter-chief|transporter-chief-[0-9]*) echo "pilot" ;;
         pilot|pilot-[0-9]*)       echo "pilot" ;;
-        radio-shack|radio-shack-[0-9]*) echo "comm" ;;
+        communications-officer|communications-officer-[0-9]*) echo "comm" ;;
         "${BASILISK_VOCAB_STOWAWAY_DESIGNATOR:-stowaway}"-*) echo "stowaway" ;;
         # Legacy posting names, tolerated for containers created
         # before their renames (medic -> doctor 2026-08-18; engineer ->
-        # ships-engineer and communications-officer -> radio-shack,
-        # positions ruling 2026-08-24; jr-eng-* -> derived slugs).
+        # ships-engineer, positions ruling 2026-08-24; radio-shack
+        # briefly named the comms POSTING that same day before the
+        # ruling settled it as his ROOM; jr-eng-* -> derived slugs).
         medic|medic-[0-9]*)       echo "doctor" ;;
         engineer|engineer-[0-9]*) echo "engineer" ;;
-        communications-officer|communications-officer-[0-9]*) echo "comm" ;;
+        radio-shack|radio-shack-[0-9]*) echo "comm" ;;
         comms|comms-[0-9]*)       echo "comm" ;;
         jr-eng-*|sr-eng-*|guild-*) echo "engineer" ;;
         *)                        echo "crew" ;;
@@ -916,8 +923,8 @@ _crew_title_for_posting() {
                                        echo "${BASILISK_VOCAB_TITLE_DOCTOR:-Doctor}" ;;
         transporter-chief|transporter-chief-[0-9]*|pilot|pilot-[0-9]*)
                                        echo "${BASILISK_VOCAB_TITLE_PILOT:-T-Chief}" ;;
-        radio-shack|radio-shack-[0-9]*|communications-officer|communications-officer-[0-9]*|comms|comms-[0-9]*)
-                                       echo "${BASILISK_VOCAB_TITLE_COMM:-Radio}" ;;
+        communications-officer|communications-officer-[0-9]*|radio-shack|radio-shack-[0-9]*|comms|comms-[0-9]*)
+                                       echo "${BASILISK_VOCAB_TITLE_COMM:-Comm}" ;;
         navigator|navigator-[0-9]*)    echo "${BASILISK_VOCAB_TITLE_NAVIGATOR:-Navigator}" ;;
         museum-curator|museum-curator-[0-9]*)
                                        echo "${BASILISK_VOCAB_TITLE_CURATOR:-Curator}" ;;
