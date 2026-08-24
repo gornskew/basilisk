@@ -92,7 +92,10 @@ foreign overlay fails loudly rather than quietly composing.")
   "Generate docker-compose.yml content from CONFIG."
   (let* ((defaults (skewed--get-prop config :defaults))
          (services (skewed--get-prop config :crew))
-         (network-name (or (skewed--get-prop defaults :network) "skewed-network"))
+         ;; Fallback NAME only, for a hull fitted out by hand before
+         ;; the yard has minted him one: he sails under the class name.
+         ;; (Every ./basilisk raise sets DOCKER_NETWORK_NAME from .ship.)
+         (network-name (or (skewed--get-prop defaults :network) "basilisk"))
          (lines '()))
     
     ;; Header
@@ -113,8 +116,13 @@ foreign overlay fails loudly rather than quietly composing.")
       (let ((ipv6        (skewed--get-prop defaults :network-ipv6))
             (ipv4-subnet (skewed--get-prop defaults :network-ipv4-subnet))
             (ipv6-subnet (skewed--get-prop defaults :network-ipv6-subnet)))
+        ;; The compose-file KEY is the static word `ship' -- the
+        ;; docker network IS the ship, and yaml keys cannot carry a
+        ;; minted name.  The network's actual NAME comes from .ship
+        ;; via DOCKER_NETWORK_NAME: struck and grown anew at each
+        ;; raise, same name for the life of the clone.
         (push "networks:" lines)
-        (push "  skewed-network:" lines)
+        (push "  ship:" lines)
         (push (format "    name: ${DOCKER_NETWORK_NAME:-%s}" network-name) lines)
         (push "    driver: bridge" lines)
         (when ipv6
@@ -250,10 +258,14 @@ foreign overlay fails loudly rather than quietly composing.")
           (push "    init: true" lines))
         (push "    stdin_open: true" lines)
         (push "    tty: true" lines)
-        ;; A sealed hull takes no writes; whatever must stay breathable
-        ;; rides tmpfs and is gone at power-down.  (The museum
-        ;; chamber's atmospheric filtering.)
-        (when (skewed--get-prop svc :sealed-hull?)
+        ;; A filtered hull takes no writes; whatever must stay
+        ;; breathable rides tmpfs and is gone at power-down.  (The
+        ;; museum chamber's atmospheric filtering -- filtered, not
+        ;; sealed: its declared lines still ride the ship's network.)
+        ;; :sealed-hull? is the retired name for the same key,
+        ;; honored so older articles keep generating.
+        (when (or (skewed--get-prop svc :filtered-hull?)
+                  (skewed--get-prop svc :sealed-hull?))
           (push "    read_only: true" lines))
         (let ((breathable (skewed--get-prop svc :breathable-volumes)))
           (when breathable
@@ -374,10 +386,10 @@ foreign overlay fails loudly rather than quietly composing.")
                 ;; (cyclops backends, MCP configs, SLIME) reaches the
                 ;; same container.
                 (progn
-                  (push "      skewed-network:" lines)
+                  (push "      ship:" lines)
                   (push "        aliases:" lines)
                   (push (format "          - %s" alias) lines))
-              (push "      - skewed-network" lines))))
+              (push "      - ship" lines))))
         
         ;; Healthcheck
         (when healthcheck

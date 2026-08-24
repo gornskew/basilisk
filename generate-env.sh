@@ -102,9 +102,9 @@ fi
 # knows.  An inherited BASILISK_SHIP (environment or systemd host.env)
 # wins over the minted one, same precedence as every other pin here.
 #
-# The generated compose still falls back to "skewed-network" when
-# DOCKER_NETWORK_NAME is absent, so a ship fitted out by hand before
-# naming sails on unrenamed.  NOTE: on an existing deployment the first
+# The generated compose still falls back to "basilisk" (the class
+# name) when DOCKER_NETWORK_NAME is absent, so a ship fitted out by
+# hand before naming still sails.  NOTE: on an existing deployment the first
 # regeneration after this change renames the network, and the next
 # `up' is therefore a relief in place -- compose recreates the crew
 # onto the renamed ship.

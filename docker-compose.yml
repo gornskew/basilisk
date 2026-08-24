@@ -10,8 +10,8 @@
 # Regenerate with: (skewed-generate-all-configs)
 
 networks:
-  skewed-network:
-    name: ${DOCKER_NETWORK_NAME:-skewed-network}
+  ship:
+    name: ${DOCKER_NETWORK_NAME:-basilisk}
     driver: bridge
     enable_ipv6: true
     ipam:
@@ -57,7 +57,7 @@ services:
       - ${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local:/home/emacs-user/.emacs-local:ro
       - ${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local-early:/home/emacs-user/.emacs-local-early:ro
     networks:
-      - skewed-network
+      - ship
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:7080/lisply/ping-lisp"]
       interval: 30s
@@ -92,7 +92,7 @@ services:
         bind:
           create_host_path: true
     networks:
-      - skewed-network
+      - ship
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9080/lisply/ping-lisp"]
       interval: 72s
@@ -127,7 +127,7 @@ services:
         bind:
           create_host_path: true
     networks:
-      - skewed-network
+      - ship
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9090/lisply/ping-lisp"]
       interval: 90s
@@ -158,7 +158,7 @@ services:
           create_host_path: true
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - skewed-network
+      - ship
 
   museum-chamber:
     image: gornskew/museum-chamber:trial
@@ -178,4 +178,4 @@ services:
     environment:
       - TZ=${TZ:-Etc/UTC}
     networks:
-      - skewed-network
+      - ship

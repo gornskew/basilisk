@@ -167,7 +167,7 @@ cleanup_on_exit() {
             # compose down` reads docker-compose.yml alone, so overlay
             # rooms (transporter room, guild workshops) would be left
             # standing; compose-dev assembles every .yml, takes the
-            # conn, and sweeps orphans.
+            # slipway lock, and sweeps orphans.
             (cd "$COMPOSE_DIR" && ./compose-dev down) >> "$LOG_FILE" 2>&1
             rm -f "$STARTER_FILE"
             log "Compose shutdown complete"
@@ -191,7 +191,7 @@ if ! is_service_running; then
 
             # Clean up any stale containers first -- via compose-dev so
             # overlay rooms come down too (bare compose sees only the
-            # base file) and the .conn lock serializes against any
+            # base file) and the slipway lock serializes against any
             # concurrent raise.
             (cd "$COMPOSE_DIR" && ./compose-dev down) >> "$LOG_FILE" 2>&1 || true
 

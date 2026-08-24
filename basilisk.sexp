@@ -153,7 +153,7 @@
                 (:dockside "${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local-early"
                  :stowed-at "/home/emacs-user/.emacs-local-early" :mode "ro"))
    ;; How this post shows on a bridge viewscreen.  :in-stack is the
-   ;; ONLY sanctioned routing for the :emacs kind -- emacs lisply has
+   ;; ONLY routing allowed for the :emacs kind -- emacs lisply has
    ;; no token gate, so it never rides a public path.  Off-ship, the
    ;; Captain is sampled through that ship's own gendl-ccl proxy
    ;; (publish-emacs-metrics!), which is gated.
@@ -254,7 +254,7 @@
    :provenance "gornskew"
    :species "museum-chamber:trial"
    :hailing-frequencies ((:name "telnet" :aboard 1052))
-   :sealed-hull? t
+   :filtered-hull? t
    :breathable-volumes ("/tmp")
    :no-default-cargo? t
    ;; THE EXHIBIT SLEEPS BETWEEN VISITORS (ruling 2026-08-23): the

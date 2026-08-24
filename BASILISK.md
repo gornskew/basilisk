@@ -274,16 +274,16 @@ read it, and it tells the tale of every fire aboard long after the
 fire itself has moved on.
 
 
-## The conn, the helm, and navigation
+## Command, the helm, and navigation
 
-The **Captain has the conn** — authority over the ship's standing
-orders, exercised by writing them. 
+The **Captain commands** — the ship's standing orders are his,
+exercised by writing them.
 
 Two seats are empty, and named so they may someday welcome named crew
 of their own:
 
-- The **helm** goes unattended. Piloting reverts to the Captain at
-  the conn or to autopilot.
+- The **helm** goes unattended. Piloting reverts to the Captain or
+  to autopilot.
 
 - **Navigation** — deciding where the ship should go, is stood from
   ashore, by you, the proud ship's owner. No seat aboard carries it.
@@ -324,7 +324,7 @@ looking for his business; the hall exists so that none needs to.
 The **bridge is the First Officer's watch**. He runs it in the
 classic manner of fine first officers: precise, unhurried, and
 disinclined to trouble the Captain with anything the bridge can
-settle itself. The Captain has the conn wherever he sits; the First
+settle itself. The Captain commands wherever he sits; the First
 Officer has the bridge.
 
 

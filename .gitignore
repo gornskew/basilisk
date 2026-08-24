@@ -134,4 +134,7 @@ artwork/direction/
 # room's keeper, per instance -- per-clone identity like .ship above.
 .muster
 .muster-*
+# The slipway lock (one raise or stand-down at a time); .conn is its
+# retired pre-2026-08-24 name, swept by the first take_the_slipway.
+.slipway
 .conn

@@ -422,31 +422,34 @@ substitute_templates() {
     rm -f "$_st_env"
 }
 
-# ONE RAISE HOLDS THE CONN AT A TIME.  Fixed container names used to
-# make concurrent raises self-blocking: the second `up` collided on
+# ONE RAISE HOLDS THE SLIPWAY AT A TIME.  Fixed container names used
+# to make concurrent raises self-blocking: the second `up` collided on
 # container_name and failed loudly.  Minted names removed that
 # accidental interlock -- two concurrent raises each mint their own
 # complement and docker happily boards BOTH (observed 2026-08-23:
 # a doubled fleet, two keepers per room, four rooms twinned).  So the
-# raise takes an explicit lock now: flock on .conn beside the compose
-# files.  Stand-downs and restarts take the same lock -- a down racing
-# an up is the same doubled-fleet factory from the other side.
-# Waits briefly rather than failing: back-to-back invocations (a
-# deploy script, an impatient operator) serialize instead of dying.
-take_the_conn() {
+# raise takes an explicit lock now: flock on .slipway beside the
+# compose files.  Stand-downs and restarts take the same lock -- a
+# down racing an up is the same doubled-fleet factory from the other
+# side.  Waits briefly rather than failing: back-to-back invocations
+# (a deploy script, an impatient operator) serialize instead of dying.
+take_the_slipway() {
     command -v flock > /dev/null 2>&1 || return 0
-    exec 9>>"${SCRIPT_DIR}/.conn" || return 0
+    # .conn was the lock's name before 2026-08-24; clear a leftover so
+    # it cannot confuse a reader (it held no state, only the flock).
+    rm -f "${SCRIPT_DIR}/.conn" 2>/dev/null || true
+    exec 9>>"${SCRIPT_DIR}/.slipway" || return 0
     flock -n 9 && return 0
-    log_info "another raise or stand-down holds the conn; waiting (up to 120s)..."
+    log_info "another raise or stand-down holds the slipway; waiting (up to 120s)..."
     if ! flock -w 120 9; then
-        log_error "could not take the conn after 120s -- is another raise wedged? (lock: ${SCRIPT_DIR}/.conn)"
+        log_error "could not take the slipway after 120s -- is another raise wedged? (lock: ${SCRIPT_DIR}/.slipway)"
         exit 1
     fi
 }
 
 start_services() {
     _ss_services="$*"
-    take_the_conn
+    take_the_slipway
     init_env
     ensure_env
     substitute_templates
@@ -647,7 +650,10 @@ _ship_network_name() {
     elif [ -f "${SCRIPT_DIR}/.env" ]; then
         _snn="$(sed -n 's/^DOCKER_NETWORK_NAME=//p' "${SCRIPT_DIR}/.env" | head -1)"
     fi
-    [ -n "$_snn" ] || _snn="skewed-network"
+    # Fallback for a hull raised by hand before the yard named him:
+    # he sails under the class name (matches the generated compose's
+    # own ${DOCKER_NETWORK_NAME:-basilisk} fallback).
+    [ -n "$_snn" ] || _snn="basilisk"
     printf '%s' "$_snn" | tr 'A-Z' 'a-z'
 }
 
@@ -671,7 +677,7 @@ release_ship() {
 }
 
 stop_services() {
-    take_the_conn
+    take_the_slipway
     log_info "Stopping all services"
     # --remove-orphans for the same reason up passes it: a stand-down
     # should not leave a previous naming era's containers running.
@@ -682,7 +688,7 @@ stop_services() {
 }
 
 restart_services() {
-    take_the_conn
+    take_the_slipway
     log_info "Restarting services: ${*:-all}"
     run_compose restart "$@"
     validate_services
@@ -697,15 +703,19 @@ restart_services() {
 # CREW IDENTITY MINTING (the Basilisk ship-and-crew conceit, framework-level)
 #
 # Mints a per-container identity -- NAME (random, species-flavored),
-# SPECIES, ROLE -- and writes it into /tmp/skewed-crew-identity inside
-# each running container, once.
+# SPECIES, POSTING, ROLE -- and writes it into
+# /tmp/skewed-crew-identity inside each running container, once.
 #
-# The two axes come from two different places, on purpose.  SPECIES is
-# the IMAGE TYPE, read off Config.Image and never looked up.  ROLE
-# comes from the POSTING -- the basilisk.post label, falling back to
-# the hostname that basilisk.sexp already assigns.  So renaming a
-# service in an overlay changes what it stands, not what it is, and
-# swapping its image changes what it is, not what it stands.
+# The axes come from different places, on purpose.  SPECIES is the
+# IMAGE TYPE, read off Config.Image and never looked up.  POSTING is
+# the declared datum -- the basilisk.post label (a comma list),
+# falling back to the hostname that basilisk.sexp already assigns.
+# So renaming a service in an overlay changes what it stands, not
+# what it is, and swapping its image changes what it is, not what it
+# stands.  ROLE= is a legacy rendering of the posting kept only for
+# its remaining consumers (cyclops utility.lisp and eyes-only
+# metrics.lisp, both feeding the eyes-only board); it retires with
+# the eyes-only revamp -- new readers take POSTING=.
 #
 # No schema change, every existing overlay (sally-stack, shelly-stack,
 # ...) participates automatically, and any container this script has
@@ -824,6 +834,51 @@ _crew_role_for_postings() {
     done
     IFS=$_crp_old_ifs
     echo "$_crp_role"
+}
+
+# MUSTER TITLES COME FROM THE POSTING (2026-08-24), not from the role
+# vocabulary above: the posting is the datum -- what the articles
+# declare -- and the ROLE strings survive only as a legacy rendering
+# for eyes-only skins, retired with the eyes-only revamp.  Empty
+# output means "no title known for this posting"; the caller decides
+# between Crew (posted but unrecognized) and Stowaway (no posting at
+# all).  Defaults are canon's words; a fork overrides them via its
+# sourced vocabulary, same as ever.
+_crew_title_for_posting() {
+    case "$1" in
+        captain|captain-[0-9]*)        echo "${BASILISK_VOCAB_TITLE_CAPTAIN:-Captain}" ;;
+        first-officer|first-officer-*) echo "${BASILISK_VOCAB_TITLE_FIRST_OFFICER:-1st Off}" ;;
+        engineer|engineer-[0-9]*|ships-engineer|ships-engineer-[0-9]*)
+                                       echo "${BASILISK_VOCAB_TITLE_ENGINEER:-Engineer}" ;;
+        guild-engineer|guild-engineer-[0-9]*|jr-eng-*|sr-eng-*|guild-*)
+                                       echo "${BASILISK_VOCAB_TITLE_ENGINEER:-Engineer}" ;;
+        doctor|doctor-[0-9]*|medic|medic-[0-9]*)
+                                       echo "${BASILISK_VOCAB_TITLE_DOCTOR:-Doctor}" ;;
+        transporter-chief|transporter-chief-[0-9]*|pilot|pilot-[0-9]*)
+                                       echo "${BASILISK_VOCAB_TITLE_PILOT:-T-Chief}" ;;
+        communications-officer|communications-officer-[0-9]*|comms|comms-[0-9]*)
+                                       echo "${BASILISK_VOCAB_TITLE_COMM:-Comm}" ;;
+        navigator|navigator-[0-9]*)    echo "${BASILISK_VOCAB_TITLE_NAVIGATOR:-Navigator}" ;;
+        museum-curator|museum-curator-[0-9]*)
+                                       echo "${BASILISK_VOCAB_TITLE_CURATOR:-Curator}" ;;
+        *)                             echo "" ;;
+    esac
+}
+
+# First titled posting in a comma list wins, without reading position
+# as primacy -- same shape as _crew_role_for_postings.
+_crew_title_for_postings() {
+    _ctp_title=""
+    _ctp_old_ifs=$IFS; IFS=','
+    for _ctp_p in $1; do
+        _ctp_t="$(_crew_title_for_posting "$_ctp_p")"
+        if [ -n "$_ctp_t" ]; then
+            _ctp_title="$_ctp_t"
+            break
+        fi
+    done
+    IFS=$_ctp_old_ifs
+    echo "$_ctp_title"
 }
 
 # MANNED/DRONE IS GONE FROM HERE, deliberately (Dave, 2026-08-17).
@@ -1115,10 +1170,10 @@ _ci_image="$(docker inspect --format \
         # every reader scans for its own keys, so dropping it is
         # backward-compatible the same way adding it was.
         if docker exec "$_ci_name" sh -c \
-            "printf 'NAME=%s\nSPECIES=%s\nROLE=%s\n' '$_ci_mint_name' '$_ci_species' '$_ci_role' > /tmp/skewed-crew-identity" \
+            "printf 'NAME=%s\nSPECIES=%s\nPOSTING=%s\nROLE=%s\n' '$_ci_mint_name' '$_ci_species' '$_ci_posting' '$_ci_role' > /tmp/skewed-crew-identity" \
             2>/dev/null
         then
-            log_success "  ${_ci_name}: crew identity minted -- ${_ci_mint_name} (${_ci_role}, ${_ci_species})"
+            log_success "  ${_ci_name}: crew identity minted -- ${_ci_mint_name} (${_ci_posting}, ${_ci_species})"
         else
             log_warning "  ${_ci_name}: could not write crew identity (no shell/writable rootfs?)"
         fi
@@ -1388,34 +1443,29 @@ crew_muster() {
         else
             _cm_cname="${BASILISK_PREFIX:-}${_cm_svc}"
         fi
-        # Roles come from the DECLARED posting label when there is one
-        # (a comma list -- no posting primary), from the service name
-        # for containers created before labels, via the SAME
-        # derivation minting uses (two tables, one truth: a private
-        # species->role copy here silently mustered every renamed post
-        # as "Crew" on a real deploy, 2026-08-16).  A container with
-        # NO posting at all is a STOWAWAY: a species specimen aboard,
-        # comprehended like anyone else, assigned nothing.
+        # Titles come from the DECLARED posting label when there is
+        # one (a comma list -- no posting primary), from the service
+        # name for containers created before labels (a private
+        # species->title copy here silently mustered every renamed
+        # post as "Crew" on a real deploy, 2026-08-16 -- one table,
+        # one truth).  Posting-derived directly since 2026-08-24, so
+        # every posting on the books gets its own title (the Curator
+        # used to muster as "Crew" through the ROLE bottleneck).  A
+        # container with NO posting at all is a STOWAWAY: a species
+        # specimen aboard, comprehended like anyone else, assigned
+        # nothing.
         _cm_posts="$(docker inspect --format \
             '{{index .Config.Labels "basilisk.post"}}' \
             "$_cm_cname" 2>/dev/null)"
         if [ -n "$_cm_posts" ]; then
-            _cm_role="$(_crew_role_for_postings "$_cm_posts")"
+            _cm_post="$(_crew_title_for_postings "$_cm_posts")"
+            [ -n "$_cm_post" ] || _cm_post="${BASILISK_VOCAB_TITLE_CREW:-Crew}"
+            [ "$(_crew_role_for_postings "$_cm_posts")" = "pilot" ] && _cm_have_pilot=1
         else
-            _cm_role="$(_crew_role_for_posting "$_cm_svc")"
-            [ "$_cm_role" = "crew" ] && _cm_role="stowaway"
+            _cm_post="$(_crew_title_for_posting "$_cm_svc")"
+            [ -n "$_cm_post" ] || _cm_post="${BASILISK_VOCAB_TITLE_STOWAWAY:-Stowaway}"
+            [ "$(_crew_role_for_posting "$_cm_svc")" = "pilot" ] && _cm_have_pilot=1
         fi
-        # Display titles: canon's words as defaults, a fork's via the
-        # sourced vocabulary.
-        case "$_cm_role" in
-            captain)  _cm_post="${BASILISK_VOCAB_TITLE_CAPTAIN:-Captain}" ;;
-            pilot)    _cm_post="${BASILISK_VOCAB_TITLE_PILOT:-T-Chief}" ; _cm_have_pilot=1 ;;
-            engineer) _cm_post="${BASILISK_VOCAB_TITLE_ENGINEER:-Engineer}" ;;
-            comm)     _cm_post="${BASILISK_VOCAB_TITLE_COMM:-Comm}" ;;
-            doctor)   _cm_post="${BASILISK_VOCAB_TITLE_DOCTOR:-Doctor}" ;;
-            stowaway) _cm_post="${BASILISK_VOCAB_TITLE_STOWAWAY:-Stowaway}" ;;
-            *)        _cm_post="${BASILISK_VOCAB_TITLE_CREW:-Crew}" ;;
-        esac
         _cm_ports=$(docker ps --filter "name=^${_cm_cname}\$" \
                               --format '{{.Ports}}' 2>/dev/null \
                         | tr ',' '\n' | sed -n 's/.*0\.0\.0\.0:\([0-9]*\)->\([0-9]*\).*/\1->\2/p' \
