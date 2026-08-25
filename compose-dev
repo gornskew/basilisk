@@ -907,10 +907,12 @@ _crew_role_for_postings() {
 # between Crew (posted but unrecognized) and Stowaway (no posting at
 # all).  Defaults are canon's words; a fork overrides them via its
 # sourced vocabulary, same as ever.
-# The Cap'n's default title carries an apostrophe, which cannot ride
-# inside a ${...:-default} expansion (the parser reads it as an
-# opening quote); it boards through a plain variable instead.
-_bk_title_capn_default="Cap'n"
+# The canonical title is "Captain" (2026-08-25 ruling; "Cap'n" is
+# reserved for possible later play in eyes-only or the dashboard).
+# The plain variable stays: a fork's title may carry an apostrophe,
+# which cannot ride inside a ${...:-default} expansion (the parser
+# reads it as an opening quote).
+_bk_title_capn_default="Captain"
 _crew_title_for_posting() {
     case "$1" in
         captain|captain-[0-9]*)        echo "${BASILISK_VOCAB_TITLE_CAPTAIN:-$_bk_title_capn_default}" ;;
@@ -961,7 +963,7 @@ _room_pretty() {
 }
 
 # Display form for a keeper, from the container's own labels:
-# "Cap'n Thrilk in the Ready Room".  The room is the compose SERVICE
+# "Captain Thrilk in the Ready Room".  The room is the compose SERVICE
 # key (the room slug -- basilisk.module is the module TYPE, which the
 # second guild workshop shares with the first); a container with no
 # recognizable title or room falls back gracefully to its bare name.
@@ -1712,7 +1714,7 @@ validate_services() {
         esac
         eval "_vs_svc_${_vs_san}=\$_vs_svc"
         eval "_vs_probe_cmd_${_vs_san}=\$_vs_probe_tmp"
-        # The keeper's display form ("Cap'n Thrilk in the Ready Room"),
+        # The keeper's display form ("Captain Thrilk in the Ready Room"),
         # computed once here so the watch loop below never shells out.
         _vs_disp="$(_crew_display "$_vs_name")"
         eval "_vs_disp_${_vs_san}=\$_vs_disp"
@@ -1990,7 +1992,7 @@ _rmax_gui() {
     fi
 }
 
-# rmax [@instance] [emacsclient args...] -- hail the Cap'n in your
+# rmax [@instance] [emacsclient args...] -- hail the Captain in your
 # current terminal.  A leading @-arg names the instance when several
 # ships share the box (a filename genuinely starting with @ can hide
 # behind ./).  The subshell keeps the per-call choice out of the
@@ -2006,7 +2008,7 @@ rmax() {
     esac
 }
 
-# grmax [@instance] [emacsclient args...] -- the Cap'n receives you in
+# grmax [@instance] [emacsclient args...] -- the Captain receives you in
 # a new window (graphical emacsclient; falls back to a terminal
 # attach when no display is present).
 grmax() {
@@ -2131,7 +2133,7 @@ show_skew_welcome() {
     echo ""
     echo "Shell Commands for the Basilisk Stack"
     echo ""
-    printf "%b\n" "  \`rmax\`   ${BLUE}-- hail the Cap'n: terminal emacsclient (attach here)${NC}"
+    printf "%b\n" "  \`rmax\`   ${BLUE}-- hail the Captain: terminal emacsclient (attach here)${NC}"
     printf "%b\n" "  \`grmax\`  ${BLUE}-- graphical emacsclient (opens new window)${NC}"
     printf "%b\n" "  \`rmax @<instance>\` ${BLUE}-- reach another ship on this box${NC}"
     printf "%b\n" "  ${BLUE}(\`eskew\`/\`egskew\` stay aboard as aliases)${NC}"
