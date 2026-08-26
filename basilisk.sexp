@@ -40,7 +40,7 @@
 ;;; The Captain's species ships in several strains (devo-full,
 ;;; devo-default, devo-lite, ...): the strain is the tag half of the
 ;;; species, so the build variant is already part of the species
-;;; designation.  docker/BUILD.md in skewed-emacs carries the detail;
+;;; designation.  docker/BUILD.md in readymax carries the detail;
 ;;; EMACS_IMAGE_VARIANT in .env (or a --lite/--full switch) picks the
 ;;; strain a host flies, and this dev stack defaults to full.
 
@@ -77,10 +77,12 @@
  ;; meaningless -- and its name is a slug incorporating every post it
  ;; stands, with license to abbreviate aggressively.
  :postings
- (;; A skewed-emacs Captain is recommended, not a class invariant --
+ (;; A Readymax Captain is recommended, not a class invariant --
   ;; and the qualification scheme says exactly that: a Captain of
-  ;; another species musters with a warning and proceeds.
-  (:post :captain :requires ("skewed-emacs"))
+  ;; another species musters with a warning and proceeds.  (Readymax
+  ;; images through the rename transition also carry the elder
+  ;; "skewed-emacs" capability token, so older articles stay quiet.)
+  (:post :captain :requires ("readymax"))
   (:post :first-officer
    :description "Bridge duty: assists the Captain and the ship's visitors."
    :requires ("gendl"))
@@ -131,7 +133,7 @@
    :type "emacs-lisp"
    :cyborg-passengers-allowed? t
    :provenance "gornskew"
-   :species "${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}"
+   :species "${EMACS_IMAGE_BASE:-readymax}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}"
    :hailing-frequencies ((:name "http" :aboard 7080)
                          (:name "webterm" :aboard 6942 :galaxy ${TTYD_HOST_PORT:-6942}))
    :space-suit (("WEBTERM" . "${WEBTERM:-ttyd}")

@@ -22,7 +22,7 @@ networks:
 services:
 
   ready-room:
-    image: gornskew/${EMACS_IMAGE_BASE:-skewed-emacs}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}
+    image: gornskew/${EMACS_IMAGE_BASE:-readymax}:${EMACS_IMAGE_BRANCH:-devo}-${EMACS_IMAGE_VARIANT:-full}
     container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_READY_ROOM:-ready-room}
     hostname: ready-room
     labels:
