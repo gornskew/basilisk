@@ -397,7 +397,6 @@ merely the best known:
 | instrument | for |
 |---|---|
 | the scroll pad and its full-time attendant who keeps inkwells full, etc  | reading and writing of scrolls |
-| the cyborg decoder | When cyborgs show up (off the transporter pad, or materializing directly in the greeting hall) the cyborg decoder helps the captain interview the cyborg and decide where it belongs |
 | **the glass** | Raised to look at a distant thing and see it as it actually appears, rather than as the plans claim. Not every Captain ships with one -- a lightly-fitted Captain carries no glass, and finds out the hard way |
 | the public scroll pad | Allows anyone the Captain deems worthy, passengers and crew alike, to author their own scrolls  |
 
