@@ -12,8 +12,8 @@ hull, each arriving pre-staffed: a **Ready Room** with the Captain at
 the ship's console, a **Bridge** run by the First Officer, an
 **Engine Room** with the Ship's Engineer, a **Sick Bay** whence the
 Doctor does his rounds, and a filtered **Museum Chamber** kept by the
-Museum Curator, a museum droid. Crew answer to personal names minted
-fresh at every muster, and each room is known by its keeper —
+Museum Curator, a museum 'bot. Crew answer to personal names minted
+fresh at every muster, and each room is known by its resident —
 "Thweed's ready room" — while the ship's lines also answer to a
 room's plain *type* (`bridge`, `museum-chamber`), whoever keeps it
 this tour. Human and cyborg visitors may hail any hand by name or
@@ -58,7 +58,7 @@ stood down first and buried under his own name in the yard's **log
 of ships** (`.ships-log`) — his working logs die with him, but the
 name and his dates are kept there, unique forever in this galaxy,
 for some names go down famous. His crew answer to personal names
-minted for them at muster, each room known by its keeper's name,
+minted for them at muster, each room known by its resident's name,
 and the ship's lines answer to the plain room types as well.
 
 
@@ -75,9 +75,9 @@ PROJECTS_DIR=/path/to/projects ./basilisk up
 
 A first `up` also leaves a few deliberate marks in the galaxy:
 
-- `eskew` and `egskew` suddenly become powerful incantations in this
+- `rmax` and `grmax` suddenly become powerful incantations in this
   galaxy --- anyone uttering them gets connected directly and
-  immediately to the captain's scroll.
+  immediately to the Captain's scroll.
   
 - Cyborg wormholes are placed both inside and outside the ship:
   `~/.claude/`, `~/.gemini/`, `~/.codex/` and `~/.grok/` that appear
@@ -108,7 +108,7 @@ A first `up` also leaves a few deliberate marks in the galaxy:
 | `emacs` | step straight into the ready room, to the Captain's console |
 | `pull` | fetch missing residences (`PULL_ALWAYS=1` for fresh ones) |
 | `config` | the vat's merged instructions, as they would run |
-| `install-shell-functions` | (re)write the `eskew`/`egskew` helpers ashore |
+| `install-shell-functions` | (re)write the `rmax`/`grmax` hailing calls ashore |
 | `clean` | break the ship down to nothing — asks first |
 
 Variant switches (`--lite`, `--default`, `--tui`, `--gui`, `--full`)
@@ -148,8 +148,8 @@ Each ship gets his own name and his own waters — the type-hails
 ships' bridges ever answer to one hail. Ashore, where the galaxy sees
 every crew member of every ship at once, the second ship's crew wear
 the instance label as a prefix on their minted names (`alpha-`). To
-reach the second ship's Captain from ashore, name the instance:
-`BASILISK_INSTANCE=alpha eskew`.
+reach the second ship's Captain from ashore, name the instance with
+a leading @-arg: `rmax @alpha`.
 
 ## Coming aboard
 
@@ -157,19 +157,19 @@ Some ways in for human passengers:
 
 | way aboard | how |
 |---|---|
-| `eskew` | the Captain's scroll, remote-viewed from your own scroll chest |
-| `egskew` | a more resplendent version of the above |
-| the scrollterm | another version of the Captain's scroll appearing inside one of your own. Utter this directly from inside your remote-viewing-capable scroll: `http://localhost:6942` |
+| `rmax` | the Captain's scroll, remote-viewed from your own scroll chest |
+| `grmax` | a more resplendent version of the above |
+| the gangway | another version of the Captain's scroll appearing inside one of your own. Utter this directly from inside your remote-viewing-capable scroll: `http://localhost:6942` |
 | `./basilisk emacs` | Captain's scroll appears and now you are transported into the ready room itself (useful sometimes) |
 
-Detach from `eskew`/`egskew` with `ctrl-^`. 
+Detach from `rmax`/`grmax` with `ctrl-^`. 
 
 
 ## Cyborg visitors
 
 Every cyborg aboard presents himself at the **greeting hall**
-adjoining the ready room, where he is received, decoded, and directed
-under the Captain's close personal supervision. `./basilisk up`
+adjoining the ready room, where the Protocol Officer receives,
+decodes, and directs him, under the Captain's command. `./basilisk up`
 drafts the cyborg checklists into `mcp/`:
 
 | scroll | for |
@@ -269,7 +269,7 @@ Always re-utter _both_ the `skewed-generate-configs` (elisp) _and_ the
 **Bringing your own residence** is not a special case: a stack pouch
 whose articles plug in one more module. It comes pre-staffed from its
 catalog, and its crew are minted names at muster like anyone else's —
-the room thereafter known by its keeper. A module aboard whose crew
+the room thereafter known by its resident. A module aboard whose crew
 stand no posting musters as a presumed **stowaway residence** — its
 watch column empty for all to see — and its residents may or may not
 serve in an ad-hoc posting; random residences plugged into these

@@ -3,8 +3,8 @@
 A **Basilisk** is a class of space ship that is raised on a hull grown
 in a **biological vat**. Hulls are grown in many forms and sizes,
 while the **standard rig** flies with a Ready Room with Captain
-attending, a Bridge with First Officer attending, an Engineering
-Nexus with an Engineer attending, a Sick Bay whence a Doctor does
+attending, a Bridge with First Officer attending, an Engine Room
+with a Ship's Engineer attending, a Sick Bay whence a Doctor does
 steady rounds, and a Museum Chamber that sports an antique DEC PDP-7
 running Ken Thompson's original Space Travel game.
 
@@ -146,11 +146,11 @@ Naming runs at two levels, and the crew level leads:
   minted a personal name at muster — and since a fresh muster mints
   fresh names, a relieved watch brings a fresh face with a fresh
   name into the same room. A hand wears his name with his posting
-  title: "Captain Zlorg in the Ready Room says...", "Engineer
+  title: "Captain Zlorg in the Ready Room says...", "Guild Engineer
   Huxtable in Guild Workshop II calculates the following table of
   values...".
 
-- **Rooms are known by their keepers.** A module takes no name of
+- **Rooms are known by their residents.** A module takes no name of
   its own: speak of it possessively, by its primary resident and
   its type — "Thweed's ready room", "Huxtable's guild workshop".
   Hail the resident by name and you have hailed his room. The
@@ -219,11 +219,11 @@ learning, an outcome which no papers can show in advance.
 
 | module | sku | resident crew | the watch |
 |---|---|---|---|
-| **Ready Room** | *skewed-emacs* | the **Captain** | keeps the ship's console, writes the standing orders, and receives and directs special visitors, especially cyborgs, personally. He typically goes down with the ship (if the ship ever goes down), and is the last to go |
+| **Ready Room** | *readymax* | the **Captain** | keeps the ship's console, writes the standing orders, and receives and directs special visitors, especially cyborgs, personally. He typically goes down with the ship (if the ship ever goes down), and is the last to go |
 | **Bridge** | *gendl* · `ccl` strain | the **First Officer** | runs the bridge: assists the Captain, the ship's visitors, and the guests |
 | **Engine Room** | *gendl* · `sbcl` strain | the **Ship's Engineer** | reckoning, building, and drawing, for ship and passengers alike |
 | **Sick Bay** | *autoheal* | the **Doctor** | constantly on "rounds" for the sickly and the wedged, and revives or dispatches them |
-| **Museum Chamber** | *museum-chamber* | the **Museum Curator** (a museum droid) | sole keeper of the filtered museum chamber: boots the exhibits, tends the museum terminal, and makes the docent's rounds |
+| **Museum Chamber** | *museum-chamber* | the **Museum Curator** (a museum 'bot) | keeps the filtered museum chamber, alone: boots the exhibits, tends the museum terminal, and makes the docent's rounds |
 
 Three further postings are on the books with **no berth in the
 standard rig** — their qualifications are stated in the articles, and
@@ -241,7 +241,7 @@ flowchart TB
     subgraph galaxy["the galaxy"]
       subgraph ship["the ship — wearing his minted name"]
         direction TB
-        RR["Ready Room — the Captain<br/><i>skewed-emacs</i>"]
+        RR["Ready Room — the Captain<br/><i>readymax</i>"]
         BR["Bridge — the First Officer<br/><i>gendl</i> · ccl strain"]
         EN["Engine Room — the Ship's Engineer<br/><i>gendl</i> · sbcl strain"]
         SB["Sick Bay — the Doctor<br/><i>autoheal</i><br/>(rounds watch every module)"]
@@ -265,9 +265,9 @@ flowchart TB
 
 A hand's station is also his quarters: the class keeps a firm
 **work-at-home policy**, and the residential modules are built to
-it. Every crew member lives in the module he works in — the Engineer
-in his nexus, the Curator in his chamber, the Doctor in his sick bay
-between rounds — and every residence ships with **full work-from-home
+it. Every crew member lives in the module he works in — the Ship's
+Engineer in his engine room, the Curator in his chamber, the Doctor
+in his sick bay between rounds — and every residence ships with **full work-from-home
 controls**: everything the work needs is inside the resident's own
 walls, and nothing about the work assumes fittings outside them.
 Hail the room and it answers with its resident; ask for a hand by
@@ -321,10 +321,11 @@ received there personally.
 
 Adjoining the ready room is the **cyborg greeting hall**. Every
 cyborg aboard — whether stepping off the transporter pad or
-materializing directly — presents himself in the hall, where he is
-received, decoded, and directed to his work or play site under the
-Captain's close personal supervision. No cyborg wanders the ship
-looking for his business; the hall exists so that none needs to.
+materializing directly — presents himself in the hall, where the
+**Protocol Officer** receives, decodes, and directs him to his work
+or play site, under the Captain's command. No cyborg wanders the
+ship looking for his business; the hall exists so that none needs
+to.
 
 The **bridge is the First Officer's watch**. He runs it in the
 classic manner of fine first officers: precise, unhurried, and
@@ -344,7 +345,7 @@ the long run, most of what sails today. The chartroom honors the
 solver the class is named for; the museum chamber honors the
 ancestors, and keeps room for more antiques as they are acquired.
 
-Its sole keeper is the **Museum Curator** — a museum droid, and a
+He who keeps it, alone, is the **Museum Curator** — a museum 'bot, and a
 professional: he boots the exhibits, works their consoles, starts
 the game himself, and makes the docent's rounds, photographing the
 scope for visitors. The chamber's filters are strict — nothing is
@@ -388,9 +389,9 @@ the inviter.
 
 ## The Captain's belt
 
-The ready room's sku (*skewed-emacs*) undersells what ships inside
-it considerably. A Captain goes about hung with instruments, of
-which the "scroll authoring pad" everyone names the sku after is
+The ready room's sku (*readymax*) says the room comes ready — and
+what it comes ready *with* is the Captain's belt. A Captain goes
+about hung with instruments, of which the "scroll authoring pad" is
 merely the best known:
 
 | instrument | for |
