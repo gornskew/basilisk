@@ -1021,21 +1021,21 @@ _crew_display() {
 # image yet, so nothing mints one today, but it lands the moment the
 # board ships as a binary with a :post :comms.  Until 2026-08-17 it
 # would have fallen through to the unknown pool and sounded like no
-# one.  The Comms character -- lilting and nasal, resolving on a hum,
-# so a name trails off rather than stopping -- is deliberately the one
-# corner of the sonic space the other
-# pools leave empty: captain consonant-heavy, gendl liquid, gdl
-# English-gentry, cyclops clipped and sibilant, autoheal vocalic.
+# one.  The Communications Officer answers to a Korean given name;
+# the transporter room is kept by an old Irish line of chiefs, the
+# most honored name of the line left off the rolls out of respect.
+# Each pool keeps its own corner of the sonic space: captain
+# consonant-heavy, gendl liquid, gdl English-gentry, autoheal vocalic.
 _crew_onsets_for() {
     case "$1" in
-        skewed-emacs:*) echo 'Bl Gr Thr Kro Zar Vex Mog Drel' ;;
-        cyclops:*)      echo 'Bl Zh Vek Skr Yor Tsa Kli Dro' ;;
+        readymax:*|skewed-emacs:*) echo 'Bl Gr Thr Kro Zar Vex Mog Drel' ;;
+        cyclops:*)      echo 'Mul Cal Bran Flan Kear Dun Scan Gall' ;;
         gendl:*sbcl*)   echo 'Vas Ael Ion Cyr Tha Mor Zel Ryn' ;;
         gendl:*)        echo 'Ka Lis Par Quo Sem Tel Nym Ori' ;;
         gdl:*non-smp*)  echo 'Ad Bex Cor Dal Enn Fir Gal Hux' ;;
         gdl:*)          echo 'Ost Ven Kal Rhe Sig Tor Wex Yar' ;;
         autoheal:*)     echo 'Om Sal Vel Lum Mir Ana Eir Thea' ;;
-        eyes-only:*)    echo 'Nil Myr Len Vael Sion Nyel Lir Nao' ;;
+        eyes-only:*)    echo 'Ji Min Seo Ha Soo Eun Hye Yu' ;;
         # The Curator riffs on the greybeards (Dave's ruling,
         # 2026-08-23: the persona inside the chamber may cycle
         # through riffs on famous unix & lisp names).
@@ -1047,14 +1047,14 @@ _crew_onsets_for() {
 }
 _crew_finals_for() {
     case "$1" in
-        skewed-emacs:*) echo 'org arn und ath esh ork ilk uz' ;;
-        cyclops:*)      echo 'ej ix osk arr unn eth yx oa' ;;
+        readymax:*|skewed-emacs:*) echo 'org arn und ath esh ork ilk uz' ;;
+        cyclops:*)      echo 'doon lahan nigan herty ney ley lon agher' ;;
         gendl:*sbcl*)   echo 'ien uur eos aal ymn ore ith yss' ;;
         gendl:*)        echo 'da per lon ta mir vex is und' ;;
         gdl:*non-smp*)  echo 'mand ton dry well berg worth field ston' ;;
         gdl:*)          echo 'holm gate forge crest march stead vale bury' ;;
         autoheal:*)     echo 'a une is oon ara elle ios em' ;;
-        eyes-only:*)    echo 'am een ion um ain oem un yn' ;;
+        eyes-only:*)    echo 'woo yeon jin sun ri na young mi' ;;
         museum-chamber:*) echo 'ompson itchie ighan psen arthy istow ansen lman' ;;
         chartroom:*)    echo 'ler o ileo parchus iopeia on ley air' ;;
         *)              echo 'ar il ot' ;;
