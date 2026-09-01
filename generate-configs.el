@@ -1186,10 +1186,11 @@ history); setq it after loading to point elsewhere.")
     (cl-loop for (k v) on over by #'cddr do (setq out (plist-put out k v)))
     out))
 
-;;; EYES ONLY HEAP PROBES FROM THE ARTICLES (2026-08-15, reworked 2026-08-17)
+;;; EYES ONLY QUARTERS PROBES FROM THE ARTICLES (2026-08-15, reworked
+;;; 2026-08-17; register overhaul 2026-09-01)
 ;;;
 ;;; The articles are the SSoT for who is aboard, so they are also the
-;;; authority on what can be PROBED.  eyes-only's *heap-probes* was
+;;; authority on what can be PROBED.  eyes-only's probe list was
 ;;; hand-maintained per board, which meant a probe could name a crew
 ;;; member who was never aboard the ship it points at -- and an absent
 ;;; optional post then presents as a permanently red tile rather than as
@@ -1202,6 +1203,17 @@ history); setq it after loading to point elsewhere.")
 ;;; watched ship's crew is its base articles merged with its own overlay
 ;;; articles, overlay keys winning -- the same key-wise discipline
 ;;; compose applies to the generated yml.
+;;;
+;;; Tile grammar (2026-09-01): tiles name QUARTERS -- the room-type
+;;; slug plus the galaxy the ship floats in, "<module> <stack>"
+;;; ("bridge balaram"), emitted into eyes-only::*quarters-probes*.
+;;; The room slug comes straight from the crew entry's :module, so
+;;; the old hand-maintained :probe :tile field is retired; the
+;;; resident's minted name, sku, and postings are HARVESTED live by
+;;; the board (metrics self-reports + the muster roll), never baked
+;;; into config.  Tile keys stay stable across raisings by design --
+;;; every raising is a new ship, and the board's telemetry history
+;;; must survive a relief.
 
 (defun skewed--stack-crew (stack-dir)
   "The full crew of the ship at STACK-DIR: base articles + its overlay.
@@ -1230,8 +1242,10 @@ when no articles are found at STACK-DIR."
       out)))
 
 (defun skewed--heap-probe-entries (config dir)
-  "Build the eyes-only *heap-probes* list for the board declared in CONFIG.
-Returns nil unless CONFIG's :meta carries an :eyes-only-board.
+  "Build the eyes-only *quarters-probes* list for the board declared
+in CONFIG.  Tiles are \"<module> <stack>\" -- the quarters' room slug
+plus the galaxy.  Returns nil unless CONFIG's :meta carries an
+:eyes-only-board.
 
 Each watch entry names a :stack and either :in-stack t (this board's own
 ship, sampled over the docker bridge) or an :edge URL prefix reaching that
@@ -1258,7 +1272,8 @@ actually carries, which is the guarantee that kills phantom tiles."
                      (probe (plist-get svc :probe))
                      ;; A probe with no :in-stack form contributes nothing
                      ;; to its own board -- the board self-samples its own
-                     ;; image for the heap gendl-ccl tile.
+                     ;; image (it rides its ship's bridge, the pocket
+                     ;; viewscreen).
                      (spec (and probe (if in-stack
                                           (plist-get probe :in-stack)
                                         (plist-get probe :remote)))))
@@ -1268,7 +1283,16 @@ actually carries, which is the guarantee that kills phantom tiles."
                   (unless (or in-stack edge)
                     (error "Board watch for %s is off-ship but declares no :edge"
                            stack))
-                  (push (list (format "%s %s" (plist-get probe :tile) stack)
+                  ;; The tile's room slug is the entry's RESOLVED
+                  ;; :name (skewed--derive-names): the room-type slug
+                  ;; with collision suffixes, the same key the muster
+                  ;; uses -- so \"guild-workshop-2 balaram\" and
+                  ;; BASILISK_CREW_GUILD_WORKSHOP_2 agree, and the
+                  ;; board's muster harvest lands on the same tile.
+                  (unless (plist-get svc :name)
+                    (error "Crew entry %s carries a :probe but no resolvable name"
+                           (plist-get svc :post)))
+                  (push (list (format "%s %s" (plist-get svc :name) stack)
                               (plist-get spec :kind)
                               (or (plist-get spec :url)
                                   (concat edge (plist-get spec :path)))
@@ -1283,7 +1307,7 @@ actually carries, which is the guarantee that kills phantom tiles."
                          stack post)))))
         (nreverse out)))))
 
-(defun skewed--generate-heap-probes-file (config dir)
+(defun skewed--generate-quarters-probes-file (config dir)
   "Write eyes-only-probes-generated.lisp for a board stack, if it is one."
   (let ((probes (skewed--heap-probe-entries config dir)))
     (when probes
@@ -1296,11 +1320,14 @@ actually carries, which is the guarantee that kills phantom tiles."
           (insert ";;;\n")
           (insert ";;; Every entry here corresponds to a post actually aboard the target\n")
           (insert ";;; ship, so a crew member who is not aboard cannot show up\n")
-          (insert ";;; as a permanently red tile.  Change the fleet by editing the\n")
+          (insert ";;; as a permanently red tile.  Tiles name QUARTERS -- the room\n")
+          (insert ";;; slug plus the galaxy (\"bridge balaram\"); the resident's minted\n")
+          (insert ";;; name, sku, and postings are harvested live by the board, never\n")
+          (insert ";;; baked in here.  Change the fleet by editing the\n")
           (insert (format ";;; ships' articles, or this board's :eyes-only-board, in %s.\n\n"
                           skewed-gen-articles-filename))
           (insert "(in-package :gdl-user)\n\n")
-          (insert "(setq eyes-only::*heap-probes*\n      '(")
+          (insert "(setq eyes-only::*quarters-probes*\n      '(")
           (let ((first t))
             (dolist (p probes)
               (if first (setq first nil) (insert "\n        "))
@@ -1534,7 +1561,7 @@ Examples:
 
     ;; Eyes Only heap probes, for a stack that declares itself a board.
     ;; Reads the OTHER ships' rosters, so it runs last.
-    (skewed--generate-heap-probes-file config skewed-gen-output-dir)
+    (skewed--generate-quarters-probes-file config skewed-gen-output-dir)
 
     (message "=== Generation complete ===")))
 

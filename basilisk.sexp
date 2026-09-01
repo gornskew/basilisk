@@ -164,8 +164,7 @@
    ;; no token gate, so it never rides a public path.  Off-ship, the
    ;; Captain is sampled through that ship's own gendl-ccl proxy
    ;; (publish-emacs-metrics!), which is gated.
-   :probe (:tile "heap skewed-emacs"
-           :in-stack (:kind :emacs
+   :probe (:in-stack (:kind :emacs
                       :url "http://ready-room:7080/lisply/lisp-eval"
                       :alert-mb 2000)
            :remote (:kind :metrics
@@ -192,8 +191,7 @@
    ;; publishes nothing, so there is no tile to ask for.  No :in-stack
    ;; form either -- a bridge viewscreen samples its own ship's image
    ;; without a probe entry.
-   :probe (:tile "heap gendl-ccl"
-           :remote (:kind :metrics
+   :probe (:remote (:kind :metrics
                     :path "/eyes-only-metrics/gendl-ccl"
                     :alert-mb 1200))
    :healthcheck (:endpoint "/lisply/ping-lisp" :interval "72s"))
