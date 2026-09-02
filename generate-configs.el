@@ -567,6 +567,9 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
           (push (format "     :type \"%s\"" type) lines))
         (when lisp-impl
           (push (format "     :lisp-impl \"%s\"" lisp-impl) lines))
+        (let ((sku (skewed--service-sku svc)))
+          (when sku
+            (push (format "     :sku \"%s\"" sku) lines)))
         (when mcp
           (push "     :mcp t" lines))
         (when http-port
@@ -891,6 +894,28 @@ rode along in the string is dropped."
   (let* ((s (skewed--resolve-compose-defaults (or species "")))
          (repo (if (string-match "\\`\\([^:]*\\):" s) (match-string 1 s) s)))
     (file-name-nondirectory repo)))
+
+(defun skewed--service-sku (svc)
+  "A short display sku for SVC: the species repo, plus the
+implementation half of the tag when it carries one
+(gendl:devo-ccl -> gendl-ccl; readymax:devo-full -> readymax).  An
+articles-level :sku-label on the crew entry overrides -- how a
+register fork labels a room whose image still ships under the
+upstream sku (a basalt console flying readymax shows readymacs).
+Surfaced as :sku in services-generated.el for the dashboard's
+backend listings."
+  (or (plist-get svc :sku-label)
+      (let* ((species (skewed--resolve-compose-defaults
+                       (or (plist-get svc :species) (plist-get svc :image) "")))
+             (bare (file-name-nondirectory species))
+             (repo (if (string-match "\\`\\([^:]*\\):" bare) (match-string 1 bare) bare))
+             (tag (and (string-match ":\\(.*\\)\\'" bare) (match-string 1 bare)))
+             (impl (and tag (string-match "-\\([a-z0-9]+\\)\\'" tag)
+                        (match-string 1 tag))))
+        (if (and impl (member impl '("ccl" "sbcl" "acl" "clasp" "ecl"
+                                     "abcl" "clisp" "cmucl")))
+            (concat repo "-" impl)
+          (unless (string-empty-p repo) repo)))))
 
 (defun skewed--derive-names (config &optional glossary)
   "Fill in each crew entry's :name where the articles left it out.
