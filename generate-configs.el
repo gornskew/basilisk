@@ -1039,8 +1039,12 @@ glossary alone, never shipped basilisk code."
       (emit "BASILISK_VOCAB_STOWAWAY_DESIGNATOR"
             (plist-get vocab :stowaway-designator))
       (cl-loop for (role title) on (plist-get vocab :muster-titles) by #'cddr
+               ;; Hyphens become underscores: :first-officer must emit
+               ;; a legal POSIX name (BASILISK_VOCAB_TITLE_FIRST_OFFICER),
+               ;; or sourcing vocabulary.env fails at up-time.
                do (emit (format "BASILISK_VOCAB_TITLE_%s"
-                                (upcase (substring (symbol-name role) 1)))
+                                (upcase (replace-regexp-in-string
+                                         "-" "_" (substring (symbol-name role) 1))))
                         title))
       (emit "BASILISK_VOCAB_NO_INGRESS_WARNING"
             (plist-get vocab :no-ingress-warning))
