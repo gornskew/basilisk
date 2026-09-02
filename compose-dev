@@ -128,7 +128,17 @@ _FILELIST
         _rc_caller="$_rc_caller $(_quote_arg "$_a")"
     done
 
-    eval "$COMPOSE_CMD $_rc_fargs $_rc_caller"
+    # INSTANCES GET THEIR OWN COMPOSE PROJECT.  Without -p, every
+    # instance raised from this clone shared the directory-derived
+    # project, so any instance's up/down acted on ALL of them --
+    # observed live 2026-09-02: a scratch instance's raise stood down
+    # the primary deployment it was meant to leave alone.  The bare
+    # (no-instance) project name is the directory basename, exactly
+    # compose's own default, so existing single-deployment ships see
+    # identical labels and no recreation.
+    _rc_project="$(basename "$SCRIPT_DIR" | tr 'A-Z' 'a-z')${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
+
+    eval "$COMPOSE_CMD -p $(_quote_arg "$_rc_project") $_rc_fargs $_rc_caller"
 }
 
 # The ship's own network name, read from .env where generate-env.sh
@@ -694,7 +704,13 @@ _ship_network_name() {
         _snn="$BASILISK_SHIP"
     elif [ -f "$_snn_file" ]; then
         _snn="$(head -1 "$_snn_file")"
-    elif [ -f "${SCRIPT_DIR}/.env" ]; then
+    elif [ -f "${SCRIPT_DIR}/.env" ] \
+         && [ "$(sed -n 's/^BASILISK_INSTANCE=//p' "${SCRIPT_DIR}/.env" | head -1)" = "${BASILISK_INSTANCE:-}" ]; then
+        # .env is one shared file, overwritten by whichever instance
+        # generated last -- its network name is only THIS instance's
+        # when its recorded instance matches (bit us live 2026-09-02:
+        # a first vtest raise read the primary's network out of .env
+        # and stood the primary down).
         _snn="$(sed -n 's/^DOCKER_NETWORK_NAME=//p' "${SCRIPT_DIR}/.env" | head -1)"
     fi
     # Fallback for a hull raised by hand before the yard named him:
