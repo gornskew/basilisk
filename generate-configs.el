@@ -1031,28 +1031,31 @@ glossary alone, never shipped basilisk code."
     (push "# DO NOT EDIT - Generated from glossary.sexp :vocabulary" lines)
     (push "# Sourced by compose-dev.  Register vocabulary lives in the" lines)
     (push "# glossary, never in shipped code." lines)
-    (cl-flet ((emit (key val)
-                (when val
-                  (push (format "%s='%s'" key
-                                (replace-regexp-in-string "'" "'\\\\''" val))
-                        lines))))
-      (emit "BASILISK_VOCAB_STOWAWAY_DESIGNATOR"
-            (plist-get vocab :stowaway-designator))
-      (cl-loop for (role title) on (plist-get vocab :muster-titles) by #'cddr
-               ;; Hyphens become underscores: :first-officer must emit
-               ;; a legal POSIX name (BASILISK_VOCAB_TITLE_FIRST_OFFICER),
-               ;; or sourcing vocabulary.env fails at up-time.
-               do (emit (format "BASILISK_VOCAB_TITLE_%s"
-                                (upcase (replace-regexp-in-string
-                                         "-" "_" (substring (symbol-name role) 1))))
-                        title))
-      (emit "BASILISK_VOCAB_NO_INGRESS_WARNING"
-            (plist-get vocab :no-ingress-warning))
-      ;; The hailing calls: a fork may rename rmax/grmax; the yard's
-      ;; own words stand as the defaults everywhere the shell reads
-      ;; these (install_shell_functions and the welcome).
-      (emit "BASILISK_VOCAB_HAIL_TERM" (plist-get vocab :hail-term))
-      (emit "BASILISK_VOCAB_HAIL_GUI" (plist-get vocab :hail-gui)))
+    (cl-flet* ((posix-name (sym &optional prefix)
+                 ;; Hyphens become underscores: :first-officer must emit
+                 ;; a legal POSIX name (BASILISK_VOCAB_TITLE_FIRST_OFFICER),
+                 ;; or sourcing vocabulary.env fails at up-time.
+                 (format "BASILISK_VOCAB_%s%s" (or prefix "")
+                         (upcase (replace-regexp-in-string
+                                  "-" "_" (substring (symbol-name sym) 1)))))
+               (emit (key val)
+                 (when val
+                   (push (format "%s='%s'" key
+                                 (replace-regexp-in-string "'" "'\\\\''" val))
+                         lines))))
+      ;; GENERIC EMISSION: every string-valued key in :vocabulary
+      ;; becomes BASILISK_VOCAB_<KEY> -- adding a coined string to the
+      ;; shell needs only a ${BASILISK_VOCAB_X:-canon default} there
+      ;; and a :x entry in the fork's glossary, never another emitter
+      ;; edit.  Values may be printf format strings (%s slots); the
+      ;; shell side prints them with printf.  :muster-titles is the
+      ;; one structured entry, flattened to TITLE_<POSTING> keys.
+      (cl-loop for (key val) on vocab by #'cddr
+               do (cond ((eq key :muster-titles)
+                         (cl-loop for (role title) on val by #'cddr
+                                  do (emit (posix-name role "TITLE_") title)))
+                        ((stringp val)
+                         (emit (posix-name key) val)))))
     (concat (string-join (nreverse lines) "\n") "\n")))
 
 (defun skewed--filter-berthed (config &optional base-names)
