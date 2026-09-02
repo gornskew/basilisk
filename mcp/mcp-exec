@@ -24,7 +24,12 @@ COMPOSE_DIR="${SCRIPT_DIR}/.."
 # resolves it to whoever keeps the room this tour.  Overridable for
 # the same reasons eskew is.  (Was `captain` before the third relief,
 # 2026-08-23 -- the stale default made every MCP server time out.)
-SERVICE_NAME="${BASILISK_CAPTAIN:-ready-room}"
+# The crew ledger is the source of truth for the room's slug -- a
+# fork's console service may carry its own hostname, and
+# BASILISK_POST_CAPTAIN_ROOM in generated/crew.env says which.  Env
+# override outranks the ledger; the class slug is the last fallback.
+_ledger_room="$(sed -n 's/^BASILISK_POST_CAPTAIN_ROOM=//p' "${COMPOSE_DIR}/generated/crew.env" 2>/dev/null | head -1)"
+SERVICE_NAME="${BASILISK_CAPTAIN:-${_ledger_room:-ready-room}}"
 LOG_FILE="/tmp/mcp-exec.log"
 LOCK_DIR="/tmp/mcp-exec.lock"
 LOCK_PID_FILE="${LOCK_DIR}/pid"
