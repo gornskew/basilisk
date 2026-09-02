@@ -2032,6 +2032,19 @@ SNIPPET
     sed "s|@BASILISK_DIR@|${SCRIPT_DIR}|g" "${_isf_tmp}" > "${_isf_tmp}.sub" \
         && mv "${_isf_tmp}.sub" "${_isf_tmp}"
 
+    # A fork's vocabulary may rename the hailing calls (the yard's own
+    # words are rmax/grmax); shipped code stays verbatim -- the rename
+    # is a generated-file substitution, like the clone path above.
+    # Both calls tokenize before either expands, so the shorter word
+    # never bites a piece out of the longer one (grmax contains rmax).
+    _isf_term="${BASILISK_VOCAB_HAIL_TERM:-rmax}"
+    _isf_gui="${BASILISK_VOCAB_HAIL_GUI:-grmax}"
+    if [ "$_isf_term" != "rmax" ] || [ "$_isf_gui" != "grmax" ]; then
+        sed "s|grmax|@HAIL_GUI@|g; s|rmax|@HAIL_TERM@|g; s|@HAIL_GUI@|${_isf_gui}|g; s|@HAIL_TERM@|${_isf_term}|g" \
+            "${_isf_tmp}" > "${_isf_tmp}.sub" \
+            && mv "${_isf_tmp}.sub" "${_isf_tmp}"
+    fi
+
     if [ -f "${_isf_file}" ] && cmp -s "${_isf_tmp}" "${_isf_file}"; then
         rm -f "${_isf_tmp}"
         # already current -- a no-change earns no line
@@ -2082,7 +2095,7 @@ SNIPPET
 
     if [ "$_isf_wrote" = "true" ]; then
         log_info "Helpers wired into: ${_isf_wrote_files}"
-        log_info "Open a new terminal (or run:  . ${_isf_file}  ) to activate rmax/grmax"
+        log_info "Open a new terminal (or run:  . ${_isf_file}  ) to activate ${BASILISK_VOCAB_HAIL_TERM:-rmax}/${BASILISK_VOCAB_HAIL_GUI:-grmax}"
     fi
 }
 
@@ -2133,9 +2146,11 @@ show_skew_welcome() {
     echo ""
     echo "Shell Commands for the Basilisk Stack"
     echo ""
-    printf "%b\n" "  \`rmax\`   ${BLUE}-- hail the Captain: terminal emacsclient (attach here)${NC}"
-    printf "%b\n" "  \`grmax\`  ${BLUE}-- graphical emacsclient (opens new window)${NC}"
-    printf "%b\n" "  \`rmax @<instance>\` ${BLUE}-- reach another ship on this box${NC}"
+    _ssw_term="${BASILISK_VOCAB_HAIL_TERM:-rmax}"
+    _ssw_gui="${BASILISK_VOCAB_HAIL_GUI:-grmax}"
+    printf "%b\n" "  \`${_ssw_term}\`   ${BLUE}-- hail the Captain: terminal emacsclient (attach here)${NC}"
+    printf "%b\n" "  \`${_ssw_gui}\`  ${BLUE}-- graphical emacsclient (opens new window)${NC}"
+    printf "%b\n" "  \`${_ssw_term} @<instance>\` ${BLUE}-- reach another ship on this box${NC}"
     printf "%b\n" "  ${BLUE}(\`eskew\`/\`egskew\` stay aboard as aliases)${NC}"
     echo ""
     echo "NOTE: Please exit this shell with Ctrl-D before doing './basilisk down'."

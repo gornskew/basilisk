@@ -1043,7 +1043,12 @@ glossary alone, never shipped basilisk code."
                                 (upcase (substring (symbol-name role) 1)))
                         title))
       (emit "BASILISK_VOCAB_NO_INGRESS_WARNING"
-            (plist-get vocab :no-ingress-warning)))
+            (plist-get vocab :no-ingress-warning))
+      ;; The hailing calls: a fork may rename rmax/grmax; the yard's
+      ;; own words stand as the defaults everywhere the shell reads
+      ;; these (install_shell_functions and the welcome).
+      (emit "BASILISK_VOCAB_HAIL_TERM" (plist-get vocab :hail-term))
+      (emit "BASILISK_VOCAB_HAIL_GUI" (plist-get vocab :hail-gui)))
     (concat (string-join (nreverse lines) "\n") "\n")))
 
 (defun skewed--filter-berthed (config &optional base-names)
