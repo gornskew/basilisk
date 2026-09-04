@@ -2186,7 +2186,13 @@ refresh_emacs_runtime_config() {
     _rerc_cap="$(room_container "$_rerc_room")"
     # shellcheck disable=SC2059
     [ -n "$_rerc_cap" ] || { log_warning "$(printf "${BASILISK_VOCAB_NO_KEEPER_REFRESH:-no keeper for the %s; skipping Emacs service refresh}" "$_rerc_room")"; return 0; }
-    _refresh_result="$(docker exec "$_rerc_cap" emacsclient --eval \
+    # BOUNDED: emacsclient blocks until the daemon answers, and a daemon
+    # still loading its init on a small hull (shiva, 2 vCPU, 2026-09-04)
+    # answers minutes later or never -- which hung every `up` at this very
+    # step, after the ship was already away.  A timeout turns that into
+    # the "still initializing" branch below; the refresh re-arms itself
+    # from the daemon's side once it is up.
+    _refresh_result="$(timeout "${BASILISK_EMACS_REFRESH_TIMEOUT:-20}" docker exec "$_rerc_cap" emacsclient --eval \
         "(progn
             (defvar skewed-runtime-services-refresh-armed nil)
             (defvar skewed-runtime-services-refresh-done nil)
