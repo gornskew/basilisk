@@ -275,15 +275,25 @@ foreign overlay fails loudly rather than quietly composing.")
         (when network-mode
           (push (format "    network_mode: %s" network-mode) lines))
         
-        ;; Ports
+        ;; Ports.  A DEVIATION on a base room (an overlay entry with no
+        ;; species of its own) that restates :hailing-frequencies means
+        ;; them as the WHOLE list: compose merges `ports' across files by
+        ;; appending, so the base's galaxy-side publishes would otherwise
+        ;; stay open.  `!override' replaces the list, `!reset' empties it
+        ;; (compose 2.24+).  A public hull that opens only its Chief
+        ;; depends on this (suzie, 2026-09-08).
         (unless network-mode
-          (let ((ports-with-host (cl-remove-if-not (lambda (p) (skewed--get-prop p :galaxy)) ports)))
-            (when ports-with-host
-              (push "    ports:" lines)
+          (let ((ports-with-host (cl-remove-if-not (lambda (p) (skewed--get-prop p :galaxy)) ports))
+                (deviation? (and (null image) ports)))
+            (cond
+             ((and deviation? (null ports-with-host))
+              (push "    ports: !reset" lines))
+             (ports-with-host
+              (push (if deviation? "    ports: !override" "    ports:") lines)
               (dolist (port ports-with-host)
                 (let ((container (skewed--get-prop port :aboard))
                       (host (skewed--get-prop port :galaxy)))
-                  (push (format "      - \"%s:%s\"" host container) lines))))))
+                  (push (format "      - \"%s:%s\"" host container) lines)))))))
         
         ;; Environment
         (push "    environment:" lines)
@@ -331,9 +341,16 @@ foreign overlay fails loudly rather than quietly composing.")
         ;; museum chamber -- an airgap alone does not refuse a mount).
         (let ((default-vols (unless (skewed--get-prop svc :no-default-cargo?)
                               (skewed--get-prop defaults :cargo-bays)))
-              (svc-vols vols))
-          (when (or default-vols svc-vols)
-            (push "    volumes:" lines))
+              (svc-vols vols)
+              ;; A deviation refusing the default cargo refuses the BASE
+              ;; room's bays too: compose merges `volumes' by appending,
+              ;; so only `!override' (or `!reset', for none at all)
+              ;; actually leaves them ashore.
+              (override? (and (null image) (skewed--get-prop svc :no-default-cargo?))))
+          (cond ((and override? (null svc-vols))
+                 (push "    volumes: !reset" lines))
+                ((or default-vols svc-vols)
+                 (push (if override? "    volumes: !override" "    volumes:") lines)))
           (dolist (vol default-vols)
             (let ((src (skewed--get-prop vol :dockside))
                   (tgt (skewed--get-prop vol :stowed-at)))
