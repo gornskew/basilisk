@@ -86,9 +86,11 @@ A first `up` also leaves a few deliberate marks in the galaxy:
   as well.
 
 - If your galaxy already carries a `~/.claude.json` scroll that
-  routes through some `mcp/mcp-exec`, it is gently re-pointed at this
-  pouch's copy (a backup scroll is kept; nothing else in it is
-  touched).
+  routes through some `mcp/mcp-exec` whose pouch has since vanished
+  (moved, or deleted), that entry is gently re-pointed at this
+  pouch's copy; entries routing through another living pouch are
+  left to that ship, so two ships can share one scroll (a backup
+  scroll is kept; nothing else in it is touched).
 
 
 ## The orders
@@ -151,6 +153,15 @@ the instance label as a prefix on their minted names (`alpha-`). To
 reach the second ship's Captain from ashore, name the instance with
 a leading @-arg: `rmax @alpha`.
 
+Two ships of different yards (this one and a fork of it, each in its
+own pouch) need no instance label — each pouch is its own compose
+project — only distinct published ports. The offset is read from the
+environment at every `up` and written into `.env` afresh, so pin it
+in `systemd/host.env` (`BASILISK_PORT_OFFSET=100`) to make it stick.
+Each ship's `mcp/install-claude-code-config` and
+`mcp/install-claude-desktop-config` add only that ship's rooms to the
+cyborg scrolls and leave the other ship's in place.
+
 ## Coming aboard
 
 Some ways in for human passengers:
@@ -174,7 +185,7 @@ drafts the cyborg checklists into `mcp/`:
 
 | scroll | for |
 |---|---|
-| `mcp/claude_desktop_config.json` | For cyborgs based outside the ship and maybe outside the galaxy |
+| `mcp/claude_desktop_config.json` | For cyborgs based outside the ship and maybe outside the galaxy (`mcp/install-claude-desktop-config` splices it into the Claude Desktop scroll, leaving any other ship's rooms in place) |
 | `mcp/claude-code-mcp.json` | For so-called "claude-class" cyborgs and interested passengers to interact, once they are both already onboard (spliced into `~/.claude.json`) |
 | `mcp/mcp.toml`, `mcp/mcp-container.json`, `mcp/mcp-windows.json` | checklists for other types of cyborgs |
 
