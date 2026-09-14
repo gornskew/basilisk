@@ -111,6 +111,14 @@ templates/
 generated/cyclops.sexp
 generated/*-services-init.cl
 
+# The chart locker: the lisply_search corpora the yard stows aboard the
+# console at every raise (copied out of the species images aboard, and
+# indexed from the hold), and the overlay manifest that names the mount
+# corpora, carried in by <host>-stack/install.  Per-ship state, never
+# tracked (2026-09-14; lisply-mcp CORPUS.md).
+generated/corpora/
+generated/*-chart-locker.tsv
+
 # ==============================================================================
 # Build artifacts & caches
 # ==============================================================================

@@ -28,7 +28,7 @@ services:
     labels:
       basilisk.post: "captain"
       basilisk.module: "ready-room"
-      basilisk.requires: "skewed-emacs"
+      basilisk.requires: "readymax"
     restart: unless-stopped
     stdin_open: true
     tty: true
@@ -41,6 +41,7 @@ services:
       - 'WEBTERM_PORT=6942'
       - 'TERM=xterm-256color'
       - 'COLORTERM=truecolor'
+      - 'LISPLY_SEARCH_CORPORA=/lisply/corpora'
       - TZ=${TZ:-Etc/UTC}
     volumes:
       - type: bind
@@ -48,6 +49,7 @@ services:
         target: /projects
         bind:
           create_host_path: true
+      - ${PROJECTS_DIR}/basilisk/generated/corpora:/lisply/corpora:rw
       - ${USER_HOME}/.claude/.credentials.json:/home/emacs-user/.claude/.credentials.json
       - ${USER_HOME}/.gemini/google_accounts.json:/home/emacs-user/.gemini/google_accounts.json
       - ${USER_HOME}/.gemini/oauth_creds.json:/home/emacs-user/.gemini/oauth_creds.json

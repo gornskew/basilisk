@@ -774,6 +774,16 @@ Returns the install script content as a string."
             lines)
       (push "fi" lines)
       (push "" lines)
+      ;; The chart locker's manifest rides in beside the ledger, under
+      ;; its prefixed name for the same reason.
+      (push (format "if [ -f \"$SCRIPT_DIR/generated/%schart-locker.tsv\" ]; then" prefix) lines)
+      (push (format "    echo \"Installing the chart locker manifest (generated/%schart-locker.tsv)...\"" prefix) lines)
+      (push "    mkdir -p \"$TARGET_DIR/generated\"" lines)
+      (push (format "    cp \"$SCRIPT_DIR/generated/%schart-locker.tsv\" \"$TARGET_DIR/generated/%schart-locker.tsv\""
+                    prefix prefix)
+            lines)
+      (push "fi" lines)
+      (push "" lines)
       (when template-files
         (push "echo \"Installing templated fittings...\"" lines)
         (push "mkdir -p \"$TARGET_DIR/templates\"" lines)
@@ -1061,6 +1071,28 @@ keys on the repo half and broad tag features."
           (push (format "BASILISK_MOD_%s_NAME=%s" san name) lines)
           (push (format "BASILISK_MOD_%s_SPECIES=%s" san image) lines))))
     (mapconcat #'identity (nreverse lines) "\n")))
+
+(defun skewed--generate-chart-locker (config)
+  "The mount-corpora manifest for compose-dev's index_mount_corpora.
+CONFIG's :chart-locker lists the lisply_search corpora the ship indexes
+itself from its hold at raise (lisply-mcp CORPUS.md): each entry
+(:corpus NAME :root DIR :subdirs (D ...) :distribution :public|:internal).
+One tab-separated line per corpus; nil when the articles declare none."
+  (let ((entries (skewed--get-prop config :chart-locker))
+        (lines '()))
+    (when entries
+      (push (format "# DO NOT EDIT - Generated from %s :chart-locker" skewed-gen-articles-filename) lines)
+      (push "# The mount corpora: what the ship indexes itself from its hold at raise." lines)
+      (push "# name<TAB>root<TAB>subdirs (comma-separated, may be empty)<TAB>distribution" lines)
+      (push "# Consumed by compose-dev's index_mount_corpora, after validation." lines)
+      (dolist (e entries)
+        (push (format "%s\t%s\t%s\t%s"
+                      (plist-get e :corpus)
+                      (plist-get e :root)
+                      (mapconcat #'identity (plist-get e :subdirs) ",")
+                      (substring (symbol-name (or (plist-get e :distribution) :public)) 1))
+              lines))
+      (concat (string-join (nreverse lines) "\n") "\n"))))
 
 (defun skewed--generate-vocabulary-env (glossary)
   "KEY='VALUE' lines for the shell half of a FORK's dictionary.
@@ -1525,6 +1557,18 @@ Examples:
                     "\n"))
           (message "Generated: %s" crew-env))))
     
+    ;; The chart locker's manifest: the mount corpora this ship (base or
+    ;; overlay) indexes from its hold at raise.  Lands in generated/;
+    ;; an overlay's install carries it into the yard like the ledger.
+    (let ((manifest (skewed--generate-chart-locker config)))
+      (when manifest
+        (let ((locker-file (expand-file-name
+                            (format "generated/%schart-locker.tsv" skewed-gen-output-prefix)
+                            skewed-gen-output-dir)))
+          (make-directory (file-name-directory locker-file) t)
+          (with-temp-file locker-file (insert manifest))
+          (message "Generated: %s" locker-file))))
+
     ;; Generate MCP configs (only when services declare :mcp t)
     (when (skewed--has-mcp-services-p config)
       (make-directory mcp-dir t)

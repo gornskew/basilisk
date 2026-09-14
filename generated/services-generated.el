@@ -16,6 +16,7 @@
     (:name "ready-room"
      :type "emacs-lisp"
      :lisp-impl "Emacs"
+     :sku "readymax"
      :mcp t
      :http-host "ready-room"
      :http-port 7080
@@ -23,6 +24,7 @@
     (:name "bridge"
      :type "common-lisp"
      :lisp-impl "CCL"
+     :sku "gendl-ccl"
      :mcp t
      :http-host "bridge"
      :http-port 9080
@@ -33,6 +35,7 @@
     (:name "engine-room"
      :type "common-lisp"
      :lisp-impl "SBCL"
+     :sku "gendl-sbcl"
      :mcp t
      :http-host "engine-room"
      :http-port 9090
@@ -42,9 +45,11 @@
     )
     (:name "sick-bay"
      :type "utility"
+     :sku "autoheal"
     )
     (:name "museum-chamber"
      :type "utility"
+     :sku "museum-chamber"
     )
    ))
 ;; Services configuration generated from basilisk.sexp.

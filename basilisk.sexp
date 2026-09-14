@@ -64,6 +64,18 @@
  (:wrapper-path-container "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js"
   :request-timeout-ms 30000)
 
+ ;; THE CHART LOCKER'S MOUNT CORPORA: what this ship indexes itself,
+ ;; from its hold, for the Captain's lisply_search -- beside whatever
+ ;; corpora the species aboard carry in their own images (the
+ ;; lisply.corpus label).  Each entry: (:corpus NAME :root DIR-ABOARD
+ ;; :subdirs (D ...) :distribution :public|:internal); the yard draws
+ ;; generated/chart-locker.tsv from it and indexes each at raise.  The
+ ;; base class declares none: a stack pouch names what its hold
+ ;; carries (narad's names the live demos and the training material;
+ ;; an internal ship may name internal applications, which no public
+ ;; image ever bakes).  Contract: lisply-mcp CORPUS.md.
+ :chart-locker ()
+
  ;; POSTING QUALIFICATIONS: what a species must be capable of to stand
  ;; each post.  Requirements only -- deliberately NOT a fitting
  ;; catalogue (no service definitions, no rosters; that idea retired
@@ -139,9 +151,23 @@
    :space-suit (("WEBTERM" . "${WEBTERM:-ttyd}")
                 ("WEBTERM_PORT" . "6942")
                 ("TERM" . "xterm-256color")
-                ("COLORTERM" . "truecolor"))
+                ("COLORTERM" . "truecolor")
+                ;; where the chart locker is stowed aboard (below)
+                ("LISPLY_SEARCH_CORPORA" . "/lisply/corpora"))
    ;; The Captain's papers and effects, stowed aboard from the galaxy.
-   :cargo-bays ((:dockside "${USER_HOME}/.claude/.credentials.json"
+   :cargo-bays (;; THE CHART LOCKER (2026-09-14): the lisply_search corpora
+                ;; aboard.  The yard fills generated/corpora at every raise
+                ;; -- one file per species that carries its own corpus
+                ;; (the lisply.corpus label on its image; only the index
+                ;; travels, never the source), and the mount corpora the
+                ;; articles' :chart-locker declares, indexed aboard the
+                ;; ready room from the hold.  The Captain merges them
+                ;; over his own baked index, a corpus here outranking a
+                ;; same-named baked one, so the Gendl searched is the
+                ;; Gendl flying.  Contract: lisply-mcp CORPUS.md.
+                (:dockside "${PROJECTS_DIR}/basilisk/generated/corpora"
+                 :stowed-at "/lisply/corpora" :mode "rw")
+                (:dockside "${USER_HOME}/.claude/.credentials.json"
                  :stowed-at "/home/emacs-user/.claude/.credentials.json")
                 (:dockside "${USER_HOME}/.gemini/google_accounts.json"
                  :stowed-at "/home/emacs-user/.gemini/google_accounts.json")
