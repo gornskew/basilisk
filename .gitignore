@@ -38,6 +38,14 @@
 *token*
 
 *-stack-compose.yml
+# The cloud stack's own overlay is TRACKED in its pouch (a cloud vat has
+# no Emacs to regenerate it before the raise); the copy install puts
+# beside docker-compose.yml is per-clone state like every other overlay.
+!cloud-stack/cloud-stack-compose.yml
+# The cloud stack's marks: the setup script's "this clone lives in a
+# cloud vat", and the project-scoped cyborg scroll it writes.
+cloud-stack/.cloud-vat
+/.mcp.json
 
 # Development overlay files (local, not committed)
 

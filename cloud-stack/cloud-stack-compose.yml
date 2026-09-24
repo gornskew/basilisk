@@ -1,0 +1,47 @@
+# Copyright © 2026 Gornskew Enterprises
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.  Distributed WITHOUT
+# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+# DO NOT EDIT - Generated from basilisk.sexp
+# Regenerate with: (skewed-generate-all-configs)
+
+services:
+
+  guild-workshop:
+    image: genworks/gdl:devo-enterprise-smp-licensed
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_GUILD_WORKSHOP:-guild-workshop}
+    hostname: guild-workshop
+    labels:
+      basilisk.post: "guild-engineer"
+      basilisk.module: "guild-workshop"
+      basilisk.requires: "genworks-gdl"
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    ports:
+      - "${GDL_SMP_HOST_PORT:-9098}:9098"
+    environment:
+      - HTTP_PORT=9098
+      - HTTP_HOST_PORT=${GDL_SMP_HOST_PORT:-9098}
+      - START_HTTP=true
+      - SWANK_PORT=4218
+      - START_SWANK=true
+      - TZ=${TZ:-Etc/UTC}
+    volumes:
+      - type: bind
+        source: ${PROJECTS_DIR}
+        target: /projects
+        bind:
+          create_host_path: true
+    networks:
+      - ship
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9098/lisply/ping-lisp"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s

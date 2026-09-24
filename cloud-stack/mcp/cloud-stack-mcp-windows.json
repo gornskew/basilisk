@@ -1,0 +1,21 @@
+// DO NOT EDIT - Generated from basilisk.sexp
+// For Windows: merge with base config or copy to %APPDATA%\Claude\
+{
+  "mcpServers": {
+    "guild-workshop": {
+      "command": "wsl",
+      "args": [
+        "${SKEWED_CLONE_PATH}/mcp/mcp-exec",
+        "--server-name",
+        "guild-workshop",
+        "--backend-host",
+        "guild-workshop",
+        "--http-port",
+        "9098",
+        "--request-timeout-ms",
+        "30000"
+      ]
+    }
+  },
+  "globalShortcut": ""
+}

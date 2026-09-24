@@ -1,0 +1,19 @@
+// DO NOT EDIT - Generated from basilisk.sexp
+{
+  "mcpServers": {
+    "guild-workshop": {
+      "command": "node",
+      "args": [
+        "/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js",
+        "--server-name",
+        "guild-workshop",
+        "--backend-host",
+        "guild-workshop",
+        "--http-port",
+        "9098",
+        "--request-timeout-ms",
+        "30000"
+      ]
+    }
+  }
+}

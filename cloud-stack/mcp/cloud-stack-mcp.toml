@@ -1,0 +1,22 @@
+# Copyright © 2026 Gornskew Enterprises
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.  Distributed WITHOUT
+# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+# DO NOT EDIT - Generated from basilisk.sexp
+
+[mcp_servers.guild-workshop]
+command = "node"
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "guild-workshop", "--backend-host", "guild-workshop", "--http-port", "9098", "--request-timeout-ms", "30000"]
+
+[mcp_servers.guild-workshop.tools.guild-workshop__ping_lisp]
+approval_mode = "approve"
+
+[mcp_servers.guild-workshop.tools.guild-workshop__http_request]
+approval_mode = "approve"
+
+[mcp_servers.guild-workshop.tools.guild-workshop__lisp_eval]
+approval_mode = "approve"
