@@ -38,6 +38,15 @@ fi
         docker info >/dev/null 2>&1 && break
         sleep 1
     done
+    # A standing ship is left standing: a bare `up' buries the ship
+    # that is up and raises a new one, crew and all, and a seating that
+    # resumes a session must not do that to a healthy ship (the first
+    # cloud raise's R.V. Basonn died exactly so).  Every room the yard
+    # raises wears the basilisk.module label; one running is a ship.
+    if docker ps -q --filter "label=basilisk.module" 2>/dev/null | grep -q .; then
+        echo "a ship stands; not raising" >>/tmp/basilisk-session-start.log
+        exit 0
+    fi
     nohup ./basilisk up "--$EMACS_IMAGE_VARIANT" >/tmp/basilisk-session-start.log 2>&1 &
 )
 exit 0
