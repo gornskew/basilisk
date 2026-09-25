@@ -22,8 +22,9 @@ Every room offers `ping_lisp`, `lisp_eval`, `render_png`,
 
 ## Before the first prompt
 
-1. `get_docs` with id `claude-md` on the bridge, and read the section
-   "Building models through the lisply tools" in full.  It is the
+1. `get_docs` with id `claude-gendl-md` on the bridge (the room's
+   `get_docs_list` names it), and read the section "Building models
+   through the lisply tools" in full.  It is the
    primer: the coordinate system (the cardboard cube: right face +X
    is width, rear face +Y is length, top face +Z is height), the six
    face-normal keywords, `translate`, the cylinder whose axis runs
@@ -38,7 +39,10 @@ Every room offers `ping_lisp`, `lisp_eval`, `render_png`,
    named in every later call's `package` argument (in the room's own
    case: upper on the bridge, lower on the workshop).  Nothing is
    shared between attempts and nothing touches the room's other
-   packages.
+   packages.  In such a package `base-object`, `box`, `cylinder` and
+   the rest are already visible unqualified; `gdl:base-object` is
+   not a name (half the first run's attempts spent a call finding
+   that out).
 
 ## The procedure
 
@@ -55,9 +59,18 @@ attempt's package:
    build error is a FAIL.
 2. Count: `(length (the-object obj leaves))`, against the part count
    the prompt implies.
-3. Envelope: `(the-object obj bounding-box)`; compare each axis with
-   the expected envelope in the table below.  Within 10 percent, or
-   10 mm, passes the axis.
+3. Envelope: the union of the LEAVES' bounding boxes, not the root's
+   own `bounding-box`, which includes the root object's own
+   length, width and height if it was given any (a root with a
+   nominal height and three floating boards measures as tall as the
+   nominal).  Compare each axis with the expected envelope in the
+   table below.  Within 10 percent, or 10 mm, passes the axis; an
+   axis the prompt leaves unstated is not failed on the table's
+   guess; and a build that keeps every stated number but reads the
+   prompt another way than the table did (a bracket as a folded
+   blank, a deck with no posts because none were asked for, rails
+   on the face of the posts) is PASS-with-flaws at worst, with the
+   reading named.
 4. Pile: if most leaves share one centre, the parts were never
    placed.  FAIL.
 5. Doubtful cases (envelope right but a part count or an orientation
@@ -129,7 +142,9 @@ model's judgement gives a range.
 ## The three solid prompts (guild-workshop)
 
 Solids, booleans and volumes, with SMLib.  The runner checks the
-volume of the result against the arithmetic given, within 1 percent.
+volume of the result against the arithmetic given, within 1 percent:
+the volume of the brep LEAF (the subtracted solid), since the root
+is an assembly with no volume of its own.
 
 | # | prompt (verbatim) | expected | check |
 |---|---|---|---|
@@ -142,6 +157,26 @@ workshop: pass the package name in the room's own case (lower); one
 form per call; a `subtracted-solid` needs its operands to be brep
 solids (`box-solid`, `cylinder-solid`), not the wireframe primitives;
 `(the-object obj volume)` on a brep is the check.
+
+## Runs so far
+
+| date, seat | model, room | PASS | with flaws | PARTIAL | FAIL | median calls |
+|---|---|---|---|---|---|---|
+| 2026-09-23, a laptop ship | Opus 5.5, bridge | 20 | -- | 0 | 0 | 7 |
+| 2026-09-23, a laptop ship | Sonnet 5, bridge | 12 | -- | 3 | 5 | about 20 |
+| 2026-09-23, a laptop ship | Haiku 4.5, bridge | 0 of 7 | | | | 42 |
+| 2026-09-25, a cloud vat | Fable 5.1, bridge | 14 | 5 | 1 | 0 | 6 |
+| 2026-09-25, a cloud vat | Opus 5.5, bridge | 17 | 3 | 0 | 0 | 5 |
+| 2026-09-25, a cloud vat | Fable 5.1, workshop 21-23 | 3 | 0 | 0 | 0 | 5 |
+
+The 2026-09-25 run scored more strictly than the first (the
+with-flaws column did not exist), and its three shared flaws were
+the table's readings, not the models' -- hence the reading rule
+above.  Fable's one real error was a house with its gable ends
+turned 90 degrees; Opus built it right.  Fable's self-verdicts were
+too generous in 5 of 20; Opus rated itself lower than the runner in
+5 of 20.  On the workshop every volume was within 0.02 percent of
+the arithmetic, holes cut, keyway included.
 
 ## The report
 
