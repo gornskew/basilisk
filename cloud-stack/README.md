@@ -158,10 +158,17 @@ asking in a cloud seat.
   environment AFTER its cache was built are not seen until the cache
   is rebuilt -- editing the setup script body (a comment line will
   do) forces that.
-- Whether `MCP_TIMEOUT` set in the environment's variables reaches
-  Claude Code in a cloud seat (undocumented); harmless to set.  The
-  launcher's own patience is 90 s (`mcp/mcp-exec`), which a warm
-  raise fits.
+- The connectors' patience at startup.  With the launchers raising
+  on demand, one seating had all its rooms as native tools and the
+  next had none: the connectors timed out while the raise was still
+  running and, as ever, never reconnected.  The launcher waits 90 s
+  (`mcp/mcp-exec`); the seat's own MCP startup limit is the shorter
+  one, and `MCP_TIMEOUT` (milliseconds) is the documented dial for it
+  ashore.  The environment's variables DO reach the seat, so
+  `MCP_TIMEOUT=180000` in the variables table is the thing to try;
+  whether it is honoured in a cloud seat is not documented.  A seat
+  that lost its connectors still has every room through the
+  launcher from a shell, which is how both eval runs were driven.
 - The hook's raise once ended `exit 127` after the welcome line:
   something the yard calls after "Services are Up" is missing in the
   vat.  Moot now that the hook does not raise; worth a look when the

@@ -71,8 +71,12 @@ attempt's package:
    blank, a deck with no posts because none were asked for, rails
    on the face of the posts) is PASS-with-flaws at worst, with the
    reading named.
-4. Pile: if most leaves share one centre, the parts were never
-   placed.  FAIL.
+4. Pile: if most leaves share one place, the parts were never
+   placed.  FAIL.  Measure the place as the MIDPOINT OF EACH LEAF'S
+   BOUNDING BOX, not its `center`: leaves made by projection or
+   profile (a gear's teeth, a spiral's treads) inherit their parent's
+   `center` and a centre-based test cries pile over a sound model
+   (the second cloud run, prompts 6 and 7).
 5. Doubtful cases (envelope right but a part count or an orientation
    in question): `render_png` on `(make-object 'MODEL-NAME)`, layout
    `isometric-plus-ortho`, and look.  A staircase whose run goes the
@@ -168,6 +172,8 @@ solids (`box-solid`, `cylinder-solid`), not the wireframe primitives;
 | 2026-09-25, a cloud vat | Fable 5.1, bridge | 14 | 5 | 1 | 0 | 6 |
 | 2026-09-25, a cloud vat | Opus 5.5, bridge | 17 | 3 | 0 | 0 | 5 |
 | 2026-09-25, a cloud vat | Fable 5.1, workshop 21-23 | 3 | 0 | 0 | 0 | 5 |
+| 2026-09-25, a cloud vat, second run | Opus 5.5, bridge | 19 | 1 | 0 | 0 | 5 |
+| 2026-09-25, a cloud vat, second run | Opus 5.5, workshop 21-23 | 3 | 0 | 0 | 0 | 5 |
 
 The 2026-09-25 run scored more strictly than the first (the
 with-flaws column did not exist), and its three shared flaws were
