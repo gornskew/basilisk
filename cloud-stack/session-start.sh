@@ -7,54 +7,37 @@
 # License, or (at your option) any later version.  Distributed WITHOUT
 # ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
 #
-# cloud-stack/session-start.sh -- every seating in a cloud vat raises
-# the ship again.
+# cloud-stack/session-start.sh -- every seating in a cloud vat wakes
+# the vat; the launchers raise the ship.
 #
 # Wired as a SessionStart hook in .claude/settings.json.  A cloud
 # session keeps the vat's filesystem between seatings but not its
-# running processes, so the residences are already pulled and the
-# ship must simply be raised again.  Ashore -- any clone that
+# running processes: the residences are already pulled, dockerd is
+# not running, and no ship stands.  Ashore -- any clone that
 # cloud-stack/setup.sh never ran in -- there is no mark, and this is
 # a no-op.
 #
-# The raise runs IN THE FOREGROUND, on purpose: Claude Code fires
-# SessionStart hooks before it launches the MCP servers, so a raise
-# that finishes inside the hook leaves a standing ship for the
-# connectors to find.  A raise left to the background lost the race
-# every time (the connectors give up and never reconnect; 2026-09-25,
-# twice).  The hook's own limit is set beside it in settings.json;
-# the raise is bounded below that, and the hook always exits zero.
+# THIS HOOK DOES NOT RAISE.  The yard's MCP launcher (mcp/mcp-exec)
+# raises the ship on demand when it finds none, under a per-yard lock
+# so several launchers raise one ship between them; and the launchers
+# start CONCURRENTLY with this hook, whatever the docs say about
+# ordering (observed 2026-09-25: a hook that raised, having checked
+# for a standing ship a moment before the launchers raised theirs,
+# buried the launchers' ship and took their sessions down with it).
+# So the hook's whole duty is to have the vat awake -- dockerd up --
+# by the time the launchers ask, and to get out of the way.
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 [ -f "$REPO_DIR/cloud-stack/.cloud-vat" ] || exit 0
 
-PROJECTS_DIR="${PROJECTS_DIR:-$HOME/projects}"
-EMACS_IMAGE_VARIANT="${EMACS_IMAGE_VARIANT:-lite}"
-# The catalog branch, pinned as in setup.sh: the session's own branch
-# names no image.
-CURRENT_BRANCH="${CURRENT_BRANCH:-devo}"
-export PROJECTS_DIR EMACS_IMAGE_VARIANT CURRENT_BRANCH
-
 if ! docker info >/dev/null 2>&1; then
     nohup dockerd >/var/log/dockerd.log 2>&1 &
-fi
-
-(
-    cd "$REPO_DIR" || exit 0
     for _ in $(seq 1 60); do
         docker info >/dev/null 2>&1 && break
         sleep 1
     done
-    # A standing ship is left standing: a bare `up' buries the ship
-    # that is up and raises a new one, crew and all, and a seating that
-    # resumes a session must not do that to a healthy ship (the first
-    # cloud raise's R.V. Basonn died exactly so).  Every room the yard
-    # raises wears the basilisk.module label; one running is a ship.
-    if docker ps -q --filter "label=basilisk.module" 2>/dev/null | grep -q .; then
-        echo "a ship stands; not raising" >>/tmp/basilisk-session-start.log
-        exit 0
-    fi
-    timeout "${RAISE_SECONDS:-240}" ./basilisk up "--$EMACS_IMAGE_VARIANT" >/tmp/basilisk-session-start.log 2>&1 \
-        || echo "raise stopped early or failed (exit $?)" >>/tmp/basilisk-session-start.log
-)
+fi
+docker info >/dev/null 2>&1 \
+    && echo "vat awake; the launchers raise" >>/tmp/basilisk-session-start.log \
+    || echo "no docker daemon after 60 s" >>/tmp/basilisk-session-start.log
 exit 0

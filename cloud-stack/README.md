@@ -118,23 +118,35 @@ for fitting out.  The raise warns "no Transporter Chief aboard:
 nothing fronts HTTP", which is right: the cloud ship carries no
 transporter room, and the rooms answer on their published ports.
 
-**The third seating settled the timing.**  With the residences
-cached, the ship stood healthy ten seconds after its containers
-started -- and the connectors had still given up, because the raise
-ran in the background while they were launching.  The docs say
-SessionStart hooks fire BEFORE the MCP servers are launched, so the
-hook now raises in the foreground and returns when the ship stands
-(bounded at four minutes; the hook's own limit is five, set beside
-it in `.claude/settings.json`).  A seating that finds a ship
-standing leaves it standing: a bare raise buries the ship that is
-up, which is how the first ship died at a session restart.  The
-same seating answered a question: project-scoped `.mcp.json`
-servers are connected without asking in a cloud seat.
+**The third and fourth seatings settled the timing, the hard way.**
+With the residences cached the ship stands healthy within a minute,
+and the connectors still died twice: first because the hook raised
+in the background while they launched; then, with the hook raising
+in the foreground on the docs' word that SessionStart hooks run
+before the MCP servers, because the launchers in fact start
+CONCURRENTLY with the hook -- they found no ship and raised one
+themselves (the launcher raises on demand, under a per-yard lock),
+and the hook, having checked a moment earlier, buried that ship with
+a bare raise of its own and took the connectors' sessions down with
+it.  So the hook no longer raises at all.  Its whole duty is to have
+dockerd up by the time the launchers ask; the launchers raise the
+ship between them, and a bare raise from anyone else while a ship
+stands is the thing to avoid.  The same seatings answered a
+question: project-scoped `.mcp.json` servers are connected without
+asking in a cloud seat.
 
 ## Still open
 
 - The Guild's cyborg unit has not yet been raised in a vat: the
-  first raises flew without the papers.
+  first raises flew without the papers, and papers added to the
+  environment AFTER its cache was built are not seen until the cache
+  is rebuilt -- editing the setup script body (a comment line will
+  do) forces that.
 - Whether `MCP_TIMEOUT` set in the environment's variables reaches
-  Claude Code in a cloud seat (undocumented); harmless to set, and
-  the foreground raise should make it moot.
+  Claude Code in a cloud seat (undocumented); harmless to set.  The
+  launcher's own patience is 90 s (`mcp/mcp-exec`), which a warm
+  raise fits.
+- The hook's raise once ended `exit 127` after the welcome line:
+  something the yard calls after "Services are Up" is missing in the
+  vat.  Moot now that the hook does not raise; worth a look when the
+  launchers' raise log shows the same.
