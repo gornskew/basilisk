@@ -5,7 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PROJECT_DIR:-.}/cloud-stack/session-start.sh\""
+            "command": "sh \"${CLAUDE_PROJECT_DIR:-.}/cloud-stack/session-start.sh\"",
+            "timeout": 300
           }
         ]
       }

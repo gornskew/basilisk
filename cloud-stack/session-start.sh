@@ -15,8 +15,15 @@
 # running processes, so the residences are already pulled and the
 # ship must simply be raised again.  Ashore -- any clone that
 # cloud-stack/setup.sh never ran in -- there is no mark, and this is
-# a no-op.  The raise runs in the background: the yard's MCP launcher
-# (mcp/mcp-exec) waits for the rooms on its own.
+# a no-op.
+#
+# The raise runs IN THE FOREGROUND, on purpose: Claude Code fires
+# SessionStart hooks before it launches the MCP servers, so a raise
+# that finishes inside the hook leaves a standing ship for the
+# connectors to find.  A raise left to the background lost the race
+# every time (the connectors give up and never reconnect; 2026-09-25,
+# twice).  The hook's own limit is set beside it in settings.json;
+# the raise is bounded below that, and the hook always exits zero.
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 [ -f "$REPO_DIR/cloud-stack/.cloud-vat" ] || exit 0
@@ -47,6 +54,7 @@ fi
         echo "a ship stands; not raising" >>/tmp/basilisk-session-start.log
         exit 0
     fi
-    nohup ./basilisk up "--$EMACS_IMAGE_VARIANT" >/tmp/basilisk-session-start.log 2>&1 &
+    timeout "${RAISE_SECONDS:-240}" ./basilisk up "--$EMACS_IMAGE_VARIANT" >/tmp/basilisk-session-start.log 2>&1 \
+        || echo "raise stopped early or failed (exit $?)" >>/tmp/basilisk-session-start.log
 )
 exit 0

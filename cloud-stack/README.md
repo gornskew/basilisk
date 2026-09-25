@@ -118,11 +118,23 @@ for fitting out.  The raise warns "no Transporter Chief aboard:
 nothing fronts HTTP", which is right: the cloud ship carries no
 transporter room, and the rooms answer on their published ports.
 
+**The third seating settled the timing.**  With the residences
+cached, the ship stood healthy ten seconds after its containers
+started -- and the connectors had still given up, because the raise
+ran in the background while they were launching.  The docs say
+SessionStart hooks fire BEFORE the MCP servers are launched, so the
+hook now raises in the foreground and returns when the ship stands
+(bounded at four minutes; the hook's own limit is five, set beside
+it in `.claude/settings.json`).  A seating that finds a ship
+standing leaves it standing: a bare raise buries the ship that is
+up, which is how the first ship died at a session restart.  The
+same seating answered a question: project-scoped `.mcp.json`
+servers are connected without asking in a cloud seat.
+
 ## Still open
 
-- Whether project-scoped `.mcp.json` servers need approving in a
-  cloud seat the way they do ashore (the first raise's connectors
-  were the yard's, spliced or project-scoped, and they had timed
-  out before the ship stood; the next seating says).
 - The Guild's cyborg unit has not yet been raised in a vat: the
   first raises flew without the papers.
+- Whether `MCP_TIMEOUT` set in the environment's variables reaches
+  Claude Code in a cloud seat (undocumented); harmless to set, and
+  the foreground raise should make it moot.
