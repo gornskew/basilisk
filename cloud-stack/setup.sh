@@ -38,7 +38,12 @@ set -uo pipefail
 # script fails, and the questions come when it succeeds (why no Guild
 # unit?).  A rebuilt cache writes a fresh one.
 exec > >(tee /tmp/basilisk-setup.log) 2>&1
-echo "[cloud-stack] setup $(date -u +%FT%TZ) as $(id -un); papers: ${DOCKERHUB_USER:+user set}${DOCKERHUB_USER:-no user} / ${DOCKERHUB_TOKEN:+token set}${DOCKERHUB_TOKEN:-no token}"
+papers_user="no user"; [ -n "${DOCKERHUB_USER:-}" ] && papers_user="user set"
+papers_token="no token"; [ -n "${DOCKERHUB_TOKEN:-}" ] && papers_token="token set"
+# Never the values: the first cut wrote the token itself into this
+# log (a ${VAR:-word} where ${VAR:+word} was meant), and the log
+# lives in the cached snapshot.  Rotate any token that ran under it.
+echo "[cloud-stack] setup $(date -u +%FT%TZ) as $(id -un); papers: $papers_user / $papers_token"
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 PROJECTS_DIR="${PROJECTS_DIR:-$HOME/projects}"
