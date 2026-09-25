@@ -18,13 +18,29 @@ On the cloud environment (claude.ai/code, the environment settings):
 |---|---|
 | repository | `gornskew/basilisk`, branch `devo` |
 | network access | **Trusted** (the default): Docker Hub and GitHub are on it |
-| setup script | `bash cloud-stack/setup.sh` |
+| setup script | the body below: it finds the checkout, since the script does not run inside it |
 | environment variables | see below |
+
+```bash
+#!/bin/bash
+echo "setup cwd: $(pwd)"
+repo="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$repo" ] || [ ! -f "$repo/cloud-stack/setup.sh" ]; then
+  hit="$(find / -xdev -path '*/cloud-stack/setup.sh' -not -path '/proc/*' 2>/dev/null | head -1)"
+  repo="$(cd "$(dirname "$hit")/.." 2>/dev/null && pwd -P)"
+fi
+if [ ! -f "$repo/cloud-stack/setup.sh" ]; then
+  echo "no basilisk checkout with cloud-stack/setup.sh found"; exit 1
+fi
+echo "repo: $repo"
+cd "$repo" && bash cloud-stack/setup.sh
+```
 
 | variable | purpose |
 |---|---|
 | `DOCKERHUB_USER`, `DOCKERHUB_TOKEN` | the Guild's papers.  With both set, the Guild's cyborg (SMP) unit comes aboard from its private catalog; without them the base rig flies alone |
 | `EMACS_IMAGE_VARIANT` | the ready room's strain; `lite` unless told otherwise (the `full` strain is 3.5 GB of residence for nothing a cloud seat uses) |
+| `CURRENT_BRANCH` | the catalog branch the residences are tagged with; `devo` unless told otherwise (the scripts pin it; the variable is the belt to those braces) |
 | `PROJECTS_DIR` | the scroll chest requisitioned as `/projects` aboard; `~/projects` (created) unless told otherwise |
 | `TZ` | ship's time |
 
@@ -69,6 +85,21 @@ cloud vat offers roughly 4 vCPU, 16 GB and 30 GB, so the complement
 here fits with room to spare; what does not fit is a galaxy's worth
 of overlays with a full-strain ready room, which is why this one is
 lite and signs on one hand.
+
+## What the vat lacks, and how the pouch makes do
+
+- **No IPv6 in the kernel** (no `/proc/sys/net/ipv6`).  The base
+  articles ask for a dual-stack ship network, which the vat cannot
+  create.  `cloud-ipv4-overlay.yml`, copied beside
+  `docker-compose.yml` by the setup script, makes the network
+  IPv4-only.
+- **The checkout's branch is the session's** (`claude/<something>`),
+  and the yard tags residences with the checkout's branch.  Both
+  scripts pin `CURRENT_BRANCH=devo`; setting the same in the
+  environment's variables is the belt to those braces.
+- **The setup script does not run inside the checkout.**  The
+  environment's script body must find it (the README's body above
+  does), and its output is shown in the session's failure dialog.
 
 ## Open questions, until the first raise says
 

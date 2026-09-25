@@ -1,0 +1,23 @@
+# Copyright © 2026 Gornskew Enterprises
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.  Distributed WITHOUT
+# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+# The ship's network, IPv4 only: a cloud session's vat has a kernel
+# with no IPv6 at all (no /proc/sys/net/ipv6), and the base articles
+# ask for a dual-stack network, which the vat then cannot create --
+# "Cannot read IPv6 setup for bridge", and no room starts (first
+# cloud raise, 2026-09-25).  Hand-written, not generated: the
+# generator emits a network block for the base ship only.
+# cloud-stack/setup.sh copies this beside docker-compose.yml, where
+# the yard reads every .yml; the copy is per-clone state and ignored.
+
+networks:
+  ship:
+    enable_ipv6: false
+    ipam: !override
+      config:
+        - subnet: "172.20.0.0/16"

@@ -50,6 +50,9 @@ cloud-stack/.cloud-vat
 # Development overlay files (local, not committed)
 
 *-overlay.yml
+# The cloud pouch's IPv4-only network overlay is tracked in the pouch;
+# the copy setup.sh puts beside docker-compose.yml is per-clone state.
+!cloud-stack/cloud-ipv4-overlay.yml
 
 *-dev-overlay.yml
 

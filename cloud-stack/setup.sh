@@ -86,6 +86,10 @@ else
 fi
 [ -n "$GUILD" ] || rm -f "$REPO_DIR/cloud-stack-compose.yml"
 
+# The vat's kernel has no IPv6: the ship's network goes IPv4-only
+# (see the file's own header).  Papers or no papers.
+cp "$REPO_DIR/cloud-stack/cloud-ipv4-overlay.yml" "$REPO_DIR/cloud-ipv4-overlay.yml"
+
 cd "$REPO_DIR" || exit 0
 
 # The yard's own papers (.env), then the residences, for as long as
