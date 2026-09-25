@@ -101,14 +101,28 @@ lite and signs on one hand.
   environment's script body must find it (the README's body above
   does), and its output is shown in the session's failure dialog.
 
-## Open questions, until the first raise says
+## The first raise (2026-09-25)
 
-- Whether the session's cyborg runs as the root that ran the setup
-  script.  If not, the splice into `~/.claude.json` lands in the
-  wrong home and `.mcp.json` beside the repo is what carries the
-  rooms -- and that user needs the docker socket, since the launcher
-  execs into the ready room through compose.
+R.V. Basonn: five rooms, all healthy, every room answering `pong`
+through `mcp/mcp-exec`, the launcher the connectors use; the gangway
+check passed in twelve seconds once the residences were aboard.  So
+the seat can reach docker and exec into the ready room, and the
+launcher form of the scrolls is right.  What it also taught: **the
+session's connectors give up while the ship is still empty and do
+not reconnect** -- a raise that finishes after they have timed out
+leaves the room tools missing for the rest of that session, and a
+fresh session is the remedy.  The setup script's pulls exist so
+that the seating's raise fits inside the launcher's patience (90 s
+in `mcp/mcp-exec`); a cold cache does not, and its first session is
+for fitting out.  The raise warns "no Transporter Chief aboard:
+nothing fronts HTTP", which is right: the cloud ship carries no
+transporter room, and the rooms answer on their published ports.
+
+## Still open
+
 - Whether project-scoped `.mcp.json` servers need approving in a
-  cloud seat the way they do ashore.
-- How long a raise takes on a cold cache against the session's own
-  patience: the first seating pays for the pulls.
+  cloud seat the way they do ashore (the first raise's connectors
+  were the yard's, spliced or project-scoped, and they had timed
+  out before the ship stood; the next seating says).
+- The Guild's cyborg unit has not yet been raised in a vat: the
+  first raises flew without the papers.
