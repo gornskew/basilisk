@@ -100,6 +100,14 @@ lite and signs on one hand.
 - **The setup script does not run inside the checkout.**  The
   environment's script body must find it (the README's body above
   does), and its output is shown in the session's failure dialog.
+  Seen 2026-09-25: the checkout at `/home/user/basilisk`, the seat
+  running as root.
+- **A cached setup does not run again.**  Papers or variables added
+  to the environment after its cache was built are not seen until
+  the cache is rebuilt, which an edit to the setup script body
+  forces (a comment line will do).  Check with
+  `/tmp/basilisk-setup.log`, whose first line says whether the
+  papers were present.
 
 ## The first raise (2026-09-25)
 
