@@ -28,17 +28,26 @@ On the cloud environment (claude.ai/code, the environment settings):
 | `PROJECTS_DIR` | the scroll chest requisitioned as `/projects` aboard; `~/projects` (created) unless told otherwise |
 | `TZ` | ship's time |
 
-The setup script runs once, as root, before the cyborg is seated:
-it starts the vat if the machine has not, logs in to Docker Hub when
-the papers are present, installs this overlay, raises the ship, and
-writes the cyborg scrolls -- `.mcp.json` beside the repo root and a
-splice into the user scroll.  The vat keeps its filesystem between
-seatings for about a week (the environment cache), so the residences
-are pulled once; it does not keep running processes, so
-`cloud-stack/session-start.sh` -- a SessionStart hook in
-`.claude/settings.json` -- raises the ship again at every seating,
-in the background.  Ashore the hook finds no `cloud-stack/.cloud-vat`
-mark and does nothing.
+The setup script runs as root before the cyborg is seated, and the
+vat keeps the filesystem it leaves behind for about a week (the
+environment cache) -- but only when the script exits zero within
+about five minutes, which is the rule that shapes it.  It never
+raises the ship.  It starts the vat if the machine has not, logs in
+to Docker Hub when the papers are present and installs this overlay
+only then, pulls what residences it can in the time it has (four
+minutes by default; whatever arrived is cached, the first raise
+fetches the rest), and writes the cyborg scrolls -- `.mcp.json`
+beside the repo root and a splice into the user scroll -- every room
+through the yard's launcher `mcp/mcp-exec`, which execs into the
+ready room and raises the ship on demand.  The vat does not keep
+running processes, so `cloud-stack/session-start.sh` -- a
+SessionStart hook in `.claude/settings.json` -- raises the ship in
+the background at every seating.  Ashore the hook finds no
+`cloud-stack/.cloud-vat` mark and does nothing.  Until the raise has
+finished, a hail to a room may time out; hail again a minute later.
+The setup's own account of itself is in `/tmp/basilisk-init.log` and
+`/tmp/basilisk-pull.log`, the raise's in
+`/tmp/basilisk-session-start.log`.
 
 ## What the cyborg finds
 
