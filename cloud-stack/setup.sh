@@ -38,7 +38,13 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 PROJECTS_DIR="${PROJECTS_DIR:-$HOME/projects}"
 EMACS_IMAGE_VARIANT="${EMACS_IMAGE_VARIANT:-lite}"
 PULL_SECONDS="${PULL_SECONDS:-240}"
-export PROJECTS_DIR EMACS_IMAGE_VARIANT
+# The catalog branch the residences are tagged with.  generate-env.sh
+# takes it from the checkout's git branch, which ashore is the yard's
+# own; in a cloud vat the session works on a branch named for the
+# session (claude/<something>), which names no image and is not even
+# a legal tag.  Pinned to the yard's line unless the environment says.
+CURRENT_BRANCH="${CURRENT_BRANCH:-devo}"
+export PROJECTS_DIR EMACS_IMAGE_VARIANT CURRENT_BRANCH
 
 log() { printf '[cloud-stack] %s\n' "$*"; }
 

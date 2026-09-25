@@ -23,7 +23,10 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
 
 PROJECTS_DIR="${PROJECTS_DIR:-$HOME/projects}"
 EMACS_IMAGE_VARIANT="${EMACS_IMAGE_VARIANT:-lite}"
-export PROJECTS_DIR EMACS_IMAGE_VARIANT
+# The catalog branch, pinned as in setup.sh: the session's own branch
+# names no image.
+CURRENT_BRANCH="${CURRENT_BRANCH:-devo}"
+export PROJECTS_DIR EMACS_IMAGE_VARIANT CURRENT_BRANCH
 
 if ! docker info >/dev/null 2>&1; then
     nohup dockerd >/var/log/dockerd.log 2>&1 &
