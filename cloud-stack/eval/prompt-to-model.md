@@ -174,6 +174,16 @@ solids (`box-solid`, `cylinder-solid`), not the wireframe primitives;
 | 2026-09-25, a cloud vat | Fable 5.1, workshop 21-23 | 3 | 0 | 0 | 0 | 5 |
 | 2026-09-25, a cloud vat, second run | Opus 5.5, bridge | 19 | 1 | 0 | 0 | 5 |
 | 2026-09-25, a cloud vat, second run | Opus 5.5, workshop 21-23 | 3 | 0 | 0 | 0 | 5 |
+| 2026-09-25, a cloud vat, third run | Opus 5.5, bridge | 17 | 3 | 0 | 0 | 6 (4 to the room) |
+| 2026-09-25, a cloud vat, third run | Opus 5.5, workshop 21-23 | 3 | 0 | 0 | 0 | 6 (4 to the room) |
+
+Three Opus 5.5 passes on the bridge in two days scored 20, 17+3,
+19+1 and 17+3: the spread is the runner's strictness and the
+prompts' readings, not the model, and the floor is 17 clean of 20
+with nothing failed.  On the workshop, 9 of 9 across three runs,
+every volume within 0.001 percent.  A seat runs at most 20
+sub-agents at once, so 23 attempts go in two waves.  Sub-agents took
+30 to 78 s, median about 47 s.
 
 The 2026-09-25 run scored more strictly than the first (the
 with-flaws column did not exist), and its three shared flaws were
