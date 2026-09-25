@@ -23,6 +23,10 @@ On the cloud environment (claude.ai/code, the environment settings):
 
 ```bash
 #!/bin/bash
+# The Guild's papers, here and not in the variables table (see above);
+# leave these two lines out and the base rig flies alone.
+export DOCKERHUB_USER=<your Docker Hub user>
+export DOCKERHUB_TOKEN=<a read-only Hub access token>
 echo "setup cwd: $(pwd)"
 repo="$(git rev-parse --show-toplevel 2>/dev/null)"
 if [ -z "$repo" ] || [ ! -f "$repo/cloud-stack/setup.sh" ]; then
@@ -38,7 +42,7 @@ cd "$repo" && bash cloud-stack/setup.sh
 
 | variable | purpose |
 |---|---|
-| `DOCKERHUB_USER`, `DOCKERHUB_TOKEN` | the Guild's papers.  With both set, the Guild's cyborg (SMP) unit comes aboard from its private catalog; without them the base rig flies alone |
+| `DOCKERHUB_USER`, `DOCKERHUB_TOKEN` | the Guild's papers.  With both set, the Guild's cyborg (SMP) unit comes aboard from its private catalog; without them the base rig flies alone.  **They must ride in the setup script body** (below), not in the variables table: the environment's variables reach the seat but not the setup script (observed 2026-09-25; the docs are silent), and the papers are needed at setup, when the residences are pulled and cached.  The exposure is the same either way: the dialog itself says anyone using the environment can read the values.  A Docker Hub access token with read-only scope is the right kind |
 | `EMACS_IMAGE_VARIANT` | the ready room's strain; `lite` unless told otherwise (the `full` strain is 3.5 GB of residence for nothing a cloud seat uses) |
 | `CURRENT_BRANCH` | the catalog branch the residences are tagged with; `devo` unless told otherwise (the scripts pin it; the variable is the belt to those braces) |
 | `PROJECTS_DIR` | the scroll chest requisitioned as `/projects` aboard; `~/projects` (created) unless told otherwise |
@@ -102,12 +106,16 @@ lite and signs on one hand.
   does), and its output is shown in the session's failure dialog.
   Seen 2026-09-25: the checkout at `/home/user/basilisk`, the seat
   running as root.
-- **A cached setup does not run again.**  Papers or variables added
-  to the environment after its cache was built are not seen until
-  the cache is rebuilt, which an edit to the setup script body
-  forces (a comment line will do).  Check with
+- **A cached setup does not run again.**  Anything the setup needs
+  that was added to the environment after its cache was built is not
+  seen until the cache is rebuilt, which an edit to the setup script
+  body forces (a comment line will do).  Check with
   `/tmp/basilisk-setup.log`, whose first line says whether the
   papers were present.
+- **The environment's variables do not reach the setup script.**
+  A session sees them; the setup, which runs before the session,
+  does not (its log said "no user / no token" with both set in the
+  variables table).  What the setup needs rides in its body.
 
 ## The first raise (2026-09-25)
 
