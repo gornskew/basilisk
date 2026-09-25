@@ -34,6 +34,12 @@
 
 set -uo pipefail
 
+# Its own account, kept: the seat sees this output only when the
+# script fails, and the questions come when it succeeds (why no Guild
+# unit?).  A rebuilt cache writes a fresh one.
+exec > >(tee /tmp/basilisk-setup.log) 2>&1
+echo "[cloud-stack] setup $(date -u +%FT%TZ) as $(id -un); papers: ${DOCKERHUB_USER:+user set}${DOCKERHUB_USER:-no user} / ${DOCKERHUB_TOKEN:+token set}${DOCKERHUB_TOKEN:-no token}"
+
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 PROJECTS_DIR="${PROJECTS_DIR:-$HOME/projects}"
 EMACS_IMAGE_VARIANT="${EMACS_IMAGE_VARIANT:-lite}"
