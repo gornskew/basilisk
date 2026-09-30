@@ -692,8 +692,24 @@ Returns the install script content as a string."
     ;; box still running the stack from a skewed-emacs checkout can say
     ;; BASILISK_DIR=../skewed-emacs ./install without editing this
     ;; GENERATED file -- which is what hand-editing it amounts to, and
-    ;; the edit is lost on the next regeneration.
-    (push "SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"" lines)
+    ;; the edit is lost on the next regeneration.  The search for the
+    ;; yard was hand-patched into every stack's install on 2026-09-16
+    ;; (balaram's first bucketed deploy: `..' through the top-level
+    ;; compat symlink resolves against the real parent, so gs/basilisk
+    ;; was never found) and lost again at the next regeneration
+    ;; (suzie, 2026-09-30); it lives here now.
+    (push "SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd -P)\"" lines)
+    (push "# basilisk beside this repo, or one level up when this repo sits in the" lines)
+    (push "# gs/ bucket and basilisk at the top of /projects (or the other way" lines)
+    (push "# round).  Physical paths: reached through a top-level compat symlink," lines)
+    (push "# `..` resolves against the real parent, which is how balaram's first" lines)
+    (push "# bucketed deploy (2026-09-16) looked for gs/basilisk and found nothing." lines)
+    (push "if [ -z \"${BASILISK_DIR:-}\" ]; then" lines)
+    (push "    for d in \"$SCRIPT_DIR/../basilisk\" \"$SCRIPT_DIR/../../basilisk\" \\" lines)
+    (push "             \"$SCRIPT_DIR/../gs/basilisk\" \"$SCRIPT_DIR/../../gs/basilisk\"; do" lines)
+    (push "        [ -d \"$d\" ] && { BASILISK_DIR=\"$(cd \"$d\" && pwd -P)\"; break; }" lines)
+    (push "    done" lines)
+    (push "fi" lines)
     (push "TARGET_DIR=\"${BASILISK_DIR:-$SCRIPT_DIR/../basilisk}\"" lines)
     (push "" lines)
     (push (format "echo \"Installing %s...\"" label) lines)
