@@ -427,6 +427,28 @@ projects dir is PROJECTS_DIR, else the parent of this yard."
                 (when soft (push (format "        soft: %s" soft) lines))
                 (when hard (push (format "        hard: %s" hard) lines))))))
 
+        ;; A room that flies microVMs (the hangar, 2026-10-21): the
+        ;; host's devices it is handed, the capabilities it adds, the
+        ;; kernel knobs it turns, and the ceiling on what it may burn --
+        ;; the outer cap on every VM it raises.
+        (let ((devices (skewed--get-prop svc :devices)))
+          (when devices
+            (push "    devices:" lines)
+            (dolist (dev devices)
+              (push (format "      - \"%s\"" (if (consp dev) (format "%s:%s" (car dev) (cdr dev)) (format "%s:%s" dev dev))) lines))))
+        (let ((caps (skewed--get-prop svc :cap-add)))
+          (when caps
+            (push "    cap_add:" lines)
+            (dolist (cap caps) (push (format "      - %s" cap) lines))))
+        (let ((sysctls (skewed--get-prop svc :sysctls)))
+          (when sysctls
+            (push "    sysctls:" lines)
+            (dolist (pair sysctls) (push (format "      - %s=%s" (car pair) (cdr pair)) lines))))
+        (let ((cpus (skewed--get-prop svc :cpus)))
+          (when cpus (push (format "    cpus: %s" cpus) lines)))
+        (let ((mem (skewed--get-prop svc :mem-limit)))
+          (when mem (push (format "    mem_limit: %s" mem) lines)))
+
                 ;; Networks
         (unless network-mode
           (push "    networks:" lines)
@@ -445,13 +467,18 @@ projects dir is PROJECTS_DIR, else the parent of this yard."
         ;; Healthcheck
         (when healthcheck
           (let ((endpoint (skewed--get-prop healthcheck :endpoint))
+                ;; a room with no door of its own says how it is checked: a
+                ;; shell command (the hangar touches a file every pass)
+                (command (skewed--get-prop healthcheck :command))
                 (interval (or (skewed--get-prop healthcheck :interval) "60s"))
                 (http-port (skewed--get-prop
                             (cl-find-if (lambda (p) (equal (skewed--get-prop p :name) "http")) ports)
                             :aboard)))
             (push "    healthcheck:" lines)
-            (push (format "      test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:%s%s\"]"
-                          (or http-port 80) endpoint) lines)
+            (if command
+                (push (format "      test: [\"CMD-SHELL\", \"%s\"]" (replace-regexp-in-string "\"" "\\\\\"" command)) lines)
+              (push (format "      test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:%s%s\"]"
+                            (or http-port 80) endpoint) lines))
             (push (format "      interval: %s" interval) lines)
             (push "      timeout: 3s" lines)
             (push "      retries: 3" lines)

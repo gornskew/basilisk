@@ -214,6 +214,60 @@ who never came back.  The lab's name rides in with `hosted.lab` and is
 the name the lab is configured with, so one ledger per lab at the
 gate.
 
+### The hangar as a room
+
+The hangar is a room in the ship's articles (`basilisk.sexp`, a
+`:hangar-chief` posting; narad-stack's and balaram-stack's articles
+sign it on).  Its species is `hangar/Dockerfile`, built from this
+directory as context -- Debian, Firecracker and its kernel baked in,
+and these scripts:
+
+```bash
+docker build -f hangar/Dockerfile -t gornskew/hangar:trial /path/to/basilisk/firecracker
+hangar/make-rootfs ~/firecracker-hangar      # on the host, with docker: the hosted rootfs
+```
+
+The articles give the room `/dev/kvm` and `/dev/net/tun`, `NET_ADMIN`
+and `ip_forward` (`:devices`, `:cap-add`, `:sysctls`), a CPU and
+memory ceiling that is the outer cap on every VM aboard (`:cpus`,
+`:mem-limit`), the lab's deployed root read-only at `/deployments`,
+and a volume of its own at `/fc` (`HANGAR_DIR`) for the rootfs, the
+data disks and the run directory.  Nothing else of the ship's shelf
+comes aboard: the VMs' applications are strangers' code.
+
+`hangar-init` is PID 1's charge.  The FLEET LOOP reads `/deployments`
+every few seconds: a deployed web application gets a data disk and a
+VM (`hosted disk`, `hosted up`, a port of its own), a VM whose hosting
+the gate reports stopped is taken down and a paused page stands in for
+it, hosting added brings it back, and a deployment taken down takes
+its VM with it (the disk stays for the un-hosting rule).  THE ROUTING
+IS THE SHIP'S PROXY'S: every pass the loop REGISTERS each host with
+the chief (`POST /_cyclops/hangar/vms`, the admin secret), and a
+`:hangar` rule in cyclops sends a registered host to its VM (the
+hangar's port for it), a paused host's root to the proxy's own paused
+page (whose host-topup form the rule carries to the lab's room), and
+any other host -- the applications that are not in VMs, the previews
+-- to the rule's own backend.  One rule for every host under the
+domain, and a new deployment needs none:
+
+```lisp
+(:host-match ("*.gen.works") :path "/" :hangar t :host "bridge" :port 9080
+ :preserve-host? t :root-target-path "/prompt-lab/d/{label}")
+```
+
+(cyclops's wildcard host match, root rule and `:hangar` kind,
+2026-10-21: the host's root becomes the deployment's path, every
+longer path passes through, the host is the stickiness so no affinity
+is wanted.)  `/run/hangar/status.json` in the room says what flies;
+`/run/hangar/alive`, touched every pass, is the health check; the
+chief's `GET /_cyclops/hangar/vms` shows what it was told.  The
+environment: `GATE_URL`, `LAB` (the lab's configured name at the gate,
+so the VMs report on the lab's ledgers), `APPS_DOMAIN`,
+`CYCLOPS_ADMIN_URL` and `CYCLOPS_ADMIN_SECRET`, `HANGAR_INTERVAL`,
+`VCPUS` and `MEM_MIB` per VM, `HANGAR_ENGINE` (one rootfs per engine;
+`gendl` for now).
+
 **Not here yet:** a snapshot after the runtime is up, restored per
-deployment, in place of the 10 s compile; the jailer; a paused page
-from the proxy while the VM is down.
+deployment, in place of the 10 s compile; the jailer; a feed of a
+remote lab's deployment records to a hangar on another host (balaram
+flying suzie's deployments); the solids engine's rootfs.

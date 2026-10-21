@@ -1,0 +1,31 @@
+#!/bin/bash
+# make-rootfs -- on the HOST, with docker: the hangar's hosted rootfs,
+# FC_DIR/hosted.ext4 -- the Gendl image's filesystem plus the lab's
+# checkouts (demos, monocle) at /opt/hosted and the hosted init.  Run
+# it once per engine image, and again when the lab's code changes; the
+# hangar's VMs boot from the result (a copy each).
+#
+#   hangar/make-rootfs [FC_DIR]
+#
+# Environment: GENDL_IMAGE (genworks/gendl:devo-ccl), DEMOS and MONOCLE
+# (the checkouts; /projects/gw/demos and /projects/gw/monocle by
+# default), SIZE (4G).  Needs about 5 GB under FC_DIR while it runs.
+set -euo pipefail
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)      # the firecracker/ kit
+FC_DIR=${1:-${FC_DIR:-$HOME/firecracker-phase0}}
+GENDL_IMAGE=${GENDL_IMAGE:-genworks/gendl:devo-ccl}
+DEMOS=${DEMOS:-/projects/gw/demos}; MONOCLE=${MONOCLE:-/projects/gw/monocle}
+[ -d "$DEMOS" ] || DEMOS=$HOME/projects/gw/demos
+[ -d "$MONOCLE" ] || MONOCLE=$HOME/projects/gw/monocle
+SIZE=${SIZE:-4G}
+mkdir -p "$FC_DIR/hosted"
+echo "exporting $GENDL_IMAGE"
+cid=$(docker create "$GENDL_IMAGE"); docker export "$cid" -o "$FC_DIR/gendl.tar"; docker rm "$cid" >/dev/null
+echo "copying the lab's checkouts from $DEMOS and $MONOCLE"
+rsync -a --delete --exclude .git --exclude '*.fasl' --exclude node_modules --exclude CLAUDE.md "$DEMOS/" "$FC_DIR/hosted/demos/"
+rsync -a --delete --exclude .git --exclude '*.fasl' "$MONOCLE/" "$FC_DIR/hosted/monocle/"
+echo "building $FC_DIR/hosted.ext4 ($SIZE)"
+docker run --rm -v "$FC_DIR":/work -v "$here":/hangar:ro -v "$FC_DIR/hosted":/hosted:ro \
+    debian:13-slim bash /hangar/hangar/build-rootfs hosted "$SIZE"
+rm -f "$FC_DIR/gendl.tar"
+echo "done: the hangar boots its VMs from $FC_DIR/hosted.ext4 (a running VM keeps its copy until it is raised again)"

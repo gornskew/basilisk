@@ -14,6 +14,7 @@
 #   hosted status              every VM: pid, RSS and PSS, the deployment door's answer
 #   hosted watch NAME          poll the gate's hosting for NAME; stop the VM
 #                              while it is stopped at the gate, start it when not
+#   hosted ip NAME             the guest's address (the hangar's router proxies to it)
 #
 # Per-VM settings (environment): VCPUS (1), MEM_MIB (512), GATE_URL
 # (the gate's Messages door as the VM reaches it), LAB (the lab's name
@@ -29,7 +30,8 @@ GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
 LAB=${LAB:-prompt-lab}
 LOCK=${LOCK:-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')}
 GUEST_PORT=9080
-bin=$FC_DIR/bin/firecracker; kernel=$FC_DIR/vmlinux; run=$FC_DIR/run; mkdir -p "$run"
+# the binary and the kernel: baked into the hangar's image (FC_BIN, FC_KERNEL), else under FC_DIR
+bin=${FC_BIN:-$FC_DIR/bin/firecracker}; kernel=${FC_KERNEL:-$FC_DIR/vmlinux}; run=$FC_DIR/run; mkdir -p "$run"
 
 die() { echo "hosted: $*" >&2; exit 1; }
 now() { date +%s.%N; }
@@ -202,8 +204,10 @@ cmd_watch() {
     done
 }
 
+cmd_ip() { guest_ip "$(slot_of "${1:?name}")"; }   # the guest's address, for the hangar's router
+
 cmd=${1:-}; shift || true
 case $cmd in
-    disk|up|down|status|watch) "cmd_$cmd" "$@" ;;
+    disk|up|down|status|watch|ip) "cmd_$cmd" "$@" ;;
     *) sed -n '2,23p' "$0"; exit 1 ;;
 esac

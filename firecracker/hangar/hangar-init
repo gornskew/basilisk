@@ -1,0 +1,138 @@
+#!/bin/bash
+# hangar-init -- PID 1's charge in the hangar room: the FLEET LOOP.  It
+# reads the lab's deployed root at /deployments, raises a microVM per
+# deployed web application (hosted up, a port of the hangar's own per
+# VM), takes a VM down while the gate says its hosting is stopped and
+# brings it back when hosting is added, takes it down for good when the
+# deployment is gone -- and REGISTERS every host with the ship's
+# cyclops (the admin door /_cyclops/hangar/vms), whose :hangar rule
+# routes <name>.$APPS_DOMAIN to the VM, a paused host to the proxy's own
+# paused page, and any other host on to the lab.  The hangar routes
+# nothing itself.  /run/hangar/status.json says what flies and
+# /run/hangar/alive is touched every pass (the room's health check).
+#
+# Environment: FC_DIR (/fc: the hosted rootfs from hangar/make-rootfs,
+# the data disks, the run directory), DEPLOYMENTS (/deployments),
+# APPS_DOMAIN (gen.works), GATE_URL (the gate's Messages door), LAB
+# (the lab's name at the gate, its *lab-name*), CYCLOPS_ADMIN_URL
+# (http://transporter-room/_cyclops) and CYCLOPS_ADMIN_SECRET (the
+# chief's admin secret; without it nothing is registered and the loop
+# says so), HANGAR_INTERVAL (15 s), VCPUS and MEM_MIB per VM (hosted's
+# defaults), HANGAR_ENGINE (gendl: the one rootfs for now), HANGAR_MAX_VMS
+# (0: no limit but the room's memory cap; a dev ship says 2 -- the rest
+# wait, and fly as others are grounded).
+set -u
+FC_DIR=${FC_DIR:-/fc}; DEPLOYMENTS=${DEPLOYMENTS:-/deployments}
+APPS_DOMAIN=${APPS_DOMAIN:-gen.works}; GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
+LAB=${LAB:-prompt-lab}; INTERVAL=${HANGAR_INTERVAL:-15}; ENGINE=${HANGAR_ENGINE:-gendl}
+MAX_VMS=${HANGAR_MAX_VMS:-0}   # 0: as many as the room's memory cap allows; a dev ship says 2
+ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=${CYCLOPS_ADMIN_SECRET:-}
+HOSTED=/usr/local/lib/hangar/hosted
+export FC_DIR GATE_URL LAB
+run=$FC_DIR/run; mkdir -p "$run" /run/hangar
+log() { echo "$(date -u +%FT%TZ) hangar: $*"; }
+
+# --- the chief's table -------------------------------------------------------
+register() {   # register NAME STATE [PORT] [TITLE]: tell the proxy where NAME's host goes
+    local name=$1 state=$2 port=${3:-} title=${4:-$1} body
+    [ -n "$ADMIN_SECRET" ] || return 0
+    body=$(jq -cn --arg n "$name" --arg h "$name.$APPS_DOMAIN" --arg b "${port:+hangar:$port}" --arg s "$state" --arg t "$title" \
+              '{name:$n, host:$h, backend:$b, state:$s, title:$t}')
+    curl -s --max-time 5 -X POST -H "X-Cyclops-Admin-Secret: $ADMIN_SECRET" -H 'Content-Type: application/json' \
+         -d "$body" "$ADMIN_URL/hangar/vms" >/dev/null \
+        || log "$name: the chief did not take the registration ($ADMIN_URL)"
+}
+
+# --- the fleet ---------------------------------------------------------------
+next_port() {   # a port of the hangar's own per VM (hosted's DNAT wants them distinct)
+    local f=$run/next-port n; n=$(cat "$f" 2>/dev/null || echo 9080); echo $((n+1)) > "$f"; echo "$n"
+}
+vm_running() { [ -f "$run/$1.pid" ] && kill -0 "$(cat "$run/$1.pid")" 2>/dev/null; }
+vms_running() { local n=0 f; for f in "$run"/*.pid; do [ -f "$f" ] && kill -0 "$(cat "$f")" 2>/dev/null && n=$((n+1)); done; echo $n; }
+gate_stopped() {   # gate_stopped NAME -> true | false | '' (no answer)
+    curl -s --max-time 5 -X POST -H 'Content-Type: application/json' \
+         -d "{\"lab\": \"$LAB\", \"deployment\": \"$1\"}" "$GATE_URL/host-balance" | jq -r '.stopped // false' 2>/dev/null
+}
+status_json() {
+    local tmp=/run/hangar/status.json.new first=1 f name
+    {
+        echo "{\"rootfs\": $([ -f "$FC_DIR/hosted.ext4" ] && echo true || echo false), \"lab\": \"$LAB\", \"domain\": \"$APPS_DOMAIN\", \"registering\": $([ -n "$ADMIN_SECRET" ] && echo true || echo false), \"vms\": ["
+        for f in "$run"/*.pid; do
+            [ -f "$f" ] || continue; name=$(basename "$f" .pid)
+            [ $first = 1 ] || echo ','; first=0
+            printf '{"name": "%s", "host": "%s.%s", "up": %s, "port": %s}' "$name" "$name" "$APPS_DOMAIN" "$(vm_running "$name" && echo true || echo false)" "$(cat "$run/$name.port" 2>/dev/null || echo 0)"
+        done
+        for f in "$run"/*.paused; do
+            [ -f "$f" ] || continue; name=$(basename "$f" .paused)
+            [ $first = 1 ] || echo ','; first=0
+            printf '{"name": "%s", "host": "%s.%s", "up": false, "paused": true}' "$name" "$name" "$APPS_DOMAIN"
+        done
+        echo '], "at": "'"$(date -u +%FT%TZ)"'"}'
+    } > "$tmp" && mv "$tmp" /run/hangar/status.json
+    touch /run/hangar/alive
+}
+
+fleet() {   # one pass over the deployed root
+    local dir name kind engine title stopped seen="" f port
+    for dir in "$DEPLOYMENTS"/*/*/; do
+        [ -f "$dir/deployment.json" ] || continue
+        name=$(basename "$dir"); engine=$(basename "$(dirname "$dir")")
+        kind=$(jq -r '.kind // "model"' "$dir/deployment.json" 2>/dev/null)
+        title=$(jq -r '.title // .name' "$dir/deployment.json" 2>/dev/null)
+        [ "$kind" = app ] || continue          # a model stays in the lab's own image
+        [ "$engine" = "$ENGINE" ] || continue  # one rootfs per engine; the other engine's wait
+        seen="$seen $name"
+        stopped=$(gate_stopped "$name")
+        if [ "$stopped" = true ]; then
+            if vm_running "$name"; then
+                log "$name: hosting stopped at the gate; taking its VM down"
+                $HOSTED down "$name" >/dev/null 2>&1 || true
+            fi
+            touch "$run/$name.paused"
+            register "$name" paused "" "$title"
+        else
+            rm -f "$run/$name.paused"
+            if ! vm_running "$name" && [ "$MAX_VMS" -gt 0 ] && [ "$(vms_running)" -ge "$MAX_VMS" ]; then
+                [ -f "$run/$name.waiting" ] || { log "$name: the hangar is full ($MAX_VMS VMs); waiting"; touch "$run/$name.waiting"; }
+                continue
+            fi
+            rm -f "$run/$name.waiting"
+            port=$(cat "$run/$name.port" 2>/dev/null || next_port)
+            if ! vm_running "$name"; then
+                [ -f "$FC_DIR/$name.data.ext4" ] || $HOSTED disk "$name" "$dir" 2>&1 | sed 's/^/  /'
+                log "$name: raising its VM on :$port"
+                if $HOSTED up "$name" "$port" 2>&1 | sed 's/^/  /' && vm_running "$name"; then
+                    register "$name" up "$port" "$title"
+                else
+                    log "$name: the VM did not come up"
+                fi
+            else
+                register "$name" up "$port" "$title"
+            fi
+        fi
+    done
+    # deployments taken down: their VMs go, their disks stay (the un-hosting rule decides later)
+    for f in "$run"/*.pid "$run"/*.paused; do
+        [ -f "$f" ] || continue
+        name=$(basename "$f"); name=${name%.pid}; name=${name%.paused}
+        case " $seen " in *" $name "*) ;; *)
+            log "$name: no longer deployed; its VM goes"
+            $HOSTED down "$name" >/dev/null 2>&1 || true; rm -f "$run/$name.paused"
+            register "$name" gone ;;
+        esac
+    done
+}
+
+trap 'log "stopping: every VM down"; for f in "$run"/*.pid; do [ -f "$f" ] && { n=$(basename "$f" .pid); $HOSTED down "$n"; register "$n" gone; }; done; exit 0' TERM INT
+log "hangar up: lab $LAB, gate $GATE_URL, hosts *.$APPS_DOMAIN, deployments $DEPLOYMENTS, engine $ENGINE, chief $ADMIN_URL"
+[ -r /dev/kvm ] || log "WARNING: /dev/kvm is not here; no VM can fly"
+[ -n "$ADMIN_SECRET" ] || log "WARNING: no CYCLOPS_ADMIN_SECRET; the VMs fly unregistered and no host reaches them"
+# a fresh room: nothing from a previous life is running, and the ports are
+# the room's to give out again (a stale port file once put two VMs on one)
+rm -f "$run"/*.pid "$run"/*.sock "$run"/*.port "$run"/*.paused "$run"/*.waiting "$run"/next-port
+status_json
+while :; do
+    if [ -f "$FC_DIR/hosted.ext4" ]; then fleet; else log "no $FC_DIR/hosted.ext4: make it with hangar/make-rootfs on the host"; fi
+    status_json
+    sleep "$INTERVAL" & wait $!
+done

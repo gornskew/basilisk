@@ -113,7 +113,14 @@
    :requires ("astrodynamics"))
   (:post :museum-curator
    :description "Keeps the museum chamber and its antique machine."
-   :requires ("museum keeping")))
+   :requires ("museum keeping"))
+  ;; The hangar is a room that arrives by stack pouch, like the
+  ;; chartroom: a microVM per hosted application, each on a host of its
+  ;; own, raised and grounded as its hosting is paid.  The posting sits
+  ;; on the books; the species (firecracker/hangar) carries the papers.
+  (:post :hangar-chief
+   :description "Keeps the hangar: a microVM per hosted application, each flown on its own host."
+   :requires ("hangar")))
 
  :crew
  (
