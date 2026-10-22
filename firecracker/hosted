@@ -25,7 +25,13 @@
 # its snapshot, so every clone has them), GATE_URL (the gate's Messages
 # door as the VM reaches it), LAB (the lab's name at the gate: the SAME
 # name the lab itself is configured with, its *lab-name*), LOCK (the lab's
-# own doors' password in the VM; a fresh one per VM by default).
+# own doors' password in the VM; a fresh one per VM by default),
+# FC_CPUS (the host CPUs a VM may run on, as taskset reads a list:
+# "0-15"; unset, any) and FC_PIN ("one": each VM held to a single CPU
+# of FC_CPUS, chosen by its name, so its vCPU never moves; unset, the
+# whole list).  Some host kernels fail a VM's entry (KVM_EXIT_FAIL_ENTRY,
+# kvm_intel 'vmread failed' in dmesg) when its thread moves between CPUs
+# -- a hybrid part's two core types, or any move at all.
 #
 # One rootfs per engine (hangar/make-rootfs): hosted.ext4 for gendl,
 # hosted-<engine>.ext4 for another.  A snapshot under snap/<engine>/ is
@@ -40,6 +46,7 @@ GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
 LAB=${LAB:-prompt-lab}
 LOCK=${LOCK:-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')}
 DATA_SIZE=${DATA_SIZE:-64M}
+FC_CPUS=${FC_CPUS:-}; FC_PIN=${FC_PIN:-}
 # the binary and the kernel: baked into the hangar's image (FC_BIN, FC_KERNEL), else under FC_DIR
 bin=${FC_BIN:-$FC_DIR/bin/firecracker}; kernel=${FC_KERNEL:-$FC_DIR/vmlinux}; run=$FC_DIR/run; mkdir -p "$run"
 
@@ -106,10 +113,20 @@ net_down() {  # net_down NAME PORT GUESTPORT
     ip link del "host$slot" 2>/dev/null || true
 }
 
+cpus_of() {  # cpus_of NAME: the CPU list NAME's firecracker is held to, or nothing
+    [ -n "$FC_CPUS" ] || return 0
+    [ "$FC_PIN" = one ] || { echo "$FC_CPUS"; return; }
+    local list=() part a b
+    for part in ${FC_CPUS//,/ }; do
+        a=${part%-*}; b=${part#*-}
+        for ((; a <= b; a++)); do list+=("$a"); done
+    done
+    echo "${list[$(( $(slot_of "$1") % ${#list[@]} ))]}"
+}
 start_fc() {  # start_fc NAME VMDIR: firecracker for NAME in VMDIR; its pid in run/NAME.pid
-    local name=$1 vmdir=$2 s=$run/$1.sock; rm -f "$s"
-    # exec in the subshell, so $! is firecracker's own pid
-    (cd "$vmdir" && exec "$bin" --api-sock "$s" --id "$name" </dev/null >"$run/$name.console" 2>&1) &
+    local name=$1 vmdir=$2 s=$run/$1.sock cpus; rm -f "$s"; cpus=$(cpus_of "$1")
+    # exec in the subshell, so $! is firecracker's own pid; its threads inherit the affinity
+    (cd "$vmdir" && exec ${cpus:+taskset -c "$cpus"} "$bin" --api-sock "$s" --id "$name" </dev/null >"$run/$name.console" 2>&1) &
     echo $! > "$run/$name.pid"
     wait_sock "$s"
 }
