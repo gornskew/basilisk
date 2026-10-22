@@ -9,3 +9,7 @@ ship.  Nothing here runs at `./basilisk up`.
   reachable while everything IPv6 goes direct.  One run, as root, with
   the three values the hub's keeper hands over.  The hub side lives
   with the ship that plays hub (for Gornskew, sally-stack/wg/).
+  `--split` is for a hull with IPv4 of its own (a home box behind a
+  port forward): only the tunnel's network rides the tunnel, so the
+  hull reaches the fleet's doors and the other spokes while its own
+  default route and public serving stay where they are.

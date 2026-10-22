@@ -15,11 +15,19 @@
 #
 # Run ONCE, as root, on the hull:
 #
-#     basilisk/hull/wg-spoke.sh <n> <hub-endpoint> <hub-public-key>
+#     basilisk/hull/wg-spoke.sh [--split] <n> <hub-endpoint> <hub-public-key>
 #
+#   --split         a hull with IPv4 of its own (a home box behind a
+#                   port forward, balaram): route ONLY the tunnel's own
+#                   network through the hub -- 10.64.64.0/24 and its v6
+#                   twin -- so the hull's public serving and its default
+#                   route stay as they are, and it reaches the fleet's
+#                   doors on the tunnel (the gate at 10.64.64.1, the other
+#                   spokes, which the hub forwards between)
 #   n               this hull's host number on the tunnel (the hub's
 #                   add-spoke tells you; 2..254)
-#   hub-endpoint    [<hub IPv6>]:51820
+#   hub-endpoint    [<hub IPv6>]:51820, or <hub IPv4>:51820 for a hull
+#                   without IPv6
 #   hub-public-key  the hub's WireGuard public key
 #
 # The first run prints this hull's public key: hand it to the hub's
@@ -31,7 +39,9 @@
 
 set -eu
 [ "$(id -u)" = 0 ] || { echo "run as root" >&2; exit 1; }
-[ $# -eq 3 ] || { echo "usage: $0 <n> <hub-endpoint> <hub-public-key>" >&2; exit 1; }
+split=
+[ "${1:-}" = --split ] && { split=1; shift; }
+[ $# -eq 3 ] || { echo "usage: $0 [--split] <n> <hub-endpoint> <hub-public-key>" >&2; exit 1; }
 
 n="$1"; endpoint="$2"; hubpub="$3"
 WG=/etc/wireguard
@@ -50,19 +60,29 @@ mkdir -p "$WG"
 wg pubkey < "$WG/privatekey" > "$WG/publickey"
 [ -f "$WG/wg0.conf" ] && cp "$WG/wg0.conf" "$WG/wg0.conf.before-$(date -u +%Y%m%d%H%M%S)"
 
+if [ -n "$split" ]; then
+    allowed="$NET4.0/24, $NET6::/64"
+    note="# SPLIT: only the tunnel's own network rides it (the fleet's doors,
+# the other spokes); this hull's default route and its public serving
+# stay on its own interface."
+else
+    allowed="0.0.0.0/0, $NET6::/64"
+    note="# AllowedIPs 0.0.0.0/0 below makes wg-quick route all IPv4 through the
+# tunnel (policy routing by fwmark); IPv6 stays direct."
+fi
+
 cat > "$WG/wg0.conf" <<EOF
-# This hull's IPv4 door: a WireGuard spoke to the fleet's hub.
-# Written by basilisk/hull/wg-spoke.sh $(date -u +%Y-%m-%d).
+# This hull's door to the fleet: a WireGuard spoke to the fleet's hub.
+# Written by basilisk/hull/wg-spoke.sh $(date -u +%Y-%m-%d)${split:+ (--split)}.
 [Interface]
 Address = $NET4.$n/24, $NET6::$n/64
 PrivateKey = $(cat "$WG/privatekey")
-# AllowedIPs 0.0.0.0/0 below makes wg-quick route all IPv4 through the
-# tunnel (policy routing by fwmark); IPv6 stays direct.
+$note
 
 [Peer]
 PublicKey = $hubpub
 Endpoint = $endpoint
-AllowedIPs = 0.0.0.0/0, $NET6::/64
+AllowedIPs = $allowed
 PersistentKeepalive = 25
 EOF
 
@@ -73,10 +93,19 @@ echo "this hull's public key (give it to the hub's keeper):"
 cat "$WG/publickey"
 echo
 wg show wg0 | grep -E "endpoint|handshake|transfer" || true
-# wg-quick keeps the tunnel's default route in its own policy table
-echo "IPv4 route: $(ip -4 route show table all | grep '^default' | head -1)"
-if curl -4 -s -m 8 -o /dev/null -w '%{http_code}' https://beta.quicklisp.org/ 2>/dev/null | grep -q '^[23]'; then
-    echo "IPv4 reaches the world through the hub."
+if [ -n "$split" ]; then
+    echo "tunnel route: $(ip -4 route show dev wg0 | head -1)"
+    if ping -c 2 -W 3 "$NET4.1" >/dev/null 2>&1; then
+        echo "the hub answers at $NET4.1; the other spokes are reachable through it."
+    else
+        echo "the hub does not answer yet -- it must add this key (sally-stack/wg/add-spoke.sh), then wait a keepalive."
+    fi
 else
-    echo "no IPv4 yet -- the hub must add this key (sally-stack/wg/add-spoke.sh), then wait a keepalive."
+    # wg-quick keeps the tunnel's default route in its own policy table
+    echo "IPv4 route: $(ip -4 route show table all | grep '^default' | head -1)"
+    if curl -4 -s -m 8 -o /dev/null -w '%{http_code}' https://beta.quicklisp.org/ 2>/dev/null | grep -q '^[23]'; then
+        echo "IPv4 reaches the world through the hub."
+    else
+        echo "no IPv4 yet -- the hub must add this key (sally-stack/wg/add-spoke.sh), then wait a keepalive."
+    fi
 fi
