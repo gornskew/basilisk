@@ -2,7 +2,7 @@
 # kernel and the hangar's scripts.  Built from the firecracker/
 # directory as context:
 #
-#   docker build -f hangar/Dockerfile -t gornskew/hangar:trial /path/to/basilisk/firecracker
+#   cd ~/projects/basilisk/firecracker && docker build -f hangar/Dockerfile -t gornskew/hangar:trial .
 #
 # The room needs /dev/kvm and /dev/net/tun, NET_ADMIN and ip_forward
 # (the articles' :devices, :cap-add and :sysctls), /deployments (the

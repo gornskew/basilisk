@@ -223,8 +223,10 @@ directory as context -- Debian, Firecracker and its kernel baked in,
 and these scripts:
 
 ```bash
-docker build -f hangar/Dockerfile -t gornskew/hangar:trial /path/to/basilisk/firecracker
-hangar/make-rootfs ~/firecracker-hangar      # on the host, with docker: the hosted rootfs
+cd ~/projects/basilisk/firecracker      # the kit: the build's context is this directory
+docker build -f hangar/Dockerfile -t gornskew/hangar:trial .
+hangar/make-rootfs ~/firecracker-hangar      # on the host, with docker: the hosted rootfs (the room's /fc)
+cd .. && ./basilisk up hangar                # the room makes its template, then flies the fleet
 ```
 
 The scripts are BAKED INTO the image: after pulling a change to this
