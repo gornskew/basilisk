@@ -235,8 +235,19 @@ and a volume of its own at `/fc` (`HANGAR_DIR`) for the rootfs, the
 data disks and the run directory.  Nothing else of the ship's shelf
 comes aboard: the VMs' applications are strangers' code.
 
-`hangar-init` is PID 1's charge.  The FLEET LOOP reads `/deployments`
-every few seconds: a deployed web application gets a data disk and a
+`hangar-init` is PID 1's charge.  THE FEED (2026-10-22): a lab on
+another host serves its deployed root through two doors behind a
+token -- `<prefix>/api/hangar/deployments` (the list, each with a
+stamp that changes when it is deployed again) and
+`<prefix>/api/hangar/deployment?name=` (the record and the model file)
+-- and the room mirrors it into `/fc/feed` every pass when
+`HANGAR_FEED_URL` is set (the token at `HANGAR_FEED_TOKEN_FILE`): a
+new deployment flies, one deployed again has its VM grounded, its
+data disk's two files replaced (the guest's journal replayed first, or
+the next boot would replay it over the change) and its VM raised, one
+gone from the feed loses its VM.  Without a feed URL, `/deployments`
+is read as mounted.  The FLEET LOOP reads the deployed root every few
+seconds: a deployed web application gets a data disk and a
 VM (`hosted disk`, `hosted up`, a port of its own), a VM whose hosting
 the gate reports stopped is taken down and a paused page stands in for
 it, hosting added brings it back, and a deployment taken down takes

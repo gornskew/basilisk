@@ -18,7 +18,9 @@
 # (http://transporter-room/_cyclops) and CYCLOPS_ADMIN_SECRET (the
 # chief's admin secret; without it nothing is registered and the loop
 # says so), HANGAR_INTERVAL (15 s), VCPUS and MEM_MIB per VM (hosted's
-# defaults), HANGAR_ENGINE (gendl: the one rootfs for now), HANGAR_MAX_VMS
+# defaults), HANGAR_FEED_URL and HANGAR_FEED_TOKEN_FILE (the lab's feed
+# doors and the token that opens them; unset, /deployments is read as
+# mounted), HANGAR_ENGINE (gendl: the one rootfs for now), HANGAR_MAX_VMS
 # (0: no limit but the room's memory cap; a dev ship says 2 -- the rest
 # wait, and fly as others are grounded).
 set -u
@@ -27,6 +29,11 @@ APPS_DOMAIN=${APPS_DOMAIN:-gen.works}; GATE_URL=${GATE_URL:-http://transporter-r
 LAB=${LAB:-prompt-lab}; INTERVAL=${HANGAR_INTERVAL:-15}; ENGINE=${HANGAR_ENGINE:-gendl}
 MAX_VMS=${HANGAR_MAX_VMS:-0}   # 0: as many as the room's memory cap allows; a dev ship says 2
 ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=${CYCLOPS_ADMIN_SECRET:-}
+# THE FEED: a lab elsewhere serves its deployed root to this hangar
+# (demos deploy.lisp, <prefix>/api/hangar/deployments and /deployment,
+# behind a token); mirrored into $FC_DIR/feed, which is then the
+# deployed root read below.  Unset: /deployments is read as mounted.
+FEED_URL=${HANGAR_FEED_URL:-}; FEED_TOKEN_FILE=${HANGAR_FEED_TOKEN_FILE:-/run/secrets/hangar-token}
 HOSTED=/usr/local/lib/hangar/hosted
 export FC_DIR GATE_URL LAB
 run=$FC_DIR/run; mkdir -p "$run" /run/hangar
@@ -41,6 +48,69 @@ register() {   # register NAME STATE [PORT] [TITLE]: tell the proxy where NAME's
     curl -s --max-time 5 -X POST -H "X-Cyclops-Admin-Secret: $ADMIN_SECRET" -H 'Content-Type: application/json' \
          -d "$body" "$ADMIN_URL/hangar/vms" >/dev/null \
         || log "$name: the chief did not take the registration ($ADMIN_URL)"
+}
+
+# --- the feed ----------------------------------------------------------------
+feed_sync() {   # mirror the lab's deployments into $FC_DIR/feed/<engine>/<name>/; 0 when the list was read
+    local token list engine row name stamp old dir detail seen="" d
+    token=$(head -1 "$FEED_TOKEN_FILE" 2>/dev/null | tr -d ' \r')
+    if [ -z "$token" ]; then
+        [ -f "$run/.feed-warned" ] || { log "no token at $FEED_TOKEN_FILE: the feed cannot be read"; touch "$run/.feed-warned"; }
+        return 1
+    fi
+    list=$(curl -s --max-time 15 -H "X-Prompt-Lab-Hangar: $token" "$FEED_URL/deployments") || { log "the feed at $FEED_URL did not answer"; return 1; }
+    engine=$(jq -r '.engine // empty' <<<"$list" 2>/dev/null)
+    if [ -z "$engine" ]; then
+        [ -f "$run/.feed-warned" ] || { log "the feed answered no list: $(head -c 160 <<<"$list")"; touch "$run/.feed-warned"; }
+        return 1
+    fi
+    rm -f "$run/.feed-warned"
+    mkdir -p "$FC_DIR/feed/$engine"
+    while IFS= read -r row; do
+        [ -n "$row" ] || continue
+        name=$(jq -r .name <<<"$row"); stamp=$(jq -r .stamp <<<"$row")
+        [ -n "$name" ] && [ "$name" != null ] || continue
+        seen="$seen $name"; dir=$FC_DIR/feed/$engine/$name
+        old=$(cat "$dir/.stamp" 2>/dev/null || true)
+        [ "$old" = "$stamp" ] && continue
+        detail=$(curl -s --max-time 30 -H "X-Prompt-Lab-Hangar: $token" "$FEED_URL/deployment?name=$name") || { log "$name: the feed did not give it"; continue; }
+        jq -e '.record and .model' <<<"$detail" >/dev/null 2>&1 || { log "$name: the feed gave no record"; continue; }
+        mkdir -p "$dir"
+        jq -c .record <<<"$detail" > "$dir/deployment.json"
+        jq -r .model <<<"$detail" > "$dir/model.lisp"
+        echo "$stamp" > "$dir/.stamp"
+        if [ -n "$old" ]; then touch "$run/$name.refresh"; log "$name: deployed again at the lab; its VM takes the new files"; else log "$name: new from the lab's feed"; fi
+    done < <(jq -c '.deployments[]' <<<"$list" 2>/dev/null)
+    for d in "$FC_DIR/feed/$engine"/*/; do
+        [ -d "$d" ] || continue
+        name=$(basename "$d")
+        case " $seen " in *" $name "*) ;; *) rm -rf "$d"; log "$name: gone from the lab's feed" ;; esac
+    done
+    return 0
+}
+
+refresh_disk() {   # refresh_disk NAME DIR ENGINE: the deployment's new files into its existing data disk (no mount: debugfs)
+    local name=$1 dir=$2 engine=$3 disk=$FC_DIR/$name.data.ext4 path=/prompt-lab-deployed/$engine/$name f want got
+    [ -f "$disk" ] || return 0
+    # the guest was killed, not unmounted: its journal is dirty, and the
+    # next boot would replay it OVER anything written here -- replay it first
+    e2fsck -fy "$disk" >/dev/null 2>&1 || true
+    for f in deployment.json model.lisp; do
+        debugfs -w -R "rm $path/$f" "$disk" >/dev/null 2>&1 || true
+        debugfs -w -R "write $dir/$f $path/$f" "$disk" >/dev/null 2>&1 || true
+        # the uid the guest's service runs as (the image's user, 1000), as hosted disk sets it
+        debugfs -w -R "set_inode_field $path/$f uid 1000" "$disk" >/dev/null 2>&1 || true
+        debugfs -w -R "set_inode_field $path/$f gid 1000" "$disk" >/dev/null 2>&1 || true
+        want=$(stat -c %s "$dir/$f"); got=$(debugfs -R "stat $path/$f" "$disk" 2>/dev/null | sed -n 's/.*Size: \([0-9]*\).*/\1/p' | head -1)
+        [ "$want" = "$got" ] || log "$name: $f did not go onto the disk (size $got, wanted $want)"
+    done
+}
+
+vm_gone() {   # vm_gone PID: wait for a VM's process to leave (its disk is ours to edit then)
+    local pid=$1 i
+    [ -n "$pid" ] || return 0
+    for i in $(seq 1 50); do kill -0 "$pid" 2>/dev/null || return 0; sleep 0.2; done
+    log "a VM (pid $pid) is slow to leave"
 }
 
 # --- the fleet ---------------------------------------------------------------
@@ -82,6 +152,14 @@ fleet() {   # one pass over the deployed root
         [ "$kind" = app ] || continue          # a model stays in the lab's own image
         [ "$engine" = "$ENGINE" ] || continue  # one rootfs per engine; the other engine's wait
         seen="$seen $name"
+        # deployed again at the lab: the VM comes down, its disk takes the new files, and it comes back below
+        if [ -f "$run/$name.refresh" ]; then
+            if vm_running "$name"; then
+                local pid; pid=$(cat "$run/$name.pid")
+                log "$name: grounding it for its new files"; $HOSTED down "$name" >/dev/null 2>&1 || true; vm_gone "$pid"
+            fi
+            refresh_disk "$name" "$dir" "$engine"; rm -f "$run/$name.refresh"
+        fi
         stopped=$(gate_stopped "$name")
         if [ "$stopped" = true ]; then
             if vm_running "$name"; then
@@ -131,7 +209,9 @@ log "hangar up: lab $LAB, gate $GATE_URL, hosts *.$APPS_DOMAIN, deployments $DEP
 # the room's to give out again (a stale port file once put two VMs on one)
 rm -f "$run"/*.pid "$run"/*.sock "$run"/*.port "$run"/*.paused "$run"/*.waiting "$run"/next-port
 status_json
+[ -n "$FEED_URL" ] && { DEPLOYMENTS=$FC_DIR/feed; log "the deployed root is the lab's feed at $FEED_URL, mirrored in $DEPLOYMENTS"; }
 while :; do
+    [ -z "$FEED_URL" ] || feed_sync || true
     if [ -f "$FC_DIR/hosted.ext4" ]; then fleet; else log "no $FC_DIR/hosted.ext4: make it with hangar/make-rootfs on the host"; fi
     status_json
     sleep "$INTERVAL" & wait $!
