@@ -20,14 +20,18 @@
 # says so), HANGAR_INTERVAL (15 s), VCPUS and MEM_MIB per VM (hosted's
 # defaults), HANGAR_FEED_URL and HANGAR_FEED_TOKEN_FILE (the lab's feed
 # doors and the token that opens them; unset, /deployments is read as
-# mounted), HANGAR_ENGINE (gendl: the one rootfs for now), HANGAR_MAX_VMS
-# (0: no limit but the room's memory cap; a dev ship says 2 -- the rest
-# wait, and fly as others are grounded).
+# mounted), HANGAR_ENGINE (gendl, or solid: the engine whose rootfs this
+# hangar flies), HANGAR_MAX_VMS (0: no limit but the room's memory cap; a
+# dev ship says 2 -- the rest wait, and fly as others are grounded),
+# HANGAR_SNAPSHOT (1: the engine's TEMPLATE is booted once, the lab loaded,
+# and snapshotted -- again whenever the rootfs is newer -- and every VM is
+# a clone restored from it in about a second; 0: every VM boots cold).
 set -u
 FC_DIR=${FC_DIR:-/fc}; DEPLOYMENTS=${DEPLOYMENTS:-/deployments}
 APPS_DOMAIN=${APPS_DOMAIN:-gen.works}; GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
 LAB=${LAB:-prompt-lab}; INTERVAL=${HANGAR_INTERVAL:-15}; ENGINE=${HANGAR_ENGINE:-gendl}
 MAX_VMS=${HANGAR_MAX_VMS:-0}   # 0: as many as the room's memory cap allows; a dev ship says 2
+SNAPSHOT=${HANGAR_SNAPSHOT:-1}
 ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=${CYCLOPS_ADMIN_SECRET:-}
 # THE FEED: a lab elsewhere serves its deployed root to this hangar
 # (demos deploy.lisp, <prefix>/api/hangar/deployments and /deployment,
@@ -35,7 +39,7 @@ ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=$
 # deployed root read below.  Unset: /deployments is read as mounted.
 FEED_URL=${HANGAR_FEED_URL:-}; FEED_TOKEN_FILE=${HANGAR_FEED_TOKEN_FILE:-/run/secrets/hangar-token}
 HOSTED=/usr/local/lib/hangar/hosted
-export FC_DIR GATE_URL LAB
+export FC_DIR GATE_URL LAB ENGINE
 run=$FC_DIR/run; mkdir -p "$run" /run/hangar
 log() { echo "$(date -u +%FT%TZ) hangar: $*"; }
 
@@ -113,6 +117,28 @@ vm_gone() {   # vm_gone PID: wait for a VM's process to leave (its disk is ours 
     log "a VM (pid $pid) is slow to leave"
 }
 
+# --- the template --------------------------------------------------------------
+rootfs() { if [ "$ENGINE" = gendl ]; then echo "$FC_DIR/hosted.ext4"; else echo "$FC_DIR/hosted-$ENGINE.ext4"; fi; }
+template() {   # the engine's snapshot, made when missing or older than the rootfs
+    [ "$SNAPSHOT" = 1 ] || return 0
+    $HOSTED fresh "$ENGINE" && return 0
+    # one try per rootfs: a template that failed waits for a new one
+    local mark; mark=$(stat -c %Y "$(rootfs)")
+    [ "$(cat "$run/.template-failed" 2>/dev/null)" = "$mark" ] && return 0
+    # the template takes a VM's memory while it loads: not while the hangar is full
+    if [ "$MAX_VMS" -gt 0 ] && [ "$(vms_running)" -ge "$MAX_VMS" ]; then
+        [ -f "$run/.template-waiting" ] || { log "the $ENGINE snapshot is stale; the hangar is full, so it waits"; touch "$run/.template-waiting"; }
+        return 0
+    fi
+    rm -f "$run/.template-waiting"
+    log "making the $ENGINE template and its snapshot (VMs boot cold until it is there)"
+    if $HOSTED template "$ENGINE" 2>&1 | sed 's/^/  /' && $HOSTED fresh "$ENGINE"; then
+        rm -f "$run/.template-failed"; log "the $ENGINE snapshot is made: VMs are restored from it"
+    else
+        echo "$mark" > "$run/.template-failed"; log "the $ENGINE template failed; VMs boot cold until the rootfs is made again"
+    fi
+}
+
 # --- the fleet ---------------------------------------------------------------
 next_port() {   # a port of the hangar's own per VM (hosted's DNAT wants them distinct)
     local f=$run/next-port n; n=$(cat "$f" 2>/dev/null || echo 9080); echo $((n+1)) > "$f"; echo "$n"
@@ -126,7 +152,7 @@ gate_stopped() {   # gate_stopped NAME -> true | false | '' (no answer)
 status_json() {
     local tmp=/run/hangar/status.json.new first=1 f name
     {
-        echo "{\"rootfs\": $([ -f "$FC_DIR/hosted.ext4" ] && echo true || echo false), \"lab\": \"$LAB\", \"domain\": \"$APPS_DOMAIN\", \"registering\": $([ -n "$ADMIN_SECRET" ] && echo true || echo false), \"vms\": ["
+        echo "{\"rootfs\": $([ -f "$(rootfs)" ] && echo true || echo false), \"engine\": \"$ENGINE\", \"snapshot\": $($HOSTED fresh "$ENGINE" && echo true || echo false), \"lab\": \"$LAB\", \"domain\": \"$APPS_DOMAIN\", \"registering\": $([ -n "$ADMIN_SECRET" ] && echo true || echo false), \"vms\": ["
         for f in "$run"/*.pid; do
             [ -f "$f" ] || continue; name=$(basename "$f" .pid)
             [ $first = 1 ] || echo ','; first=0
@@ -207,12 +233,14 @@ log "hangar up: lab $LAB, gate $GATE_URL, hosts *.$APPS_DOMAIN, deployments $DEP
 [ -n "$ADMIN_SECRET" ] || log "WARNING: no CYCLOPS_ADMIN_SECRET; the VMs fly unregistered and no host reaches them"
 # a fresh room: nothing from a previous life is running, and the ports are
 # the room's to give out again (a stale port file once put two VMs on one)
-rm -f "$run"/*.pid "$run"/*.sock "$run"/*.port "$run"/*.paused "$run"/*.waiting "$run"/next-port
+rm -f "$run"/*.pid "$run"/*.sock "$run"/*.port "$run"/*.engine "$run"/*.paused "$run"/*.waiting "$run"/next-port "$run"/.template-* "$run"/.rootfs-warned
+ip link show 2>/dev/null | sed -n 's/^[0-9]*: \(tpl-[^:@]*\|host[0-9]*\)[:@].*/\1/p' | while read -r t; do ip link del "$t" 2>/dev/null; done
 status_json
 [ -n "$FEED_URL" ] && { DEPLOYMENTS=$FC_DIR/feed; log "the deployed root is the lab's feed at $FEED_URL, mirrored in $DEPLOYMENTS"; }
 while :; do
     [ -z "$FEED_URL" ] || feed_sync || true
-    if [ -f "$FC_DIR/hosted.ext4" ]; then fleet; else log "no $FC_DIR/hosted.ext4: make it with hangar/make-rootfs on the host"; fi
+    if [ -f "$(rootfs)" ]; then template; fleet
+    else [ -f "$run/.rootfs-warned" ] || { log "no $(rootfs): make it with hangar/make-rootfs on the host"; touch "$run/.rootfs-warned"; }; fi
     status_json
     sleep "$INTERVAL" & wait $!
 done

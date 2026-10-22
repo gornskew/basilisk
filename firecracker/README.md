@@ -281,10 +281,64 @@ chief's `GET /_cyclops/hangar/vms` shows what it was told.  The
 environment: `GATE_URL`, `LAB` (the lab's configured name at the gate,
 so the VMs report on the lab's ledgers), `APPS_DOMAIN`,
 `CYCLOPS_ADMIN_URL` and `CYCLOPS_ADMIN_SECRET`, `HANGAR_INTERVAL`,
-`VCPUS` and `MEM_MIB` per VM, `HANGAR_ENGINE` (one rootfs per engine;
-`gendl` for now).
+`VCPUS` and `MEM_MIB` per VM, `HANGAR_ENGINE` (`gendl` or `solid`: the
+engine whose rootfs the room flies), `HANGAR_SNAPSHOT` (1, below; 0
+boots every VM cold).
 
-**Not here yet:** a snapshot after the runtime is up, restored per
-deployment, in place of the 10 s compile; the jailer; a feed of a
-remote lab's deployment records to a hangar on another host (balaram
-flying suzie's deployments); the solids engine's rootfs.
+### A snapshot per engine (2026-10-22)
+
+Each engine has one rootfs (`hangar/make-rootfs` writes
+`hosted.ext4`; `ENGINE=solid hangar/make-rootfs` writes
+`hosted-solid.ext4` from the GDL image) and, made by the room, one
+TEMPLATE: `hosted template ENGINE` boots the rootfs with
+`hosted.template=1`, the lab loads (the long part) and stops short of
+any deployment, and the hangar pauses it and writes a full snapshot,
+memory and disk, under `/fc/snap/ENGINE/`.  The room makes it before
+raising anything when it is missing or older than the rootfs -- so a
+new rootfs is picked up on the next pass (a running VM keeps the one
+it was restored from, and a full hangar waits for a free place first;
+a template that fails is not tried again until the rootfs is made
+again, and VMs boot cold meanwhile).
+
+`hosted up` then RESTORES each VM from the snapshot: its own copy of
+the snapshot's disk, its own data disk in the placeholder's slot (the
+same 64 MiB), `PUT /snapshot/load` onto a tap of its own
+(`network_overrides`), and an ACTIVATION over lisply --
+`hosted-activate!` hands the guest its address, clock and disk; the
+guest's init sets the clock, mounts `/dev/vdb` at `/data` and moves
+`eth0` to the VM's own /30, and the Lisp reseeds its random states
+(every clone shares the template's), points the lab at `/data` and
+publishes.  A clone's activation sits at the template's address
+behind a lock, one at a time, for the second it takes.  No snapshot,
+or a data disk of another size: the VM boots cold as before.
+
+**The eval door is shut.**  The VM's published port reaches the whole
+image, lisply included, and `lisp-eval` evaluates whatever it is
+sent; the guest now runs with a lisply secret (gendl's
+`GENDL_LISPLY_SECRET`).  A template's is the hangar's
+(`/fc/snap/ENGINE/lisply-secret`, on the kernel line as
+`hosted.lisply`); a clone takes its activation with it and at once
+rotates it to one nobody holds; a cold boot's is a fresh one nobody
+holds.  The ping stays open; the hangar watches the deployment's door.
+
+**Measured on narad** (1 vCPU per VM; gendl at 512 MiB, GDL at 2048
+MiB):
+
+| | gendl | solid (GDL) |
+|---|---|---|
+| template: the lab loaded | 12.7-14.4 s | 36.4 s |
+| snapshot written | 1.6-4.5 s | 6.3 s |
+| snapshot memory, disk | 513 MiB, 938 MiB | 2.1 GiB, 1.5 GiB |
+| clone up (disk copy, load, activation, publish) | 1.8 s | 1.6-3.8 s |
+| clone resident (RSS, PSS) | 170, 102-135 MiB | 135-320 MiB |
+| cold boot, for comparison | 11.7 s, 254 MiB | -- |
+
+Each clone's session ids differ from the others', its clock is the
+host's, it lists only its own deployment, `lisp-eval` answers 403 to
+no secret and to the template's alike, and the chief routes its host
+to it.  GDL's Allegro reads symbols in lower case: the hosted init
+names the lab's settings through `hosted-case`.
+
+**Not here yet:** the jailer; a hangar flying both engines at once
+(one room per engine for now); a read-only shared rootfs in place of
+each clone's copy.

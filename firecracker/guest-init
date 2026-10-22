@@ -20,11 +20,58 @@ command -v ip >/dev/null && ip link set lo up
 
 . /etc/phase0.env            # GUEST_USER, HTTP_PORT
 
+# Lisply's eval door answers only with this secret (gendl reads
+# GENDL_LISPLY_SECRET; a request without it is answered 403): the VM's
+# published port reaches the whole image, and lisp-eval evaluates whatever
+# it is sent.  A template's comes from the hangar (hosted.lisply= on the
+# kernel line), which activates each clone with it -- and the clone then
+# rotates it to one nobody holds.  A cold boot's is a fresh one nobody
+# holds.  The ping stays open; the hangar watches the deployment's door.
+lisply_secret=$(sed -n 's/.*hosted\.lisply=\([0-9a-f]*\).*/\1/p' /proc/cmdline)
+[ -n "$lisply_secret" ] || lisply_secret=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+export GENDL_LISPLY_SECRET=$lisply_secret
+
+# The handshake directory the service's user writes an activation into
+# (a snapshot's clone, below).
+mkdir -p /run/hosted && chmod 1777 /run/hosted
+
+# A TEMPLATE (hosted.template=1 on the kernel line) is booted only to be
+# snapshotted: its /dev/vdb is a placeholder that is never mounted, and
+# every clone restored from the snapshot gets its own disk at the same
+# slot.  The clone is ACTIVATED from outside (the lab's
+# hosted-activate!, called by the hangar over lisply), which writes
+# /run/hosted/activate; the watcher below then sets the clock, drops the
+# kernel's cached blocks of the placeholder, mounts the clone's own disk
+# at /data and moves eth0 to the clone's own address.
+template=
+grep -q 'hosted.template=1' /proc/cmdline && template=1
+
 # The deployment's disk: its record and model file, its grants and
 # purses, kept across the VM's restarts and owned by the service's user.
-if [ -b /dev/vdb ]; then
+if [ -z "$template" ] && [ -b /dev/vdb ]; then
     mkdir -p /data
     mount /dev/vdb /data && chown -R "$GUEST_USER" /data && echo "hosted: /data mounted from /dev/vdb"
+fi
+
+activation_value() { sed -n "s/^$1=\([0-9a-fA-F.:]*\)\$/\1/p" /run/hosted/activate | head -1; }   # digits, dots, colons only
+if [ -n "$template" ]; then
+    (
+        while [ ! -f /run/hosted/activate ]; do sleep 0.1; done
+        epoch=$(activation_value EPOCH); ip=$(activation_value IP); gw=$(activation_value GW)
+        [ -n "$epoch" ] && date -s "@$epoch" >/dev/null 2>&1
+        blockdev --flushbufs /dev/vdb 2>/dev/null; echo 3 > /proc/sys/vm/drop_caches
+        mkdir -p /data
+        if mount /dev/vdb /data && chown -R "$GUEST_USER" /data; then
+            touch /run/hosted/mounted; echo "hosted: activated, /data mounted from /dev/vdb"
+        else
+            touch /run/hosted/mount-failed; echo "hosted: activation could not mount /dev/vdb"
+        fi
+        if [ -n "$ip" ] && [ -n "$gw" ] && command -v ip >/dev/null; then
+            ip addr flush dev eth0 && ip addr add "$ip/30" dev eth0 && ip route replace default via "$gw" \
+                && echo "hosted: eth0 now $ip via $gw"
+        fi
+        touch /run/hosted/net
+    ) &
 fi
 
 echo "hosted: $(hostname) up, $(nproc) cpu, $(awk '/MemTotal/{print $2}' /proc/meminfo) kB; starting services as $GUEST_USER on :$HTTP_PORT"

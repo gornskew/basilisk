@@ -2,18 +2,28 @@
 # make-rootfs -- on the HOST, with docker: the hangar's hosted rootfs,
 # FC_DIR/hosted.ext4 -- the Gendl image's filesystem plus the lab's
 # checkouts (demos, monocle) at /opt/hosted and the hosted init.  Run
-# it once per engine image, and again when the lab's code changes; the
-# hangar's VMs boot from the result (a copy each).
+# it once per engine, and again when the lab's code changes; the
+# hangar's VMs boot from the result (a copy each), or -- once the hangar
+# has snapshotted a template of it, which it does again whenever the
+# rootfs is newer -- are restored from the snapshot.
 #
 #   hangar/make-rootfs [FC_DIR]
+#   ENGINE=solid hangar/make-rootfs [FC_DIR]     the solids lab's: FC_DIR/hosted-solid.ext4
 #
-# Environment: GENDL_IMAGE (genworks/gendl:devo-ccl), DEMOS and MONOCLE
-# (the checkouts; /projects/gw/demos and /projects/gw/monocle by
+# Environment: ENGINE (gendl: FC_DIR/hosted.ext4; another:
+# FC_DIR/hosted-<engine>.ext4), GENDL_IMAGE (genworks/gendl:devo-ccl for
+# gendl, genworks/gdl:devo-enterprise-smp-licensed for solid), DEMOS and
+# MONOCLE (the checkouts; /projects/gw/demos and /projects/gw/monocle by
 # default), SIZE (4G).  Needs about 5 GB under FC_DIR while it runs.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)      # the firecracker/ kit
 FC_DIR=${1:-${FC_DIR:-$HOME/firecracker-phase0}}
-GENDL_IMAGE=${GENDL_IMAGE:-genworks/gendl:devo-ccl}
+ENGINE=${ENGINE:-gendl}
+case $ENGINE in
+    gendl) NAME=hosted;          GENDL_IMAGE=${GENDL_IMAGE:-genworks/gendl:devo-ccl} ;;
+    solid) NAME=hosted-solid;    GENDL_IMAGE=${GENDL_IMAGE:-genworks/gdl:devo-enterprise-smp-licensed} ;;
+    *)     NAME=hosted-$ENGINE;  [ -n "${GENDL_IMAGE:-}" ] || { echo "make-rootfs: name the image for engine $ENGINE (GENDL_IMAGE=...)" >&2; exit 1; } ;;
+esac
 # the lab's checkouts: given, or found in either layout -- the dev
 # host's buckets (gw/demos, gw/monocle) or a production host's flat
 # /projects (demos, monocle) -- under /projects or the home's projects
@@ -35,8 +45,10 @@ cid=$(docker create "$GENDL_IMAGE"); docker export "$cid" -o "$FC_DIR/gendl.tar"
 echo "copying the lab's checkouts from $DEMOS and $MONOCLE"
 rsync -a --delete --exclude .git --exclude '*.fasl' --exclude node_modules --exclude CLAUDE.md "$DEMOS/" "$FC_DIR/hosted/demos/"
 rsync -a --delete --exclude .git --exclude '*.fasl' "$MONOCLE/" "$FC_DIR/hosted/monocle/"
-echo "building $FC_DIR/hosted.ext4 ($SIZE)"
+echo "building $FC_DIR/$NAME.ext4 ($SIZE) for engine $ENGINE"
+# built aside and moved into place, so a hangar never snapshots a half-written one
 docker run --rm -v "$FC_DIR":/work -v "$here":/hangar:ro -v "$FC_DIR/hosted":/hosted:ro \
-    debian:13-slim bash /hangar/hangar/build-rootfs hosted "$SIZE"
+    debian:13-slim bash /hangar/hangar/build-rootfs "$NAME.building" "$SIZE"
+mv -f "$FC_DIR/$NAME.building.ext4" "$FC_DIR/$NAME.ext4"
 rm -f "$FC_DIR/gendl.tar"
-echo "done: the hangar boots its VMs from $FC_DIR/hosted.ext4 (a running VM keeps its copy until it is raised again)"
+echo "done: $FC_DIR/$NAME.ext4.  A running VM keeps its copy until it is raised again; the hangar snapshots a new template of it on its next pass."

@@ -2,50 +2,74 @@
 # The hangar: one Firecracker microVM per hosted application, behind
 # the ship's reverse proxy.  Runs INSIDE the hangar container (root,
 # /dev/kvm, /dev/net/tun, NET_ADMIN, ip_forward on) with $FC_DIR
-# mounted; the proxy's rule for the application names this container
-# and the VM's published port.
+# mounted; the ship's cyclops routes an application's host to the
+# hangar's port for its VM.
 #
-#   hosted disk NAME [DIR]     NAME.data.ext4 (64 MiB) from the deployment's directory,
-#                              DIR or /deployments/<engine>/NAME (the lab's deployed root,
-#                              mounted read-only); `up` makes it when it is missing
-#   hosted up NAME [PORT]      boot NAME's VM (rootfs hosted.ext4 + NAME.data.ext4),
-#                              publish it on PORT (default 9080) of this container
-#   hosted down NAME           stop it
-#   hosted status              every VM: pid, RSS and PSS, the deployment door's answer
-#   hosted watch NAME          poll the gate's hosting for NAME; stop the VM
-#                              while it is stopped at the gate, start it when not
-#   hosted ip NAME             the guest's address (the hangar's router proxies to it)
+#   hosted disk NAME [DIR]       NAME.data.ext4 (64 MiB) from the deployment's directory,
+#                                DIR or /deployments/<engine>/NAME
+#   hosted template [ENGINE]     boot ENGINE's rootfs as a TEMPLATE (the lab loaded, no
+#                                deployment), snapshot it under snap/ENGINE, stop it
+#   hosted up NAME [PORT]        NAME's VM, published on PORT of this container:
+#                                RESTORED from ENGINE's snapshot when there is one (the lab
+#                                already loaded; the clone activated with its own disk,
+#                                address and clock), else booted cold
+#   hosted down NAME             stop it
+#   hosted status                every VM: pid, RSS and PSS, the deployment door's answer
+#   hosted watch NAME            poll the gate's hosting for NAME; stop the VM
+#                                while it is stopped at the gate, start it when not
+#   hosted ip NAME               the guest's address
+#   hosted fresh [ENGINE]        exit 0 when ENGINE's snapshot is newer than its rootfs
 #
-# Per-VM settings (environment): VCPUS (1), MEM_MIB (512), GATE_URL
-# (the gate's Messages door as the VM reaches it), LAB (the lab's name
-# at the gate: the SAME name the lab itself is configured with, its
-# *lab-name*, so the VM's meter reports and tolls land on the lab's
-# ledgers), LOCK (the lab's own doors' password in the VM).
+# Per-VM settings (environment): ENGINE (gendl, or solid for the solids
+# lab's deployments), VCPUS (1), MEM_MIB (512; a template's are baked into
+# its snapshot, so every clone has them), GATE_URL (the gate's Messages
+# door as the VM reaches it), LAB (the lab's name at the gate: the SAME
+# name the lab itself is configured with, its *lab-name*), LOCK (the lab's
+# own doors' password in the VM; a fresh one per VM by default).
+#
+# One rootfs per engine (hangar/make-rootfs): hosted.ext4 for gendl,
+# hosted-<engine>.ext4 for another.  A snapshot under snap/<engine>/ is
+# remade when the rootfs is newer than it.
 
 set -euo pipefail
 FC_DIR=${FC_DIR:-/fc}
+ENGINE=${ENGINE:-gendl}
 VCPUS=${VCPUS:-1}
 MEM_MIB=${MEM_MIB:-512}
 GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
 LAB=${LAB:-prompt-lab}
 LOCK=${LOCK:-$(head -c 12 /dev/urandom | od -An -tx1 | tr -d ' \n')}
-GUEST_PORT=9080
+DATA_SIZE=${DATA_SIZE:-64M}
 # the binary and the kernel: baked into the hangar's image (FC_BIN, FC_KERNEL), else under FC_DIR
 bin=${FC_BIN:-$FC_DIR/bin/firecracker}; kernel=${FC_KERNEL:-$FC_DIR/vmlinux}; run=$FC_DIR/run; mkdir -p "$run"
 
 die() { echo "hosted: $*" >&2; exit 1; }
 now() { date +%s.%N; }
 since() { awk -v a="$1" -v b="$(now)" 'BEGIN{printf "%.2f", b-a}'; }
-api() { curl -sS --unix-socket "$1" -X "$2" "http://localhost$3" -H 'Accept: application/json' -H 'Content-Type: application/json' ${4:+-d "$4"} -o /dev/null -w '%{http_code}'; }
-expect() { local want=$1; shift; local got; got=$(api "$@"); [ "$got" = "$want" ] || die "$2 $3 -> HTTP $got (wanted $want); read $run/*.console"; }
+api() { curl -sS --unix-socket "$1" -X "$2" "http://localhost$3" -H 'Accept: application/json' -H 'Content-Type: application/json' ${4:+-d "$4"} -o "$run/.api-answer" -w '%{http_code}'; }
+expect() { local want=$1; shift; local got; got=$(api "$@"); [ "$got" = "$want" ] || die "$2 $3 -> HTTP $got (wanted $want): $(cat "$run/.api-answer" 2>/dev/null); read $run/*.console"; }
 wait_sock() { for _ in $(seq 1 100); do [ -S "$1" ] && return; sleep 0.1; done; die "no API socket at $1"; }
 
-# Each VM: a /30 of its own off 172.16.N.0, tap hostN, guest .2
+rootfs_of() { if [ "$1" = gendl ]; then echo "$FC_DIR/hosted.ext4"; else echo "$FC_DIR/hosted-$1.ext4"; fi; }
+guest_port_of() { case $1 in solid) echo 9088 ;; *) echo 9080 ;; esac; }   # the image's HTTP port (gdl 9088, gendl 9080)
+snap_of() { echo "$FC_DIR/snap/$1"; }
+snapshot_fresh() {  # snapshot_fresh ENGINE: a snapshot newer than its rootfs
+    local s; s=$(snap_of "$1")
+    [ -f "$s/vmstate" ] && [ -f "$s/mem" ] && [ -f "$s/rootfs.ext4" ] && [ -f "$s/lisply-secret" ] && [ ! "$(rootfs_of "$1")" -nt "$s/vmstate" ]
+}
+
+# Each VM: a /30 of its own off 172.16.N.0, tap hostN, guest .2.  A
+# template and a clone being activated sit at 172.16.0.2 behind
+# 172.16.0.1 -- the address the snapshot baked in -- one at a time
+# (the net lock), until the clone moves to its own /30.
 slot_of() {  # a stable small number from the name
     printf '%d' $(( ( $(printf '%s' "$1" | cksum | cut -d' ' -f1) % 200 ) + 1 ))
 }
 tap_ip() { echo "172.16.$1.1"; }
 guest_ip() { echo "172.16.$1.2"; }
+TEMPLATE_GUEST=172.16.0.2; TEMPLATE_GW=172.16.0.1
+TAP_MAC=02:fc:00:00:00:01        # every tap the same: each is its own segment, and a clone's
+GUEST_MAC=06:00:AC:10:00:02      # neighbour cache from the template stays right
 
 # The guest has no resolver for the ship's names (its resolv.conf names a
 # public one), so a host name in GATE_URL is resolved HERE, where the
@@ -60,28 +84,49 @@ guest_gate_url() {
     echo "$url"
 }
 
-net_up() {  # net_up NAME PORT -> tap, NAT out, DNAT in
-    local name=$1 port=$2 slot; slot=$(slot_of "$name"); local tap=host$slot
-    ip link del "$tap" 2>/dev/null || true
-    ip tuntap add dev "$tap" mode tap
-    ip addr add "$(tap_ip "$slot")/30" dev "$tap"
-    ip link set dev "$tap" up
-    # the guest reaches the gate through this container's address
-    iptables -t nat -C POSTROUTING -s "$(guest_ip "$slot")/32" -j MASQUERADE 2>/dev/null || \
-        iptables -t nat -A POSTROUTING -s "$(guest_ip "$slot")/32" -j MASQUERADE
-    # and the proxy reaches the guest on this container's PORT
-    iptables -t nat -A PREROUTING -p tcp --dport "$port" -j DNAT --to-destination "$(guest_ip "$slot"):$GUEST_PORT"
-    iptables -t nat -A OUTPUT -o lo -p tcp --dport "$port" -j DNAT --to-destination "$(guest_ip "$slot"):$GUEST_PORT"
-    iptables -C FORWARD -d "$(guest_ip "$slot")/32" -p tcp --dport $GUEST_PORT -j ACCEPT 2>/dev/null || \
-        iptables -A FORWARD -d "$(guest_ip "$slot")/32" -p tcp --dport $GUEST_PORT -j ACCEPT
-    iptables -C FORWARD -s "$(guest_ip "$slot")/32" -j ACCEPT 2>/dev/null || iptables -A FORWARD -s "$(guest_ip "$slot")/32" -j ACCEPT
-    echo "$tap"
+tap_make() {  # tap_make NAME ADDRESS/BITS
+    ip link del "$1" 2>/dev/null || true
+    ip tuntap add dev "$1" mode tap
+    ip link set dev "$1" address "$TAP_MAC"
+    ip addr add "$2" dev "$1"
+    ip link set dev "$1" up
 }
-net_down() {
-    local name=$1 port=$2 slot; slot=$(slot_of "$name")
-    iptables -t nat -D PREROUTING -p tcp --dport "$port" -j DNAT --to-destination "$(guest_ip "$slot"):$GUEST_PORT" 2>/dev/null || true
-    iptables -t nat -D OUTPUT -o lo -p tcp --dport "$port" -j DNAT --to-destination "$(guest_ip "$slot"):$GUEST_PORT" 2>/dev/null || true
+nat_up() {  # nat_up NAME PORT GUESTPORT: NAT out for the guest, DNAT in from the hangar's PORT
+    local slot; slot=$(slot_of "$1"); local g; g=$(guest_ip "$slot")
+    iptables -t nat -C POSTROUTING -s "$g/32" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s "$g/32" -j MASQUERADE
+    iptables -t nat -A PREROUTING -p tcp --dport "$2" -j DNAT --to-destination "$g:$3"
+    iptables -t nat -A OUTPUT -o lo -p tcp --dport "$2" -j DNAT --to-destination "$g:$3"
+    iptables -C FORWARD -d "$g/32" -p tcp --dport "$3" -j ACCEPT 2>/dev/null || iptables -A FORWARD -d "$g/32" -p tcp --dport "$3" -j ACCEPT
+    iptables -C FORWARD -s "$g/32" -j ACCEPT 2>/dev/null || iptables -A FORWARD -s "$g/32" -j ACCEPT
+}
+net_down() {  # net_down NAME PORT GUESTPORT
+    local slot; slot=$(slot_of "$1"); local g; g=$(guest_ip "$slot")
+    iptables -t nat -D PREROUTING -p tcp --dport "$2" -j DNAT --to-destination "$g:$3" 2>/dev/null || true
+    iptables -t nat -D OUTPUT -o lo -p tcp --dport "$2" -j DNAT --to-destination "$g:$3" 2>/dev/null || true
     ip link del "host$slot" 2>/dev/null || true
+}
+
+start_fc() {  # start_fc NAME VMDIR: firecracker for NAME in VMDIR; its pid in run/NAME.pid
+    local name=$1 vmdir=$2 s=$run/$1.sock; rm -f "$s"
+    # exec in the subshell, so $! is firecracker's own pid
+    (cd "$vmdir" && exec "$bin" --api-sock "$s" --id "$name" </dev/null >"$run/$name.console" 2>&1) &
+    echo $! > "$run/$name.pid"
+    wait_sock "$s"
+}
+wait_console() {  # wait_console NAME PATTERN SECONDS
+    for _ in $(seq 1 $(( $3 * 2 ))); do
+        grep -q "$2" "$run/$1.console" 2>/dev/null && return 0
+        grep -q 'the service exited' "$run/$1.console" 2>/dev/null && die "the guest's service exited; read $run/$1.console"
+        sleep 0.5
+    done
+    return 1
+}
+wait_http() {  # wait_http URL SECONDS -> 0 when it answers 200
+    for _ in $(seq 1 $(( $2 * 10 ))); do
+        [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 1 "$1")" = 200 ] && return 0
+        sleep 0.1
+    done
+    return 1
 }
 
 # The deployment's disk: the lab's record and model file for NAME, as
@@ -98,90 +143,178 @@ cmd_disk() {
     local tree=$FC_DIR/tree-$name; rm -rf "$tree"
     mkdir -p "$tree/prompt-lab-deployed/$engine/$name" "$tree/prompt-lab"
     cp -a "$src/." "$tree/prompt-lab-deployed/$engine/$name/"
+    rm -f "$tree/prompt-lab-deployed/$engine/$name/.stamp"
     chown -R 1000:1000 "$tree"
-    rm -f "$FC_DIR/$name.data.ext4"; truncate -s "${DATA_SIZE:-64M}" "$FC_DIR/$name.data.ext4"
+    rm -f "$FC_DIR/$name.data.ext4"; truncate -s "$DATA_SIZE" "$FC_DIR/$name.data.ext4"
     mkfs.ext4 -q -F -L data -d "$tree" "$FC_DIR/$name.data.ext4"
     rm -rf "$tree"
-    echo "$name: data disk from $src ($(du -sh "$FC_DIR/$name.data.ext4" | cut -f1) used of ${DATA_SIZE:-64M})"
+    echo "$name: data disk from $src ($(du -sh "$FC_DIR/$name.data.ext4" | cut -f1) used of $DATA_SIZE)"
 }
 
-cmd_up() {
-    local name=${1:?name} port=${2:-9080}
-    [ -x "$bin" ] && [ -f "$kernel" ] || die "no firecracker or kernel under $FC_DIR"
-    [ -f "$FC_DIR/hosted.ext4" ] || die "no $FC_DIR/hosted.ext4"
-    [ -f "$FC_DIR/$name.data.ext4" ] || cmd_disk "$name"
+# --- the template and its snapshot ----------------------------------------
+template_gone() {   # the template's VM and tap, however cmd_template ends
+    [ -n "${TEMPLATE_VM:-}" ] || return 0
+    kill -TERM "$(cat "$run/$TEMPLATE_VM.pid" 2>/dev/null)" 2>/dev/null || true
+    rm -f "$run/$TEMPLATE_VM.pid" "$run/$TEMPLATE_VM.sock"; ip link del "$TEMPLATE_VM" 2>/dev/null || true
+}
+cmd_template() {
+    local engine=${1:-$ENGINE} rootfs; rootfs=$(rootfs_of "$engine")
+    [ -x "$bin" ] && [ -f "$kernel" ] || die "no firecracker or kernel"
+    [ -f "$rootfs" ] || die "no $rootfs (hangar/make-rootfs)"
     [ -r /dev/kvm ] || die "/dev/kvm not accessible"
-    local slot; slot=$(slot_of "$name")
-    local tap; tap=$(net_up "$name" "$port")
-    local vmdir=$FC_DIR/vm/$name; mkdir -p "$vmdir"
-    # its own copy of the root disk (sparse), the data disk as is, the kernel
-    cp --sparse=always "$FC_DIR/hosted.ext4" "$vmdir/rootfs.ext4"
-    ln -sfn "$FC_DIR/$name.data.ext4" "$vmdir/data.ext4"
-    ln -sfn "$kernel" "$vmdir/vmlinux"
-    local s=$run/$name.sock; rm -f "$s"
-    echo "$port" > "$run/$name.port"
-    # exec in the subshell, so $! is firecracker's own pid
-    (cd "$vmdir" && exec "$bin" --api-sock "$s" --id "$name" </dev/null >"$run/$name.console" 2>&1) &
-    echo $! > "$run/$name.pid"
-    wait_sock "$s"
+    local name=tpl-$engine snap; snap=$(snap_of "$engine")
+    local vmdir=$FC_DIR/vm/$name; mkdir -p "$vmdir" "$snap"
+    # a placeholder data disk the size of every deployment's: the clone's own
+    # takes its slot, and a block device's size is part of the snapshot
+    [ -f "$FC_DIR/template-data.ext4" ] && [ "$(stat -c %s "$FC_DIR/template-data.ext4")" = "$(numfmt --from=iec "$DATA_SIZE")" ] || {
+        rm -f "$FC_DIR/template-data.ext4"; truncate -s "$DATA_SIZE" "$FC_DIR/template-data.ext4"
+        mkfs.ext4 -q -F -L data "$FC_DIR/template-data.ext4"; }
     local t0; t0=$(now)
-    local args="console=ttyS0 reboot=k panic=1 pci=off rw ip=$(guest_ip "$slot")::$(tap_ip "$slot"):255.255.255.252:$name:eth0:off hosted.gate=$(guest_gate_url "$GATE_URL") hosted.lab=$LAB hosted.lock=$LOCK"
+    cp --sparse=always "$rootfs" "$vmdir/rootfs.ext4"
+    cp --sparse=always "$FC_DIR/template-data.ext4" "$vmdir/data.ext4"
+    ln -sfn "$kernel" "$vmdir/vmlinux"
+    exec 9>"$run/net.lock"; flock -x 9          # 172.16.0.1 is one VM's at a time
+    tap_make "$name" "$TEMPLATE_GW/30"
+    # however this ends, the template's VM and tap go with it
+    TEMPLATE_VM=$name; trap template_gone EXIT
+    start_fc "$name" "$vmdir"
+    local s=$run/$name.sock secret; secret=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    # the template's lisply secret: the hangar's alone, to activate each clone with
+    (umask 077; echo "$secret" > "$snap/lisply-secret.new")
+    local args="console=ttyS0 reboot=k panic=1 pci=off rw ip=$TEMPLATE_GUEST::$TEMPLATE_GW:255.255.255.252:$name:eth0:off hosted.template=1 hosted.engine=$engine hosted.lisply=$secret"
     expect 204 "$s" PUT /machine-config "{\"vcpu_count\": $VCPUS, \"mem_size_mib\": $MEM_MIB}"
     expect 204 "$s" PUT /boot-source   "{\"kernel_image_path\": \"vmlinux\", \"boot_args\": \"$args\"}"
     expect 204 "$s" PUT /drives/rootfs "{\"drive_id\": \"rootfs\", \"path_on_host\": \"rootfs.ext4\", \"is_root_device\": true, \"is_read_only\": false}"
     expect 204 "$s" PUT /drives/data   "{\"drive_id\": \"data\", \"path_on_host\": \"data.ext4\", \"is_root_device\": false, \"is_read_only\": false}"
-    expect 204 "$s" PUT /network-interfaces/eth0 "{\"iface_id\": \"eth0\", \"guest_mac\": \"06:00:AC:10:$(printf '%02X' "$slot"):02\", \"host_dev_name\": \"$tap\"}"
+    expect 204 "$s" PUT /network-interfaces/eth0 "{\"iface_id\": \"eth0\", \"guest_mac\": \"$GUEST_MAC\", \"host_dev_name\": \"$name\"}"
     expect 204 "$s" PUT /actions "{\"action_type\": \"InstanceStart\"}"
-    echo "$name: vm started (pid $(cat "$run/$name.pid"), $VCPUS vcpu, $MEM_MIB MiB, tap $tap, guest $(guest_ip "$slot"), published :$port)"
-    for _ in $(seq 1 600); do
-        if [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 1 "http://$(guest_ip "$slot"):$GUEST_PORT/lisply/ping-lisp")" = 200 ]; then
-            echo "$name: lisply ping after $(since "$t0") s"; break
-        fi
-        sleep 0.5
-    done
-    for _ in $(seq 1 600); do
-        if grep -q 'hosted-init\] hosted runtime up' "$run/$name.console" 2>/dev/null; then
-            echo "$name: hosted runtime up after $(since "$t0") s"; grep 'hosted-init\]' "$run/$name.console" | tail -1; return
-        fi
-        if grep -q 'the service exited' "$run/$name.console" 2>/dev/null; then die "the guest's service exited; read $run/$name.console"; fi
-        sleep 0.5
-    done
-    die "no hosted runtime after 300 s; read $run/$name.console"
+    echo "template $engine: booted ($VCPUS vcpu, $MEM_MIB MiB); loading the lab"
+    wait_console "$name" 'hosted-init\] template ready' 600 || die "template $engine: never ready; read $run/$name.console"
+    echo "template $engine: the lab loaded after $(since "$t0") s; snapshotting"
+    local t1; t1=$(now)
+    expect 204 "$s" PATCH /vm '{"state": "Paused"}'
+    rm -f "$snap/vmstate.new" "$snap/mem.new"
+    expect 204 "$s" PUT /snapshot/create "{\"snapshot_type\": \"Full\", \"snapshot_path\": \"$snap/vmstate.new\", \"mem_file_path\": \"$snap/mem.new\"}"
+    # the disk as it was at the pause: every clone starts from a copy of it
+    cp --sparse=always "$vmdir/rootfs.ext4" "$snap/rootfs.ext4.new"
+    kill -TERM "$(cat "$run/$name.pid")" 2>/dev/null || true; rm -f "$run/$name.pid" "$run/$name.sock"
+    ip link del "$name" 2>/dev/null || true; trap - EXIT
+    flock -u 9
+    mv "$snap/rootfs.ext4.new" "$snap/rootfs.ext4"; mv "$snap/mem.new" "$snap/mem"; mv "$snap/lisply-secret.new" "$snap/lisply-secret"
+    mv "$snap/vmstate.new" "$snap/vmstate"      # last: its date is the snapshot's (snapshot_fresh)
+    printf 'engine=%s vcpus=%s mem_mib=%s data=%s made=%s\n' "$engine" "$VCPUS" "$MEM_MIB" "$DATA_SIZE" "$(date -u +%FT%TZ)" > "$snap/README"
+    rm -rf "$vmdir"
+    echo "template $engine: snapshot in $(since "$t1") s ($(du -sh "$snap/mem" | cut -f1) memory, $(du -sh "$snap/rootfs.ext4" | cut -f1) disk) under $snap"
+}
+
+# --- a VM ------------------------------------------------------------------
+cmd_up() {
+    local name=${1:?name} port=${2:-9080}
+    local gport; gport=$(guest_port_of "$ENGINE")
+    [ -x "$bin" ] || die "no firecracker"
+    [ -f "$FC_DIR/$name.data.ext4" ] || cmd_disk "$name"
+    [ -r /dev/kvm ] || die "/dev/kvm not accessible"
+    echo "$port" > "$run/$name.port"; echo "$ENGINE" > "$run/$name.engine"
+    if snapshot_fresh "$ENGINE" && [ "$(stat -c %s "$FC_DIR/$name.data.ext4")" = "$(stat -c %s "$FC_DIR/template-data.ext4" 2>/dev/null || echo 0)" ]; then
+        up_restored "$name" "$port" "$gport"
+    else
+        up_cold "$name" "$port" "$gport"
+    fi
+}
+
+up_restored() {  # the lab already loaded: restore, activate, publish
+    local name=$1 port=$2 gport=$3 slot; slot=$(slot_of "$1")
+    local snap; snap=$(snap_of "$ENGINE"); local vmdir=$FC_DIR/vm/$name; mkdir -p "$vmdir"
+    local t0; t0=$(now)
+    # its own copy, at the name the snapshot recorded (a reflink where the volume's filesystem has them)
+    cp --reflink=auto --sparse=always "$snap/rootfs.ext4" "$vmdir/rootfs.ext4"
+    ln -sfn "$FC_DIR/$name.data.ext4" "$vmdir/data.ext4"
+    local t1; t1=$(now)
+    exec 9>"$run/net.lock"; flock -x 9
+    tap_make "host$slot" "$TEMPLATE_GW/30"
+    start_fc "$name" "$vmdir"
+    local s=$run/$name.sock
+    expect 204 "$s" PUT /snapshot/load "{\"snapshot_path\": \"$snap/vmstate\", \"mem_backend\": {\"backend_type\": \"File\", \"backend_path\": \"$snap/mem\"}, \"resume_vm\": true, \"clock_realtime\": true, \"network_overrides\": [{\"iface_id\": \"eth0\", \"host_dev_name\": \"host$slot\"}]}"
+    local t2; t2=$(now)
+    wait_http "http://$TEMPLATE_GUEST:$gport/lisply/ping-lisp" 20 || { flock -u 9; cmd_down "$name"; die "$name: the restored clone does not answer"; }
+    local code answer
+    code="(gdl-user::hosted-activate! :gate \"$(guest_gate_url "$GATE_URL")\" :lab \"$LAB\" :lock \"$LOCK\" :ip \"$(guest_ip "$slot")\" :gw \"$(tap_ip "$slot")\" :epoch $(date +%s))"
+    answer=$(curl -s --max-time 5 -X POST -H 'Content-Type: application/json' -H "X-Lisply-Secret: $(cat "$snap/lisply-secret")" \
+                  -d "$(jq -cn --arg c "$code" '{code: $c}')" "http://$TEMPLATE_GUEST:$gport/lisply/lisp-eval" || true)
+    case $answer in
+        *ACTIVATING*|*activating*) ;;
+        *) flock -u 9; cmd_down "$name"; die "$name: the clone refused its activation: $(printf '%s' "$answer" | head -c 200)" ;;
+    esac
+    # the clone moves to its own /30; this side follows, and 172.16.0.1 is free again
+    ip addr del "$TEMPLATE_GW/30" dev "host$slot" 2>/dev/null || true
+    ip addr add "$(tap_ip "$slot")/30" dev "host$slot"
+    flock -u 9
+    nat_up "$name" "$port" "$gport"
+    wait_console "$name" 'hosted-init\] hosted runtime up' 60 || { cmd_down "$name"; die "$name: the clone never published; read $run/$name.console"; }
+    echo "$name: restored from the $ENGINE snapshot (pid $(cat "$run/$name.pid"), guest $(guest_ip "$slot"), published :$port): disk copy $(awk -v a="$t0" -v b="$t1" 'BEGIN{printf "%.2f", b-a}') s, load $(awk -v a="$t1" -v b="$t2" 'BEGIN{printf "%.2f", b-a}') s, up $(since "$t0") s in all"
+    grep 'hosted-init\] hosted runtime up' "$run/$name.console" | tail -1
+}
+
+up_cold() {  # no snapshot: boot, and the lab compiles in the VM
+    local name=$1 port=$2 gport=$3 slot; slot=$(slot_of "$1")
+    local rootfs; rootfs=$(rootfs_of "$ENGINE"); [ -f "$rootfs" ] && [ -f "$kernel" ] || die "no $rootfs or kernel"
+    local vmdir=$FC_DIR/vm/$name; mkdir -p "$vmdir"
+    tap_make "host$slot" "$(tap_ip "$slot")/30"
+    nat_up "$name" "$port" "$gport"
+    cp --sparse=always "$rootfs" "$vmdir/rootfs.ext4"
+    ln -sfn "$FC_DIR/$name.data.ext4" "$vmdir/data.ext4"
+    ln -sfn "$kernel" "$vmdir/vmlinux"
+    start_fc "$name" "$vmdir"
+    local s=$run/$name.sock t0; t0=$(now)
+    local args="console=ttyS0 reboot=k panic=1 pci=off rw ip=$(guest_ip "$slot")::$(tap_ip "$slot"):255.255.255.252:$name:eth0:off hosted.engine=$ENGINE hosted.gate=$(guest_gate_url "$GATE_URL") hosted.lab=$LAB hosted.lock=$LOCK"
+    expect 204 "$s" PUT /machine-config "{\"vcpu_count\": $VCPUS, \"mem_size_mib\": $MEM_MIB}"
+    expect 204 "$s" PUT /boot-source   "{\"kernel_image_path\": \"vmlinux\", \"boot_args\": \"$args\"}"
+    expect 204 "$s" PUT /drives/rootfs "{\"drive_id\": \"rootfs\", \"path_on_host\": \"rootfs.ext4\", \"is_root_device\": true, \"is_read_only\": false}"
+    expect 204 "$s" PUT /drives/data   "{\"drive_id\": \"data\", \"path_on_host\": \"data.ext4\", \"is_root_device\": false, \"is_read_only\": false}"
+    expect 204 "$s" PUT /network-interfaces/eth0 "{\"iface_id\": \"eth0\", \"guest_mac\": \"$GUEST_MAC\", \"host_dev_name\": \"host$slot\"}"
+    expect 204 "$s" PUT /actions "{\"action_type\": \"InstanceStart\"}"
+    echo "$name: booted cold (pid $(cat "$run/$name.pid"), $VCPUS vcpu, $MEM_MIB MiB, guest $(guest_ip "$slot"), published :$port)"
+    wait_console "$name" 'hosted-init\] hosted runtime up' 300 || die "no hosted runtime after 300 s; read $run/$name.console"
+    echo "$name: hosted runtime up after $(since "$t0") s"; grep 'hosted-init\]' "$run/$name.console" | tail -1
 }
 
 cmd_down() {
     local name=${1:?name}
     local port; port=$(cat "$run/$name.port" 2>/dev/null || echo 9080)
+    local gport; gport=$(guest_port_of "$(cat "$run/$name.engine" 2>/dev/null || echo "$ENGINE")")
     if [ -f "$run/$name.pid" ]; then
         kill -TERM "$(cat "$run/$name.pid")" 2>/dev/null || true
         rm -f "$run/$name.pid" "$run/$name.sock"
     fi
     # and any firecracker of that name a lost pid file left behind
     pkill -TERM -f -- "--id $name\$" 2>/dev/null || true
-    net_down "$name" "$port"
+    net_down "$name" "$port" "$gport"
     rm -f "$FC_DIR/vm/$name/rootfs.ext4"
     echo "$name: down"
 }
 
 cmd_status() {
-    printf '%-16s %8s %10s %10s %6s %s\n' vm pid 'RSS MiB' 'PSS MiB' port ping
+    printf '%-20s %8s %10s %10s %6s %s\n' vm pid 'RSS MiB' 'PSS MiB' port door
     local f
     for f in "$run"/*.pid; do
         [ -f "$f" ] || continue
-        local p id slot port ping; p=$(cat "$f"); id=$(basename "$f" .pid); slot=$(slot_of "$id")
+        local p id slot port door gport prefix; p=$(cat "$f"); id=$(basename "$f" .pid); slot=$(slot_of "$id")
         port=$(cat "$run/$id.port" 2>/dev/null || echo -)
+        gport=$(guest_port_of "$(cat "$run/$id.engine" 2>/dev/null || echo gendl)")
+        prefix=/prompt-lab; [ "$(cat "$run/$id.engine" 2>/dev/null)" = solid ] && prefix=/prompt-lab/solid
         kill -0 "$p" 2>/dev/null || { echo "$id: not running"; continue; }
         # the deployment's own door (302 to its instance) says the runtime is up, not only the Lisp
-        ping=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "http://$(guest_ip "$slot"):$GUEST_PORT/prompt-lab/d/$id" || echo -)
-        awk -v id="$id" -v pid="$p" -v port="$port" -v ping="$ping" '
+        door=$(curl -s -o /dev/null -w '%{http_code}' --max-time 2 "http://$(guest_ip "$slot"):$gport$prefix/d/$id" || echo -)
+        awk -v id="$id" -v pid="$p" -v port="$port" -v door="$door" '
             /^Rss:/ {rss+=$2} /^Pss:/ {pss+=$2}
-            END {printf "%-16s %8s %10.0f %10.0f %6s %s\n", id, pid, rss/1024, pss/1024, port, ping}' "/proc/$p/smaps_rollup"
+            END {printf "%-20s %8s %10.0f %10.0f %6s %s\n", id, pid, rss/1024, pss/1024, port, door}' "/proc/$p/smaps_rollup"
     done
 }
 
 # The lifetime rule: the VM runs while the gate says the deployment's
 # hosting is not stopped; stopped (stopped_since set) it is taken down,
-# and brought back when hosting is added.
+# and brought back when hosting is added.  (The room's fleet loop does
+# this for every deployment; this is the single-deployment form.)
 cmd_watch() {
     local name=${1:?name} port=${2:-9080} interval=${WATCH_INTERVAL:-15}
     while :; do
@@ -204,10 +337,11 @@ cmd_watch() {
     done
 }
 
-cmd_ip() { guest_ip "$(slot_of "${1:?name}")"; }   # the guest's address, for the hangar's router
+cmd_ip() { guest_ip "$(slot_of "${1:?name}")"; }   # the guest's address
+cmd_fresh() { snapshot_fresh "${1:-$ENGINE}"; }       # exit 0 when ENGINE's snapshot is newer than its rootfs
 
 cmd=${1:-}; shift || true
 case $cmd in
-    disk|up|down|status|watch|ip) "cmd_$cmd" "$@" ;;
-    *) sed -n '2,23p' "$0"; exit 1 ;;
+    disk|template|up|down|status|watch|ip|fresh) "cmd_$cmd" "$@" ;;
+    *) sed -n '2,33p' "$0"; exit 1 ;;
 esac
