@@ -14,10 +14,21 @@ set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)      # the firecracker/ kit
 FC_DIR=${1:-${FC_DIR:-$HOME/firecracker-phase0}}
 GENDL_IMAGE=${GENDL_IMAGE:-genworks/gendl:devo-ccl}
-DEMOS=${DEMOS:-/projects/gw/demos}; MONOCLE=${MONOCLE:-/projects/gw/monocle}
-[ -d "$DEMOS" ] || DEMOS=$HOME/projects/gw/demos
-[ -d "$MONOCLE" ] || MONOCLE=$HOME/projects/gw/monocle
+# the lab's checkouts: given, or found in either layout -- the dev
+# host's buckets (gw/demos, gw/monocle) or a production host's flat
+# /projects (demos, monocle) -- under /projects or the home's projects
+find_checkout() {   # find_checkout NAME [GIVEN]
+    local name=$1 given=${2:-} d
+    [ -n "$given" ] && [ -d "$given" ] && { echo "$given"; return; }
+    for d in /projects/gw/$name /projects/$name "$HOME/projects/gw/$name" "$HOME/projects/$name"; do
+        [ -d "$d" ] && { echo "$d"; return; }
+    done
+    echo "make-rootfs: no $name checkout found (set ${name^^}=/path; monocle clones from https://gitlab.common-lisp.net/clo/monocle.git)" >&2
+    exit 1
+}
+DEMOS=$(find_checkout demos "${DEMOS:-}"); MONOCLE=$(find_checkout monocle "${MONOCLE:-}")
 SIZE=${SIZE:-4G}
+[ -w "$(dirname "$FC_DIR")" ] || [ -w "$FC_DIR" ] || { echo "make-rootfs: $FC_DIR is not writable by $(id -un); chown it (a raise may have made it root's) rather than running this under sudo" >&2; exit 1; }
 mkdir -p "$FC_DIR/hosted"
 echo "exporting $GENDL_IMAGE"
 cid=$(docker create "$GENDL_IMAGE"); docker export "$cid" -o "$FC_DIR/gendl.tar"; docker rm "$cid" >/dev/null
