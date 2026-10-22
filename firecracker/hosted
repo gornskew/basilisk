@@ -53,7 +53,9 @@ bin=${FC_BIN:-$FC_DIR/bin/firecracker}; kernel=${FC_KERNEL:-$FC_DIR/vmlinux}; ru
 die() { echo "hosted: $*" >&2; exit 1; }
 now() { date +%s.%N; }
 since() { awk -v a="$1" -v b="$(now)" 'BEGIN{printf "%.2f", b-a}'; }
-api() { curl -sS --unix-socket "$1" -X "$2" "http://localhost$3" -H 'Accept: application/json' -H 'Content-Type: application/json' ${4:+-d "$4"} -o "$run/.api-answer" -w '%{http_code}'; }
+# every call to firecracker's API has a limit (API_TIMEOUT, 120 s): a VM that will not
+# pause or load would otherwise hang its caller forever; a timed-out call answers 000
+api() { curl -sS --max-time "${API_TIMEOUT:-120}" --unix-socket "$1" -X "$2" "http://localhost$3" -H 'Accept: application/json' -H 'Content-Type: application/json' ${4:+-d "$4"} -o "$run/.api-answer" -w '%{http_code}' || true; }
 expect() { local want=$1; shift; local got; got=$(api "$@"); [ "$got" = "$want" ] || die "$2 $3 -> HTTP $got (wanted $want): $(cat "$run/.api-answer" 2>/dev/null); read $run/*.console"; }
 wait_sock() { for _ in $(seq 1 100); do [ -S "$1" ] && return; sleep 0.1; done; die "no API socket at $1"; }
 
