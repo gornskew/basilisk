@@ -137,8 +137,8 @@ wait_console() {  # wait_console NAME PATTERN SECONDS
         grep -q "$2" "$run/$1.console" 2>/dev/null && return 0
         grep -q 'the service exited' "$run/$1.console" 2>/dev/null && die "the guest's service exited; read $run/$1.console"
         # firecracker itself gone (a KVM entry failure, a guest panic): say so now, not at the timeout
-        if [ -f "$run/$1.pid" ] && ! kill -0 "$(cat "$run/$1.pid")" 2>/dev/null; then
-            die "$1: the VM stopped: $(grep -m1 -E 'KVM_EXIT|Kernel panic|exiting with error' "$run/$1.console" 2>/dev/null | sed 's/^[0-9T:.-]* //'); read $run/$1.console"
+        if [ ! -f "$run/$1.pid" ] || ! kill -0 "$(cat "$run/$1.pid" 2>/dev/null)" 2>/dev/null; then
+            die "$1: the VM stopped$([ -f "$run/$1.pid" ] || echo ' (its pid file is gone: something took it down)'): $(grep -m1 -E 'KVM_EXIT|Kernel panic|exiting with error' "$run/$1.console" 2>/dev/null | sed 's/^[0-9T:.-]* //'); read $run/$1.console"
         fi
         sleep 0.5
     done

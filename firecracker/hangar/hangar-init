@@ -155,6 +155,7 @@ status_json() {
         echo "{\"rootfs\": $([ -f "$(rootfs)" ] && echo true || echo false), \"engine\": \"$ENGINE\", \"snapshot\": $($HOSTED fresh "$ENGINE" && echo true || echo false), \"lab\": \"$LAB\", \"domain\": \"$APPS_DOMAIN\", \"registering\": $([ -n "$ADMIN_SECRET" ] && echo true || echo false), \"vms\": ["
         for f in "$run"/*.pid; do
             [ -f "$f" ] || continue; name=$(basename "$f" .pid)
+            case $name in tpl-*) continue ;; esac
             [ $first = 1 ] || echo ','; first=0
             printf '{"name": "%s", "host": "%s.%s", "up": %s, "port": %s}' "$name" "$name" "$APPS_DOMAIN" "$(vm_running "$name" && echo true || echo false)" "$(cat "$run/$name.port" 2>/dev/null || echo 0)"
         done
@@ -219,6 +220,7 @@ fleet() {   # one pass over the deployed root
     for f in "$run"/*.pid "$run"/*.paused; do
         [ -f "$f" ] || continue
         name=$(basename "$f"); name=${name%.pid}; name=${name%.paused}
+        case $name in tpl-*) continue ;; esac     # a template being made (hosted template): not a deployment's VM
         case " $seen " in *" $name "*) ;; *)
             log "$name: no longer deployed; its VM goes"
             $HOSTED down "$name" >/dev/null 2>&1 || true; rm -f "$run/$name.paused"
