@@ -227,6 +227,12 @@ docker build -f hangar/Dockerfile -t gornskew/hangar:trial /path/to/basilisk/fir
 hangar/make-rootfs ~/firecracker-hangar      # on the host, with docker: the hosted rootfs
 ```
 
+The scripts are BAKED INTO the image: after pulling a change to this
+directory, build the image again before raising the room, or the room
+keeps flying the old loop (`docker logs` shows a `hangar up` line and
+nothing about a feed).  The rootfs wants the same after a change to the
+lab's code (`hangar/make-rootfs`).
+
 The articles give the room `/dev/kvm` and `/dev/net/tun`, `NET_ADMIN`
 and `ip_forward` (`:devices`, `:cap-add`, `:sysctls`), a CPU and
 memory ceiling that is the outer cap on every VM aboard (`:cpus`,
