@@ -371,12 +371,22 @@ same inode); taken down and deployed by another owner, a fresh disk
 carrying the new owner's record while the first owner's waited;
 the grace period lapsed, the image removed and the records kept.
 
-A deployment whose hosting is merely STOPPED at the gate keeps its disk
-and its name: it is paused, not gone.  Counting a stopped deployment's
-days from the gate's `stopped_since` toward the same retirement is the
-other half of the rule, not built yet.
+**The other half: a deployment STOPPED at the gate** (its month's free
+allowance and what was bought for it spent).  Its VM is grounded and the
+proxy's paused page stands in; the deployment keeps its name.  Once the
+gate's `stopped_since` is `HANGAR_STOPPED_DAYS` (30) old, its disk is
+retired the same way, and when hosting is added the same author's disk
+comes back (within `HANGAR_RETIRE_DAYS` of the retirement; records kept
+for good after).  The gate's balance door lifts a stop from an earlier
+month when the new month brings a free allowance -- a grounded VM is
+never metered, so without that a free-tier application stopped one
+month would never have come back the next, and would have counted
+toward retirement instead.  Proven against narad's gate in a throwaway
+room: a September stop lifted at the door and its app flown; a live app
+stopped as of 40 days back grounded and its disk retired in one pass
+('since 2026-09-13'); hosting added, the same disk back (the same inode)
+and the VM up in 1.4 s.
 
-**Not here yet:** the jailer; un-hosting a deployment stopped at the
-gate; a hangar flying both engines at once
+**Not here yet:** the jailer; a hangar flying both engines at once
 (one room per engine for now); a read-only shared rootfs in place of
 each clone's copy.

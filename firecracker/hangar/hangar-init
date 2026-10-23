@@ -26,7 +26,8 @@
 # HANGAR_SNAPSHOT (1: the engine's TEMPLATE is booted once, the lab loaded,
 # and snapshotted -- again whenever the rootfs is newer -- and every VM is
 # a clone restored from it in about a second; 0: every VM boots cold),
-# HANGAR_RETIRE_DAYS (30: see THE UN-HOSTING RULE below).
+# HANGAR_RETIRE_DAYS and HANGAR_STOPPED_DAYS (30 and 30: see THE UN-HOSTING
+# RULE below).
 #
 # THE UN-HOSTING RULE, for a deployment taken down at the lab (undeployed,
 # or gone from the deployed root): its VM goes, and its data disk -- the
@@ -41,13 +42,23 @@
 # removed and the extracted records are kept for good (a few KB: what
 # visitors held in purses is a claim worth keeping).  Nothing is retired on
 # a pass that could not read the deployed root (the feed down).
+#
+# Its other half, for a deployment whose hosting is STOPPED at the gate
+# (its allowance and what was bought for it spent): the VM is grounded and
+# the proxy's paused page stands in, the deployment keeps its name, and
+# once the gate's stopped_since is HANGAR_STOPPED_DAYS old its disk is
+# retired the same way -- the same author's again when hosting is added
+# within HANGAR_RETIRE_DAYS of that, its records kept for good after.  (The
+# gate lifts a stop from an earlier month when the new month brings a free
+# allowance, so a free-tier application comes back each month rather than
+# counting toward retirement.)
 set -u
 FC_DIR=${FC_DIR:-/fc}; DEPLOYMENTS=${DEPLOYMENTS:-/deployments}
 APPS_DOMAIN=${APPS_DOMAIN:-gen.works}; GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
 LAB=${LAB:-prompt-lab}; INTERVAL=${HANGAR_INTERVAL:-15}; ENGINE=${HANGAR_ENGINE:-gendl}
 MAX_VMS=${HANGAR_MAX_VMS:-0}   # 0: as many as the room's memory cap allows; a dev ship says 2
 SNAPSHOT=${HANGAR_SNAPSHOT:-1}
-RETIRE_DAYS=${HANGAR_RETIRE_DAYS:-30}
+RETIRE_DAYS=${HANGAR_RETIRE_DAYS:-30}; STOPPED_DAYS=${HANGAR_STOPPED_DAYS:-30}
 ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=${CYCLOPS_ADMIN_SECRET:-}
 # THE FEED: a lab elsewhere serves its deployed root to this hangar
 # (demos deploy.lisp, <prefix>/api/hangar/deployments and /deployment,
@@ -161,10 +172,13 @@ next_port() {   # a port of the hangar's own per VM (hosted's DNAT wants them di
 }
 vm_running() { [ -f "$run/$1.pid" ] && kill -0 "$(cat "$run/$1.pid")" 2>/dev/null; }
 vms_running() { local n=0 f; for f in "$run"/*.pid; do [ -f "$f" ] && kill -0 "$(cat "$f")" 2>/dev/null && n=$((n+1)); done; echo $n; }
-gate_stopped() {   # gate_stopped NAME -> true | false | '' (no answer)
+gate_hosting() {   # gate_hosting NAME -> 'true SINCE' (SINCE the stop, unix seconds) | false | '' (no answer)
+    # the gate's stopped_since is a Lisp universal time: seconds since 1900
     curl -s --max-time 5 -X POST -H 'Content-Type: application/json' \
-         -d "{\"lab\": \"$LAB\", \"deployment\": \"$1\"}" "$GATE_URL/host-balance" | jq -r '.stopped // false' 2>/dev/null
+         -d "{\"lab\": \"$LAB\", \"deployment\": \"$1\"}" "$GATE_URL/host-balance" \
+        | jq -r 'if .stopped == true then "true \((.stopped_since // 0) - 2208988800)" else "false" end' 2>/dev/null
 }
+days_seconds() { awk -v days="$1" 'BEGIN{printf "%d", days*86400}'; }
 status_json() {
     local tmp=/run/hangar/status.json.new first=1 f name
     {
@@ -189,15 +203,15 @@ status_json() {
 retired_dir() { echo "$FC_DIR/retired"; }
 owner_of() { jq -r '.owner // empty' "$1" 2>/dev/null; }   # owner_of DEPLOYMENT-JSON
 
-retire_disk() {   # retire_disk NAME: its disk out of the live name, its records extracted beside it
-    local name=$1 disk=$FC_DIR/$1.data.ext4 at d top
+retire_disk() {   # retire_disk NAME [WHY]: its disk out of the live name, its records extracted beside it
+    local name=$1 why=${2:-taken down at the lab} disk=$FC_DIR/$1.data.ext4 at d top
     [ -f "$disk" ] || return 0
     at=$(date +%s); d=$(retired_dir)/$name.$at; mkdir -p "$d/tree"
     # the guest was killed, not unmounted: replay its journal before reading the tree
     e2fsck -fy "$disk" >/dev/null 2>&1 || true
     for top in prompt-lab-deployed prompt-lab; do debugfs -R "rdump /$top $d/tree" "$disk" >/dev/null 2>&1 || true; done
     mv "$disk" "$d/data.ext4"; echo "$at" > "$d/since"
-    log "$name: taken down at the lab; its disk retired to $d ($RETIRE_DAYS days for its author to deploy it again; its records kept for good)"
+    log "$name: $why; its disk retired to $d ($RETIRE_DAYS days to come back to its author; its records kept for good)"
 }
 
 revive_disk() {   # revive_disk NAME DIR: the newest retired disk of NAME's back, when DIR's owner is its owner -> 0
@@ -211,7 +225,7 @@ revive_disk() {   # revive_disk NAME DIR: the newest retired disk of NAME's back
     done
     [ -n "$best" ] || return 1
     mv "$best/data.ext4" "$FC_DIR/$name.data.ext4"; rm -rf "$best"
-    log "$name: deployed again by its author; the disk retired $(date -u -d "@$best_at" +%FT%TZ) is back, its purses and grants with it"
+    log "$name: back with its author (deployed again, or hosting added); the disk retired $(date -u -d "@$best_at" +%FT%TZ) is back, its purses and grants with it"
 }
 
 expire_retired() {   # retired disks past RETIRE_DAYS go; their extracted records stay
@@ -227,7 +241,7 @@ expire_retired() {   # retired disks past RETIRE_DAYS go; their extracted record
 }
 
 fleet() {   # one pass over the deployed root
-    local dir name kind engine title stopped seen="" f port
+    local dir name kind engine title hosting stopped since seen="" f port
     for dir in "$DEPLOYMENTS"/*/*/; do
         [ -f "$dir/deployment.json" ] || continue
         name=$(basename "$dir"); engine=$(basename "$(dirname "$dir")")
@@ -244,14 +258,22 @@ fleet() {   # one pass over the deployed root
             fi
             refresh_disk "$name" "$dir" "$engine"; rm -f "$run/$name.refresh"
         fi
-        stopped=$(gate_stopped "$name")
+        hosting=$(gate_hosting "$name"); stopped=${hosting%% *}
         if [ "$stopped" = true ]; then
             if vm_running "$name"; then
                 log "$name: hosting stopped at the gate; taking its VM down"
-                $HOSTED down "$name" >/dev/null 2>&1 || true
+                local stop_pid; stop_pid=$(cat "$run/$name.pid" 2>/dev/null || true)
+                $HOSTED down "$name" >/dev/null 2>&1 || true; vm_gone "$stop_pid"
             fi
             touch "$run/$name.paused"
             register "$name" paused "" "$title"
+            # the other half of the un-hosting rule: stopped HANGAR_STOPPED_DAYS, the disk retires
+            since=${hosting#* }
+            case $since in ''|*[!0-9]*) since=0 ;; esac
+            if [ "$since" -gt 0 ] && [ -f "$FC_DIR/$name.data.ext4" ] \
+               && [ $(( $(date +%s) - since )) -ge "$(days_seconds "$STOPPED_DAYS")" ]; then
+                retire_disk "$name" "hosting stopped at the gate since $(date -u -d "@$since" +%F), $STOPPED_DAYS days or more"
+            fi
         else
             rm -f "$run/$name.paused"
             if ! vm_running "$name" && [ "$MAX_VMS" -gt 0 ] && [ "$(vms_running)" -ge "$MAX_VMS" ]; then
