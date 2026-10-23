@@ -25,13 +25,29 @@
 # dev ship says 2 -- the rest wait, and fly as others are grounded),
 # HANGAR_SNAPSHOT (1: the engine's TEMPLATE is booted once, the lab loaded,
 # and snapshotted -- again whenever the rootfs is newer -- and every VM is
-# a clone restored from it in about a second; 0: every VM boots cold).
+# a clone restored from it in about a second; 0: every VM boots cold),
+# HANGAR_RETIRE_DAYS (30: see THE UN-HOSTING RULE below).
+#
+# THE UN-HOSTING RULE, for a deployment taken down at the lab (undeployed,
+# or gone from the deployed root): its VM goes, and its data disk -- the
+# app's purses, grants and workspace -- is RETIRED at once, moved out of the
+# live name to $FC_DIR/retired/<name>.<epoch>/ with its records extracted
+# beside it as plain files (tree/).  The lab frees the name on undeploy, so a
+# disk left under it would hand the old app's files and its visitors'
+# purses to whoever deploys the name next.  If the SAME author (the record's
+# owner) deploys the name again within HANGAR_RETIRE_DAYS, the newest
+# retired disk comes back, the new record and model written onto it; anyone
+# else gets a fresh disk.  After HANGAR_RETIRE_DAYS the disk image is
+# removed and the extracted records are kept for good (a few KB: what
+# visitors held in purses is a claim worth keeping).  Nothing is retired on
+# a pass that could not read the deployed root (the feed down).
 set -u
 FC_DIR=${FC_DIR:-/fc}; DEPLOYMENTS=${DEPLOYMENTS:-/deployments}
 APPS_DOMAIN=${APPS_DOMAIN:-gen.works}; GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
 LAB=${LAB:-prompt-lab}; INTERVAL=${HANGAR_INTERVAL:-15}; ENGINE=${HANGAR_ENGINE:-gendl}
 MAX_VMS=${HANGAR_MAX_VMS:-0}   # 0: as many as the room's memory cap allows; a dev ship says 2
 SNAPSHOT=${HANGAR_SNAPSHOT:-1}
+RETIRE_DAYS=${HANGAR_RETIRE_DAYS:-30}
 ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=${CYCLOPS_ADMIN_SECRET:-}
 # THE FEED: a lab elsewhere serves its deployed root to this hangar
 # (demos deploy.lisp, <prefix>/api/hangar/deployments and /deployment,
@@ -169,6 +185,47 @@ status_json() {
     touch /run/hangar/alive
 }
 
+# --- the un-hosting rule (the header says what and why) ------------------------
+retired_dir() { echo "$FC_DIR/retired"; }
+owner_of() { jq -r '.owner // empty' "$1" 2>/dev/null; }   # owner_of DEPLOYMENT-JSON
+
+retire_disk() {   # retire_disk NAME: its disk out of the live name, its records extracted beside it
+    local name=$1 disk=$FC_DIR/$1.data.ext4 at d top
+    [ -f "$disk" ] || return 0
+    at=$(date +%s); d=$(retired_dir)/$name.$at; mkdir -p "$d/tree"
+    # the guest was killed, not unmounted: replay its journal before reading the tree
+    e2fsck -fy "$disk" >/dev/null 2>&1 || true
+    for top in prompt-lab-deployed prompt-lab; do debugfs -R "rdump /$top $d/tree" "$disk" >/dev/null 2>&1 || true; done
+    mv "$disk" "$d/data.ext4"; echo "$at" > "$d/since"
+    log "$name: taken down at the lab; its disk retired to $d ($RETIRE_DAYS days for its author to deploy it again; its records kept for good)"
+}
+
+revive_disk() {   # revive_disk NAME DIR: the newest retired disk of NAME's back, when DIR's owner is its owner -> 0
+    local name=$1 dir=$2 owner d best="" at best_at=0 was
+    owner=$(owner_of "$dir/deployment.json"); [ -n "$owner" ] || return 1
+    for d in "$(retired_dir)/$name".*/; do
+        [ -f "$d/data.ext4" ] || continue
+        at=${d%/}; at=${at##*.}; case $at in *[!0-9]*|'') continue ;; esac
+        was=$(owner_of "$(ls "$d"tree/prompt-lab-deployed/*/"$name"/deployment.json 2>/dev/null | head -1)")
+        [ "$was" = "$owner" ] && [ "$at" -gt "$best_at" ] && { best=${d%/}; best_at=$at; }
+    done
+    [ -n "$best" ] || return 1
+    mv "$best/data.ext4" "$FC_DIR/$name.data.ext4"; rm -rf "$best"
+    log "$name: deployed again by its author; the disk retired $(date -u -d "@$best_at" +%FT%TZ) is back, its purses and grants with it"
+}
+
+expire_retired() {   # retired disks past RETIRE_DAYS go; their extracted records stay
+    local d since now limit; now=$(date +%s)
+    limit=$(awk -v days="$RETIRE_DAYS" 'BEGIN{printf "%d", days*86400}')
+    for d in "$(retired_dir)"/*/; do
+        [ -f "$d/data.ext4" ] || continue
+        since=$(cat "$d/since" 2>/dev/null || echo "$now")
+        [ $(( now - since )) -ge "$limit" ] || continue
+        rm -f "$d/data.ext4"; date -u +%FT%TZ > "$d/disk-removed"
+        log "$(basename "$d"): retired $RETIRE_DAYS days; its disk removed, its records kept in ${d}tree"
+    done
+}
+
 fleet() {   # one pass over the deployed root
     local dir name kind engine title stopped seen="" f port
     for dir in "$DEPLOYMENTS"/*/*/; do
@@ -204,7 +261,11 @@ fleet() {   # one pass over the deployed root
             rm -f "$run/$name.waiting"
             port=$(cat "$run/$name.port" 2>/dev/null || next_port)
             if ! vm_running "$name"; then
-                [ -f "$FC_DIR/$name.data.ext4" ] || $HOSTED disk "$name" "$dir" 2>&1 | sed 's/^/  /'
+                # no live disk: the author's own retired one back with the new files, else a fresh one
+                if [ ! -f "$FC_DIR/$name.data.ext4" ]; then
+                    if revive_disk "$name" "$dir"; then refresh_disk "$name" "$dir" "$engine"
+                    else $HOSTED disk "$name" "$dir" 2>&1 | sed 's/^/  /'; fi
+                fi
                 log "$name: raising its VM on :$port"
                 if $HOSTED up "$name" "$port" 2>&1 | sed 's/^/  /' && vm_running "$name"; then
                     register "$name" up "$port" "$title"
@@ -216,17 +277,30 @@ fleet() {   # one pass over the deployed root
             fi
         fi
     done
-    # deployments taken down: their VMs go, their disks stay (the un-hosting rule decides later)
+    # deployments taken down: their VMs go, and (below) their disks are retired
     for f in "$run"/*.pid "$run"/*.paused; do
         [ -f "$f" ] || continue
         name=$(basename "$f"); name=${name%.pid}; name=${name%.paused}
         case $name in tpl-*) continue ;; esac     # a template being made (hosted template): not a deployment's VM
         case " $seen " in *" $name "*) ;; *)
             log "$name: no longer deployed; its VM goes"
-            $HOSTED down "$name" >/dev/null 2>&1 || true; rm -f "$run/$name.paused"
+            local gone_pid; gone_pid=$(cat "$run/$name.pid" 2>/dev/null || true)
+            $HOSTED down "$name" >/dev/null 2>&1 || true; rm -f "$run/$name.paused"; vm_gone "$gone_pid"
             register "$name" gone ;;
         esac
     done
+    # THE UN-HOSTING RULE: a live disk whose deployment is gone is retired --
+    # only on a pass that read the deployed root, so a feed outage retires nothing
+    if [ "$ROOT_OK" = 1 ]; then
+        for f in "$FC_DIR"/*.data.ext4; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f" .data.ext4)
+            case " $seen " in *" $name "*) continue ;; esac
+            vm_running "$name" && continue
+            retire_disk "$name"
+        done
+    fi
+    expire_retired
 }
 
 trap 'log "stopping: every VM down"; for f in "$run"/*.pid; do [ -f "$f" ] && { n=$(basename "$f" .pid); $HOSTED down "$n"; register "$n" gone; }; done; exit 0' TERM INT
@@ -240,7 +314,9 @@ ip link show 2>/dev/null | sed -n 's/^[0-9]*: \(tpl-[^:@]*\|host[0-9]*\)[:@].*/\
 status_json
 [ -n "$FEED_URL" ] && { DEPLOYMENTS=$FC_DIR/feed; log "the deployed root is the lab's feed at $FEED_URL, mirrored in $DEPLOYMENTS"; }
 while :; do
-    [ -z "$FEED_URL" ] || feed_sync || true
+    # whether this pass read the deployed root (the feed answered a list, or the mount is there)
+    if [ -n "$FEED_URL" ]; then if feed_sync; then ROOT_OK=1; else ROOT_OK=0; fi
+    elif [ -d "$DEPLOYMENTS" ]; then ROOT_OK=1; else ROOT_OK=0; fi
     if [ -f "$(rootfs)" ]; then template; fleet
     else [ -f "$run/.rootfs-warned" ] || { log "no $(rootfs): make it with hangar/make-rootfs on the host"; touch "$run/.rootfs-warned"; }; fi
     status_json

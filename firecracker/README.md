@@ -259,7 +259,7 @@ seconds: a deployed web application gets a data disk and a
 VM (`hosted disk`, `hosted up`, a port of its own), a VM whose hosting
 the gate reports stopped is taken down and a paused page stands in for
 it, hosting added brings it back, and a deployment taken down takes
-its VM with it (the disk stays for the un-hosting rule).  THE ROUTING
+its VM with it and retires its disk (the un-hosting rule, below).  THE ROUTING
 IS THE SHIP'S PROXY'S: every pass the loop REGISTERS each host with
 the chief (`POST /_cyclops/hangar/vms`, the admin secret), and a
 `:hangar` rule in cyclops sends a registered host to its VM (the
@@ -341,6 +341,42 @@ no secret and to the template's alike, and the chief routes its host
 to it.  GDL's Allegro reads symbols in lower case: the hosted init
 names the lab's settings through `hosted-case`.
 
-**Not here yet:** the jailer; a hangar flying both engines at once
+### The un-hosting rule for a deployment taken down (2026-10-23)
+
+The lab frees a deployment's name when it is taken down, so a disk left
+under the name would hand the old app's files and its visitors' purses
+to whoever deploys the name next.  When a deployment leaves the
+deployed root, the room takes its VM down and RETIRES its data disk at
+once: the disk moves to `/fc/retired/<name>.<epoch>/data.ext4`, and its
+records -- the deployment's record, model file, purses and grants, and
+the workspace -- are extracted beside it as plain files (`tree/`, via
+debugfs, the guest's journal replayed first).
+
+- **The same author deploys the name again** (the record's owner
+  matches) within `HANGAR_RETIRE_DAYS` (30): the newest retired disk
+  comes back under the live name, the new record and model file written
+  onto it, so the app's purses and grants carry over.
+- **Anyone else deploys the name:** a fresh disk; the old author's
+  retired disk stays where it is until it expires.
+- **After `HANGAR_RETIRE_DAYS`:** the disk image is removed and
+  `disk-removed` stamped; the extracted records are kept for good (a few
+  KB -- what visitors held in purses is a claim worth keeping).
+- **A pass that could not read the deployed root** (the feed down)
+  retires nothing.
+
+Proven in a throwaway room on narad (a 52 s grace period): deployed by
+one owner, the VM up; taken down, the disk retired with its records
+extracted; deployed again by the same owner, the same disk back (the
+same inode); taken down and deployed by another owner, a fresh disk
+carrying the new owner's record while the first owner's waited;
+the grace period lapsed, the image removed and the records kept.
+
+A deployment whose hosting is merely STOPPED at the gate keeps its disk
+and its name: it is paused, not gone.  Counting a stopped deployment's
+days from the gate's `stopped_since` toward the same retirement is the
+other half of the rule, not built yet.
+
+**Not here yet:** the jailer; un-hosting a deployment stopped at the
+gate; a hangar flying both engines at once
 (one room per engine for now); a read-only shared rootfs in place of
 each clone's copy.
