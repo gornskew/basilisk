@@ -66,6 +66,10 @@ ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=$
 # deployed root read below.  Unset: /deployments is read as mounted.
 FEED_URL=${HANGAR_FEED_URL:-}; FEED_TOKEN_FILE=${HANGAR_FEED_TOKEN_FILE:-/run/secrets/hangar-token}
 HOSTED=/usr/local/lib/hangar/hosted
+# the scripts baked into this image, hashed: hangar/scripts-hash on the host
+# hashes the checkout's the same way, so a room raised on a stale image shows
+scripts_hash() { (cd /usr/local/lib/hangar && cat hangar-init hosted guest-init hosted-services-init.cl build-rootfs) 2>/dev/null | sha256sum | cut -c1-12; }
+SCRIPTS=$(scripts_hash)
 export FC_DIR GATE_URL LAB ENGINE
 run=$FC_DIR/run; mkdir -p "$run" /run/hangar
 log() { echo "$(date -u +%FT%TZ) hangar: $*"; }
@@ -182,7 +186,7 @@ days_seconds() { awk -v days="$1" 'BEGIN{printf "%d", days*86400}'; }
 status_json() {
     local tmp=/run/hangar/status.json.new first=1 f name
     {
-        echo "{\"rootfs\": $([ -f "$(rootfs)" ] && echo true || echo false), \"engine\": \"$ENGINE\", \"snapshot\": $($HOSTED fresh "$ENGINE" && echo true || echo false), \"lab\": \"$LAB\", \"domain\": \"$APPS_DOMAIN\", \"registering\": $([ -n "$ADMIN_SECRET" ] && echo true || echo false), \"vms\": ["
+        echo "{\"rootfs\": $([ -f "$(rootfs)" ] && echo true || echo false), \"engine\": \"$ENGINE\", \"scripts\": \"$SCRIPTS\", \"snapshot\": $($HOSTED fresh "$ENGINE" && echo true || echo false), \"lab\": \"$LAB\", \"domain\": \"$APPS_DOMAIN\", \"registering\": $([ -n "$ADMIN_SECRET" ] && echo true || echo false), \"vms\": ["
         for f in "$run"/*.pid; do
             [ -f "$f" ] || continue; name=$(basename "$f" .pid)
             case $name in tpl-*) continue ;; esac
@@ -326,7 +330,7 @@ fleet() {   # one pass over the deployed root
 }
 
 trap 'log "stopping: every VM down"; for f in "$run"/*.pid; do [ -f "$f" ] && { n=$(basename "$f" .pid); $HOSTED down "$n"; register "$n" gone; }; done; exit 0' TERM INT
-log "hangar up: lab $LAB, gate $GATE_URL, hosts *.$APPS_DOMAIN, deployments $DEPLOYMENTS, engine $ENGINE, chief $ADMIN_URL"
+log "hangar up: scripts $SCRIPTS, lab $LAB, gate $GATE_URL, hosts *.$APPS_DOMAIN, deployments $DEPLOYMENTS, engine $ENGINE, chief $ADMIN_URL"
 [ -r /dev/kvm ] || log "WARNING: /dev/kvm is not here; no VM can fly"
 [ -n "$ADMIN_SECRET" ] || log "WARNING: no CYCLOPS_ADMIN_SECRET; the VMs fly unregistered and no host reaches them"
 # a fresh room: nothing from a previous life is running, and the ports are

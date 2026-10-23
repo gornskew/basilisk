@@ -231,9 +231,13 @@ cd .. && ./basilisk up hangar                # the room makes its template, then
 
 The scripts are BAKED INTO the image: after pulling a change to this
 directory, build the image again before raising the room, or the room
-keeps flying the old loop (`docker logs` shows a `hangar up` line and
-nothing about a feed).  The rootfs wants the same after a change to the
-lab's code (`hangar/make-rootfs`).
+keeps flying the old loop.  `hangar/scripts-hash` on the host says
+which: it hashes this checkout's hangar scripts the way the room hashes
+the copies baked into its image (the room's `hangar up` line and
+`/run/hangar/status.json` carry `scripts <hash>`), and prints CURRENT,
+or STALE with the build-and-raise line (exit 1).  A pull followed by a
+raise without a build is the usual way to get STALE.  The rootfs wants
+the same after a change to the lab's code (`hangar/make-rootfs`).
 
 The articles give the room `/dev/kvm` and `/dev/net/tun`, `NET_ADMIN`
 and `ip_forward` (`:devices`, `:cap-add`, `:sysctls`), a CPU and

@@ -1,0 +1,27 @@
+#!/bin/bash
+# scripts-hash -- on the HOST: the hash of the hangar scripts in this
+# checkout, the way the hangar hashes the copies baked into its image (its
+# 'hangar up' log line and /run/hangar/status.json say "scripts <hash>"),
+# and the running hangar's, compared.  A room raised on an image built
+# before the last pull shows STALE: build the image again and raise it.
+#
+#   hangar/scripts-hash          the checkout's hash, the running hangar's, and the verdict
+#   hangar/scripts-hash -q       the checkout's hash alone
+set -euo pipefail
+kit=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)      # the firecracker/ kit
+# the same five files, in the same order, as the image's /usr/local/lib/hangar
+mine=$(cd "$kit" && cat hangar/hangar-init hosted guest-init hosted-services-init.cl hangar/build-rootfs | sha256sum | cut -c1-12)
+[ "${1:-}" = -q ] && { echo "$mine"; exit 0; }
+echo "checkout: $mine  ($kit)"
+room=$(docker ps --filter label=com.docker.compose.service=hangar --format '{{.Names}}' | head -1)
+if [ -z "$room" ]; then echo "running:  no hangar room is up"; exit 0; fi
+theirs=$(docker exec "$room" sh -c 'sed -n "s/.*\"scripts\": \"\([0-9a-f]*\)\".*/\1/p" /run/hangar/status.json' 2>/dev/null || true)
+[ -n "$theirs" ] || theirs=$(docker logs "$room" 2>&1 | sed -n 's/.*hangar up: scripts \([0-9a-f]*\),.*/\1/p' | tail -1)
+echo "running:  ${theirs:-unknown (an image from before the hash)}  ($room)"
+if [ "$theirs" = "$mine" ]; then
+    echo "CURRENT: the room runs this checkout's scripts"
+else
+    echo "STALE: the room runs other scripts -- build the image again and raise the room:"
+    echo "  cd $kit && docker build -q -f hangar/Dockerfile -t gornskew/hangar:trial . && cd .. && ./basilisk up hangar"
+    exit 1
+fi
