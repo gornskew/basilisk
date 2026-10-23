@@ -52,6 +52,23 @@
 # gate lifts a stop from an earlier month when the new month brings a free
 # allowance, so a free-tier application comes back each month rather than
 # counting toward retirement.)
+#
+# PRIVATE SESSIONS (the trust ladder's rung 2): the private front (demos
+# private.lisp, on a lab room of this ship) writes a request into
+# $FC_DIR/spool/requests/<id>.json -- {id pl-<10 hex>, wallet, token} --
+# once the gate says the author's standing opens private sessions.  The
+# loop raises a VM for it restored from the engine's snapshot and activated
+# as a session (hosted up, MODE=session: the whole lab, behind the token),
+# registers <id>.$APPS_DOMAIN with the chief, and answers in
+# spool/ready/<id>.json ({state up|failed|ended, host, reason}), which the
+# front reads.  The author's work lives on ONE disk per author
+# ($FC_DIR/authors/<hash of the wallet>.data.ext4, hard-linked as the VM's
+# own while it flies), so their private archive carries over from session
+# to session; one session per author at a time.  A session ends when its
+# lab has been idle HANGAR_SESSION_IDLE (7200 s), has flown
+# HANGAR_SESSION_MAX (43200 s), or its request is withdrawn; at most
+# HANGAR_MAX_SESSIONS (4) fly at once, the rest wait.  HANGAR_SESSION_LAB
+# (prompt-lab-private) is their lab's name at the gate.
 set -u
 FC_DIR=${FC_DIR:-/fc}; DEPLOYMENTS=${DEPLOYMENTS:-/deployments}
 APPS_DOMAIN=${APPS_DOMAIN:-gen.works}; GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
@@ -59,6 +76,9 @@ LAB=${LAB:-prompt-lab}; INTERVAL=${HANGAR_INTERVAL:-15}; ENGINE=${HANGAR_ENGINE:
 MAX_VMS=${HANGAR_MAX_VMS:-0}   # 0: as many as the room's memory cap allows; a dev ship says 2
 SNAPSHOT=${HANGAR_SNAPSHOT:-1}
 RETIRE_DAYS=${HANGAR_RETIRE_DAYS:-30}; STOPPED_DAYS=${HANGAR_STOPPED_DAYS:-30}
+SPOOL=$FC_DIR/spool; MAX_SESSIONS=${HANGAR_MAX_SESSIONS:-4}
+SESSION_IDLE=${HANGAR_SESSION_IDLE:-7200}; SESSION_MAX=${HANGAR_SESSION_MAX:-43200}
+SESSION_LAB=${HANGAR_SESSION_LAB:-prompt-lab-private}
 ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=${CYCLOPS_ADMIN_SECRET:-}
 # THE FEED: a lab elsewhere serves its deployed root to this hangar
 # (demos deploy.lisp, <prefix>/api/hangar/deployments and /deployment,
@@ -244,6 +264,76 @@ expire_retired() {   # retired disks past RETIRE_DAYS go; their extracted record
     done
 }
 
+# --- private sessions (the header says what and why) --------------------------
+session_prefix() { if [ "$ENGINE" = solid ]; then echo /prompt-lab/solid; else echo /prompt-lab; fi; }
+session_gport() { if [ "$ENGINE" = solid ]; then echo 9088; else echo 9080; fi; }
+sessions_running() { local n=0 f; for f in "$run"/pl-*.pid; do [ -f "$f" ] && kill -0 "$(cat "$f")" 2>/dev/null && n=$((n+1)); done; echo $n; }
+author_disk() { echo "$FC_DIR/authors/$(printf '%s' "$1" | sha256sum | cut -c1-16).data.ext4"; }   # author_disk WALLET
+session_answer() {   # session_answer ID STATE [REASON]: the front's word on the request
+    local tmp=$SPOOL/ready/.$1.json
+    jq -cn --arg id "$1" --arg s "$2" --arg r "${3:-}" --arg h "$1.$APPS_DOMAIN" \
+       '{id:$id, state:$s, host:$h, reason:$r, at:(now|floor)}' > "$tmp" && chmod 644 "$tmp" && mv "$tmp" "$SPOOL/ready/$1.json"
+}
+session_end() {   # session_end ID WHY: the VM down, the author's disk kept, the host gone
+    local id=$1 why=$2 pid; pid=$(cat "$run/$id.pid" 2>/dev/null || true)
+    $HOSTED down "$id" >/dev/null 2>&1 || true; vm_gone "$pid"
+    register "$id" gone
+    rm -f "$FC_DIR/$id.data.ext4" "$run/$id.wallet"      # the link; the author's disk stays
+    session_answer "$id" ended "$why"; rm -f "$SPOOL/requests/$id.json"
+    log "$id: the private session ended ($why)"
+}
+
+sessions() {   # one pass over the private sessions' spool
+    [ -d "$SPOOL/requests" ] || return 0
+    local f id wallet token port disk other idle busy age why answer
+    for f in "$SPOOL/requests"/*.json; do
+        [ -f "$f" ] || continue
+        id=$(jq -r '.id // empty' "$f" 2>/dev/null); wallet=$(jq -r '.wallet // empty' "$f" 2>/dev/null); token=$(jq -r '.token // empty' "$f" 2>/dev/null)
+        if ! [[ $id =~ ^pl-[0-9a-f]{10}$ && $wallet =~ ^[0-9a-f]{24}$ && $token =~ ^[0-9a-f]{32}$ && $(basename "$f" .json) = "$id" ]]; then
+            log "a malformed session request ($(basename "$f")) dropped"; rm -f "$f"; continue
+        fi
+        [ -f "$SPOOL/ready/$id.json" ] && continue          # answered already
+        vm_running "$id" && continue
+        # one session per author: their disk cannot be mounted twice
+        other=$(grep -lx "$wallet" "$run"/pl-*.wallet 2>/dev/null | head -1)
+        if [ -n "$other" ]; then
+            session_answer "$id" failed "this author has a private session open already: $(basename "$other" .wallet)"; continue
+        fi
+        if [ "$(sessions_running)" -ge "$MAX_SESSIONS" ]; then
+            [ -f "$run/$id.waiting" ] || { log "$id: the hangar holds $MAX_SESSIONS private sessions; waiting"; touch "$run/$id.waiting"; }
+            continue
+        fi
+        rm -f "$run/$id.waiting"
+        disk=$(author_disk "$wallet"); mkdir -p "$FC_DIR/authors"
+        if [ ! -f "$disk" ]; then
+            $HOSTED blank "au-$id" >/dev/null && mv "$FC_DIR/au-$id.data.ext4" "$disk" && log "$id: a new author's disk"
+        fi
+        ln -f "$disk" "$FC_DIR/$id.data.ext4"; echo "$wallet" > "$run/$id.wallet"
+        port=$(next_port)
+        log "$id: a private session; raising its VM on :$port"
+        local out rc; out=$(MODE=session TOKEN=$token LAB=$SESSION_LAB $HOSTED up "$id" "$port" 2>&1); rc=$?
+        [ -z "$out" ] || printf '%s\n' "$out" | sed 's/^/  /'
+        if [ "$rc" = 0 ] && vm_running "$id"; then
+            register "$id" up "$port" "A private session"
+            session_answer "$id" up
+        else
+            session_end "$id" "its VM did not come up"; session_answer "$id" failed "its VM did not come up"
+        fi
+    done
+    for f in "$run"/pl-*.pid; do
+        [ -f "$f" ] || continue; id=$(basename "$f" .pid)
+        vm_running "$id" || continue
+        register "$id" up "$(cat "$run/$id.port")" "A private session"   # every pass, as the deployments' are
+        answer=$(curl -s --max-time 3 "http://$($HOSTED ip "$id"):$(session_gport)$(session_prefix)/api/vm-idle")
+        idle=$(jq -r '.idle // empty' <<<"$answer" 2>/dev/null); busy=$(jq -r '.busy // false' <<<"$answer" 2>/dev/null)
+        age=$(( $(date +%s) - $(stat -c %Y "$f") )); why=""
+        [ -f "$SPOOL/requests/$id.json" ] || why="its request was withdrawn"
+        [ -n "$idle" ] && [ "$busy" != true ] && [ "$idle" -ge "$SESSION_IDLE" ] && why="idle $idle s"
+        [ "$age" -ge "$SESSION_MAX" ] && why="open $age s, the longest a session flies"
+        [ -z "$why" ] || session_end "$id" "$why"
+    done
+}
+
 fleet() {   # one pass over the deployed root
     local dir name kind engine title hosting stopped since seen="" f port
     for dir in "$DEPLOYMENTS"/*/*/; do
@@ -293,10 +383,12 @@ fleet() {   # one pass over the deployed root
                     else $HOSTED disk "$name" "$dir" 2>&1 | sed 's/^/  /'; fi
                 fi
                 log "$name: raising its VM on :$port"
-                if $HOSTED up "$name" "$port" 2>&1 | sed 's/^/  /' && vm_running "$name"; then
+                # its status, not sed's: a raise that died while its VM lived counted as up
+                local out rc; out=$($HOSTED up "$name" "$port" 2>&1); rc=$?; [ -z "$out" ] || printf '%s\n' "$out" | sed 's/^/  /'
+                if [ "$rc" = 0 ] && vm_running "$name"; then
                     register "$name" up "$port" "$title"
                 else
-                    log "$name: the VM did not come up"
+                    log "$name: the VM did not come up"; $HOSTED down "$name" >/dev/null 2>&1 || true
                 fi
             else
                 register "$name" up "$port" "$title"
@@ -307,7 +399,7 @@ fleet() {   # one pass over the deployed root
     for f in "$run"/*.pid "$run"/*.paused; do
         [ -f "$f" ] || continue
         name=$(basename "$f"); name=${name%.pid}; name=${name%.paused}
-        case $name in tpl-*) continue ;; esac     # a template being made (hosted template): not a deployment's VM
+        case $name in tpl-*|pl-*) continue ;; esac     # a template being made, a private session: not a deployment's VM
         case " $seen " in *" $name "*) ;; *)
             log "$name: no longer deployed; its VM goes"
             local gone_pid; gone_pid=$(cat "$run/$name.pid" 2>/dev/null || true)
@@ -321,6 +413,7 @@ fleet() {   # one pass over the deployed root
         for f in "$FC_DIR"/*.data.ext4; do
             [ -f "$f" ] || continue
             name=$(basename "$f" .data.ext4)
+            case $name in pl-*|au-*) continue ;; esac      # a private session's link to its author's disk
             case " $seen " in *" $name "*) continue ;; esac
             vm_running "$name" && continue
             retire_disk "$name"
@@ -335,7 +428,15 @@ log "hangar up: scripts $SCRIPTS, lab $LAB, gate $GATE_URL, hosts *.$APPS_DOMAIN
 [ -n "$ADMIN_SECRET" ] || log "WARNING: no CYCLOPS_ADMIN_SECRET; the VMs fly unregistered and no host reaches them"
 # a fresh room: nothing from a previous life is running, and the ports are
 # the room's to give out again (a stale port file once put two VMs on one)
-rm -f "$run"/*.pid "$run"/*.sock "$run"/*.port "$run"/*.engine "$run"/*.paused "$run"/*.waiting "$run"/next-port "$run"/.template-* "$run"/.rootfs-warned
+rm -f "$run"/*.pid "$run"/*.sock "$run"/*.port "$run"/*.engine "$run"/*.paused "$run"/*.waiting "$run"/*.wallet "$run"/next-port "$run"/.template-* "$run"/.rootfs-warned
+# the private sessions' spool, written by the front's room (another user): sessions
+# that were flying when the room went down are over, their links to authors' disks with them
+mkdir -p "$SPOOL/requests" "$SPOOL/ready" && chmod 1777 "$SPOOL" "$SPOOL/requests" "$SPOOL/ready"
+for f in "$SPOOL/ready"/pl-*.json; do
+    [ -f "$f" ] && [ "$(jq -r .state "$f" 2>/dev/null)" = up ] || continue
+    id=$(basename "$f" .json); rm -f "$FC_DIR/$id.data.ext4" "$SPOOL/requests/$id.json"
+    session_answer "$id" ended "the hangar restarted"
+done
 ip link show 2>/dev/null | sed -n 's/^[0-9]*: \(tpl-[^:@]*\|host[0-9]*\)[:@].*/\1/p' | while read -r t; do ip link del "$t" 2>/dev/null; done
 status_json
 [ -n "$FEED_URL" ] && { DEPLOYMENTS=$FC_DIR/feed; log "the deployed root is the lab's feed at $FEED_URL, mirrored in $DEPLOYMENTS"; }
@@ -343,7 +444,7 @@ while :; do
     # whether this pass read the deployed root (the feed answered a list, or the mount is there)
     if [ -n "$FEED_URL" ]; then if feed_sync; then ROOT_OK=1; else ROOT_OK=0; fi
     elif [ -d "$DEPLOYMENTS" ]; then ROOT_OK=1; else ROOT_OK=0; fi
-    if [ -f "$(rootfs)" ]; then template; fleet
+    if [ -f "$(rootfs)" ]; then template; fleet; sessions
     else [ -f "$run/.rootfs-warned" ] || { log "no $(rootfs): make it with hangar/make-rootfs on the host"; touch "$run/.rootfs-warned"; }; fi
     status_json
     sleep "$INTERVAL" & wait $!

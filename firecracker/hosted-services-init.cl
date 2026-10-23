@@ -46,6 +46,18 @@
 (ql:register-local-projects)
 (ql:quickload :prompt-lab)
 
+;; the lab's page (the sheet) as well as its runtime: one snapshot serves a
+;; deployment's runtime and a private session's full lab (hosted-activate!
+;; :mode :session).  Only where the image's gwl has the Datastar layer and
+;; its sluice the tiles, as the stacks' inits load it.
+(handler-case
+    (let ((mixin (or (find-symbol "DATASTAR-MIXIN" :gwl) (find-symbol "datastar-mixin" :gwl)))
+          (tiles (and (find-package :sluice)
+                      (or (find-symbol "NORMALIZE-TILES" :sluice) (find-symbol "normalize-tiles" :sluice)))))
+      (when (and mixin tiles (fboundp tiles))
+        (ql:quickload :prompt-lab-sheet)))
+  (error (e) (format t "~&[hosted-init] the lab's sheet not loaded (private sessions unavailable): ~a~%" e)))
+
 (defun hosted-case (name)
   "NAME, written in upper case, as this Lisp's reader names symbols: GDL's
 Allegro runs in modern (case-sensitive, lower-case) mode, and an
@@ -99,6 +111,70 @@ the gate, the lab's name there, the password on the lab's own doors."
   (with-open-file (out "/run/hosted/up" :direction :output :if-exists :supersede :if-does-not-exist :create)
     (write-line "up" out)))
 
+(defvar *hosted-activated-at* nil "When this clone was activated (universal time).")
+
+(defun hosted-configure-session (gate lab token)
+  "A PRIVATE SESSION's lab: the whole lab, page and agent, for one trusted
+author (the trust ladder's rung 2), its sessions, archive and files on the
+VM's own disk, behind TOKEN -- the lab's password, which the private front
+hands the author's browser and nobody else -- with no human check (the
+front checked the author's standing) and no public listing beyond the
+VM.  Tolls are test payments here, for the author's own previews; deploys
+from a private session are a later rung."
+  (ensure-directories-exist "/data/prompt-lab/")
+  (ensure-directories-exist "/data/archive/")
+  (ensure-directories-exist "/data/prompt-lab-deployed/")
+  (hosted-set "*WORKSPACE-ROOT*" "/data/prompt-lab/")
+  (hosted-set "*ARCHIVE-ROOT*" "/data/archive/")
+  (hosted-set "*DEPLOYED-ROOT*" "/data/prompt-lab-deployed/")
+  (hosted-set "*PASSWORD-FILE*" nil)
+  (hosted-set "*PASSWORD*" token)
+  (hosted-set "*UNLOCK-TOKEN*" nil)
+  (hosted-set "*BROWSING?*" t)
+  (hosted-set "*TURNSTILE-SITE-KEY*" nil)
+  (hosted-set "*DEPLOYMENTS?*" nil)
+  (hosted-set "*TOLL-PROVIDER*" :test)
+  (hosted-set "*DEPLOYMENT-PAYMENTS?*" nil)
+  (dolist (flag '("*FREE-LAB?*" "*AUTHOR-KEYS?*" "*CLOSED-SOURCE?*"))
+    (when (hosted-find flag :prompt-lab) (hosted-set flag nil)))
+  (when (hosted-find "*BOOKS?*" :prompt-lab) (hosted-set "*BOOKS?*" t))
+  (hosted-set "*MESSAGES-URL*" (or gate "http://transporter-room/llm/messages"))
+  (when (and lab (hosted-find "*LAB-NAME*" :prompt-lab)) (hosted-set "*LAB-NAME*" lab)))
+
+(defun hosted-idle-door (req ent)
+  "GET <prefix>/api/vm-idle: how long this private session's VM has been idle
+(seconds since its last session was used, or since activation when none
+was), how many sessions it holds and whether one is working -- what the
+hangar reads to take an idle VM down."
+  (let* ((now (get-universal-time))
+         (last (or *hosted-activated-at* now))
+         (count 0) (busy nil))
+    (maphash (lambda (id s)
+               (declare (ignore id))
+               (incf count)
+               (setq last (max last (funcall (hosted-lab-symbol "SESSION-LAST-USED") s)))
+               (when (funcall (hosted-lab-symbol "SESSION-BUSY?") s) (setq busy t)))
+             (symbol-value (hosted-lab-symbol "*SESSIONS*")))
+    (net.aserve:with-http-response (req ent :content-type "application/json")
+      (net.aserve:with-http-body (req ent)
+        (format net.html.generator:*html-stream* "{\"idle\": ~d, \"sessions\": ~d, \"busy\": ~:[false~;true~]}"
+                (- now last) count busy)))))
+
+(defun hosted-publish-session ()
+  (funcall (hosted-lab-symbol "PUBLISH-PROMPT-LAB!"))
+  (let ((sheet (hosted-find "PUBLISH-LAB-SHEET!" :prompt-lab)))
+    (when (and sheet (fboundp sheet)) (funcall sheet)))
+  (let ((path (format nil "~a/api/vm-idle" (symbol-value (hosted-lab-symbol "*URL-PREFIX*")))))
+    (gwl:with-all-servers (server)
+      (net.aserve:publish :path path :server server :function 'hosted-idle-door)))
+  (format t "~&[hosted-init] hosted runtime up at ~a: a private session; gate ~a; lab ~a~%"
+          (symbol-value (hosted-lab-symbol "*URL-PREFIX*"))
+          (symbol-value (hosted-lab-symbol "*MESSAGES-URL*"))
+          (symbol-value (hosted-lab-symbol "*LAB-NAME*")))
+  (finish-output)
+  (with-open-file (out "/run/hosted/up" :direction :output :if-exists :supersede :if-does-not-exist :create)
+    (write-line "up" out)))
+
 (defun hosted-urandom-integer (octets)
   (or (ignore-errors
        (with-open-file (in "/dev/urandom" :element-type '(unsigned-byte 8))
@@ -114,11 +190,13 @@ VM generation counter reseeds on restore)."
     (when (and iid (boundp iid)) (setf (symbol-value iid) (make-random-state t))))
   (dotimes (i (mod (hosted-urandom-integer 2) 4096)) (random 2)))
 
-(defun hosted-activate! (&key gate lab lock ip gw epoch)
+(defun hosted-activate! (&key gate lab lock ip gw epoch mode token)
   "Activate a clone restored from the template's snapshot.  Hands the
 guest's init its new address, clock and disk, and returns at once (the
 address is about to move under the caller); a thread of its own waits for
-the disk, then configures and publishes.  /run/hosted/up says when."
+the disk, then configures and publishes.  /run/hosted/up says when.
+MODE :session makes it a private session's full lab behind TOKEN
+(hosted-configure-session); otherwise a deployment's runtime."
   ;; the template's lisply secret is every clone's until now: this one's
   ;; becomes a fresh one nobody holds (the caller is already through)
   (let ((secret (hosted-find "*LISPLY-SECRET*" :gendl-lisply)))
@@ -138,7 +216,13 @@ the disk, then configures and publishes.  /run/hosted/up says when."
                  until (or (probe-file "/run/hosted/mounted") (probe-file "/run/hosted/mount-failed"))
                  do (sleep 0.1))
            (if (probe-file "/run/hosted/mounted")
-               (progn (hosted-reseed) (hosted-configure gate lab lock) (hosted-publish))
+               ;; the guest's init set the clock before it mounted the disk: only now
+               ;; does this clone's time say the present (the snapshot's moment before)
+               (progn (setq *hosted-activated-at* (get-universal-time))
+                      (hosted-reseed)
+                      (if (eq mode :session)
+                          (progn (hosted-configure-session gate lab token) (hosted-publish-session))
+                          (progn (hosted-configure gate lab lock) (hosted-publish))))
                (format t "~&[hosted-init] activation: the deployment's disk did not mount~%")))
        (error (e) (format t "~&[hosted-init] activation failed: ~a~%" e))))
    :name "hosted activation")

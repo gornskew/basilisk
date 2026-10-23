@@ -391,6 +391,95 @@ stopped as of 40 days back grounded and its disk retired in one pass
 ('since 2026-09-13'); hosting added, the same disk back (the same inode)
 and the VM up in 1.4 s.
 
+### Private sessions (2026-10-23)
+
+The trust ladder's second rung: an author whose key the gate holds at
+the TRUSTED standing opens a private lab of their own -- the whole
+prompt lab, page and agent, in a microVM restored from the same
+snapshot as the apps.  The pieces:
+
+- **The front** (the lab system's `private.lisp`, published on a lab
+  room of the hangar's ship -- `lab.gen.works`, whose root the chief
+  sends to `/own-lab`; not `/private...`, which every scanner list
+  drops).  It asks the gate for the key's standing, refuses below
+  trusted in words, writes a request into the hangar's spool
+  (`/fc/spool/requests/pl-<id>.json`: id, wallet, a 32-hex token), polls
+  the hangar's answer (`spool/ready/<id>.json`), and hands the browser
+  in: a form posting the token to the session's
+  `<host>/prompt-lab/api/unlock`, which sets the lab's cookie and
+  lands on `/prompt-lab?wallet=<key>`.  One live session per author.
+- **The hangar** raises a VM per request (`hosted up` with
+  `MODE=session TOKEN=...`: restored only, never booted cold), registers
+  `pl-<id>.$APPS_DOMAIN`, and ends it when its lab has been idle
+  `HANGAR_SESSION_IDLE` (7200 s), has flown `HANGAR_SESSION_MAX`
+  (43200 s) or its request is withdrawn (the front's `api/close`); at
+  most `HANGAR_MAX_SESSIONS` (4) fly, the rest wait.
+- **The guest** (`hosted-activate! :mode :session`): the lab's roots on
+  `/data`, its password the token, browsing on for the author's own
+  archive, no human check, tolls as test payments, deploys off for
+  now; `<prefix>/api/vm-idle` says how long it has been idle.
+- **The author's disk**: one per author,
+  `/fc/authors/<sha256 of the key, 16 hex>.data.ext4`, hard-linked as
+  the VM's own while it flies (a symlink would fail the size check a
+  restore makes), so the private archive carries over from one
+  session to the next.  It is kept when a session ends.
+
+Proven on narad: a key at author refused in words, a malformed one
+refused, a trusted one opened (`pl-d68c4c505e`, restored in 4.05 s); a
+stranger at the session's host got the lock form, the token the cookie
+and the lab; a real build inside it drew 9.4 credits against the
+author's key at the gate; closed through the front, the VM down, the
+link gone, the disk kept; a second session for the same author listed
+the first one's work in its archive.
+
+### Porting the hangar to another host (balaram's twin, a cloud machine)
+
+Nothing here is balaram's: a host's specifics are its stack's articles
+and its `.secrets`.  A new host needs:
+
+1. **KVM.**  Bare metal, or a cloud machine with nested
+   virtualization: a bare-metal instance, or a VM type that offers it
+   (enabled per instance where the provider requires).  `/dev/kvm`
+   readable.  **No other hypervisor's driver loaded** (VirtualBox's
+   `vboxdrv`, VMware's `vmmon`): they take VT-x per CPU and KVM fails
+   VM entry under them (`KVM_EXIT_FAIL_ENTRY`, `kvm_intel ... vmread
+   failed`; balaram, 2026-10-22).
+2. **Docker and checkouts:** basilisk (this kit), demos and monocle
+   (the rootfs and the front read them), the host's stack overlay.
+3. **The gate's tunnel:** a WireGuard spoke to the gate's host
+   (`hull/wg-spoke.sh --split`), so the hangar, its VMs and the front
+   reach the gate at its tunnel address; the gate's peer list admits
+   the spoke's address.
+4. **The articles** -- copy balaram-stack's: the `:hangar-chief` posting
+   (devices, caps, sysctls, `/fc`, the environment: `GATE_URL`, `LAB`,
+   `APPS_DOMAIN`, `CYCLOPS_ADMIN_URL`, `HANGAR_*`), the bridge's spool
+   mount and the front's block in its init, and the chief's two rules:
+   `lab.gen.works` to the front, `*.gen.works` as the `:hangar` rule.
+   `cyclops.env` carries the chief's admin secret, which the hangar
+   registers with.  Generate the compose file from the articles, then
+   `./install`.
+5. **The names:** `*.gen.works` (and so `lab.gen.works` and every
+   `pl-<id>`) must reach this host's chief -- today Cloudflare sends
+   them to sally, whose chief forwards the wildcard to the hangar's
+   host.
+6. **Raise, in order:** build the image (`hangar/Dockerfile`), make the
+   rootfs (`hangar/make-rootfs <HANGAR_DIR>`), `./basilisk up hangar`
+   (it makes the spool and the template), then the rest of the ship.
+7. **Check:** `hangar/scripts-hash` says CURRENT; the log shows the
+   snapshot made; a trusted key opens a session at
+   `https://lab.gen.works/?wallet=<key>`.
+
+| Setting | Default | What |
+|---|---|---|
+| `HANGAR_ENGINE` | gendl | the engine whose rootfs this room flies |
+| `HANGAR_MAX_VMS` | 0 | deployments and sessions together (0: the room's memory cap) |
+| `HANGAR_MAX_SESSIONS` | 4 | private sessions at once |
+| `HANGAR_SESSION_IDLE` / `_MAX` | 7200 / 43200 s | when a session ends |
+| `HANGAR_SESSION_LAB` | prompt-lab-private | the sessions' lab name at the gate |
+| `HANGAR_RETIRE_DAYS` / `HANGAR_STOPPED_DAYS` | 30 / 30 | the un-hosting rule |
+| `HANGAR_SNAPSHOT` | 1 | restore from the engine's template |
+| `FC_CPUS` / `FC_PIN` | unset | hold VMs to chosen CPUs |
+
 **Not here yet:** the jailer; a hangar flying both engines at once
 (one room per engine for now); a read-only shared rootfs in place of
 each clone's copy.

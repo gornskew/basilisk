@@ -7,6 +7,8 @@
 #
 #   hosted disk NAME [DIR]       NAME.data.ext4 (64 MiB) from the deployment's directory,
 #                                DIR or /deployments/<engine>/NAME
+#   hosted blank NAME            NAME.data.ext4 empty (a private session's disk: its sessions,
+#                                archive and files), the size every restored VM's disk is
 #   hosted template [ENGINE]     boot ENGINE's rootfs as a TEMPLATE (the lab loaded, no
 #                                deployment), snapshot it under snap/ENGINE, stop it
 #   hosted up NAME [PORT]        NAME's VM, published on PORT of this container:
@@ -25,7 +27,9 @@
 # its snapshot, so every clone has them), GATE_URL (the gate's Messages
 # door as the VM reaches it), LAB (the lab's name at the gate: the SAME
 # name the lab itself is configured with, its *lab-name*), LOCK (the lab's
-# own doors' password in the VM; a fresh one per VM by default),
+# own doors' password in the VM; a fresh one per VM by default), MODE
+# (deployment, or session: a PRIVATE SESSION's full lab, restored only, its
+# password TOKEN -- what the private front hands the author's browser),
 # FC_CPUS (the host CPUs a VM may run on, as taskset reads a list:
 # "0-15"; unset, any) and FC_PIN ("one": each VM held to a single CPU
 # of FC_CPUS, chosen by its name, so its vCPU never moves; unset, the
@@ -128,7 +132,9 @@ cpus_of() {  # cpus_of NAME: the CPU list NAME's firecracker is held to, or noth
 start_fc() {  # start_fc NAME VMDIR: firecracker for NAME in VMDIR; its pid in run/NAME.pid
     local name=$1 vmdir=$2 s=$run/$1.sock cpus; rm -f "$s"; cpus=$(cpus_of "$1")
     # exec in the subshell, so $! is firecracker's own pid; its threads inherit the affinity
-    (cd "$vmdir" && exec ${cpus:+taskset -c "$cpus"} "$bin" --api-sock "$s" --id "$name" </dev/null >"$run/$name.console" 2>&1) &
+    # fd 9 is the net lock: a firecracker that inherited it held the lock for its
+    # whole life whenever a raise died before unlocking, and every raise after waited
+    (cd "$vmdir" && exec 9>&- && exec ${cpus:+taskset -c "$cpus"} "$bin" --api-sock "$s" --id "$name" </dev/null >"$run/$name.console" 2>&1) &
     echo $! > "$run/$name.pid"
     wait_sock "$s"
 }
@@ -174,6 +180,14 @@ cmd_disk() {
     echo "$name: data disk from $src ($(du -sh "$FC_DIR/$name.data.ext4" | cut -f1) used of $DATA_SIZE)"
 }
 
+cmd_blank() {   # a private session's disk: empty but for the lab's directories, owned by the image's user
+    local name=${1:?name} tree=$FC_DIR/tree-${1:?name}
+    rm -rf "$tree"; mkdir -p "$tree/prompt-lab" "$tree/archive" "$tree/prompt-lab-deployed"; chown -R 1000:1000 "$tree"
+    rm -f "$FC_DIR/$name.data.ext4"; truncate -s "$DATA_SIZE" "$FC_DIR/$name.data.ext4"
+    mkfs.ext4 -q -F -L data -d "$tree" "$FC_DIR/$name.data.ext4"; rm -rf "$tree"
+    echo "$name: a blank disk ($DATA_SIZE)"
+}
+
 # --- the template and its snapshot ----------------------------------------
 template_gone() {   # the template's VM and tap, however cmd_template ends
     [ -n "${TEMPLATE_VM:-}" ] || return 0
@@ -196,7 +210,7 @@ cmd_template() {
     cp --sparse=always "$rootfs" "$vmdir/rootfs.ext4"
     cp --sparse=always "$FC_DIR/template-data.ext4" "$vmdir/data.ext4"
     ln -sfn "$kernel" "$vmdir/vmlinux"
-    exec 9>"$run/net.lock"; flock -x 9          # 172.16.0.1 is one VM's at a time
+    exec 9>"$run/net.lock"; flock -x -w 120 9 || die "the net lock is held past 120 s"   # 172.16.0.1 is one VM's at a time
     tap_make "$name" "$TEMPLATE_GW/30"
     # however this ends, the template's VM and tap go with it
     TEMPLATE_VM=$name; trap template_gone EXIT
@@ -235,6 +249,11 @@ cmd_up() {
     local name=${1:?name} port=${2:-9080}
     local gport; gport=$(guest_port_of "$ENGINE")
     [ -x "$bin" ] || die "no firecracker"
+    if [ "${MODE:-deployment}" = session ]; then
+        case ${TOKEN:-} in ''|*[!0-9a-f]*) die "$name: a session wants TOKEN, hex" ;; esac
+        [ -f "$FC_DIR/$name.data.ext4" ] || cmd_blank "$name"
+        snapshot_fresh "$ENGINE" || die "$name: a private session is restored from the $ENGINE snapshot, and there is none fresh"
+    fi
     [ -f "$FC_DIR/$name.data.ext4" ] || cmd_disk "$name"
     [ -r /dev/kvm ] || die "/dev/kvm not accessible"
     echo "$port" > "$run/$name.port"; echo "$ENGINE" > "$run/$name.engine"
@@ -253,7 +272,7 @@ up_restored() {  # the lab already loaded: restore, activate, publish
     cp --reflink=auto --sparse=always "$snap/rootfs.ext4" "$vmdir/rootfs.ext4"
     ln -sfn "$FC_DIR/$name.data.ext4" "$vmdir/data.ext4"
     local t1; t1=$(now)
-    exec 9>"$run/net.lock"; flock -x 9
+    exec 9>"$run/net.lock"; flock -x -w 120 9 || die "$name: the net lock is held past 120 s"
     tap_make "host$slot" "$TEMPLATE_GW/30"
     start_fc "$name" "$vmdir"
     local s=$run/$name.sock
@@ -261,7 +280,7 @@ up_restored() {  # the lab already loaded: restore, activate, publish
     local t2; t2=$(now)
     wait_http "http://$TEMPLATE_GUEST:$gport/lisply/ping-lisp" 20 || { flock -u 9; cmd_down "$name"; die "$name: the restored clone does not answer"; }
     local code answer
-    code="(gdl-user::hosted-activate! :gate \"$(guest_gate_url "$GATE_URL")\" :lab \"$LAB\" :lock \"$LOCK\" :ip \"$(guest_ip "$slot")\" :gw \"$(tap_ip "$slot")\" :epoch $(date +%s))"
+    code="(gdl-user::hosted-activate! :gate \"$(guest_gate_url "$GATE_URL")\" :lab \"$LAB\" :lock \"$LOCK\" :ip \"$(guest_ip "$slot")\" :gw \"$(tap_ip "$slot")\" :epoch $(date +%s)$( [ "${MODE:-deployment}" = session ] && printf ' :mode :session :token "%s"' "$TOKEN" || true))"
     answer=$(curl -s --max-time 5 -X POST -H 'Content-Type: application/json' -H "X-Lisply-Secret: $(cat "$snap/lisply-secret")" \
                   -d "$(jq -cn --arg c "$code" '{code: $c}')" "http://$TEMPLATE_GUEST:$gport/lisply/lisp-eval" || true)
     case $answer in
@@ -365,6 +384,6 @@ cmd_fresh() { snapshot_fresh "${1:-$ENGINE}"; }       # exit 0 when ENGINE's sna
 
 cmd=${1:-}; shift || true
 case $cmd in
-    disk|template|up|down|status|watch|ip|fresh) "cmd_$cmd" "$@" ;;
-    *) sed -n '2,33p' "$0"; exit 1 ;;
+    disk|blank|template|up|down|status|watch|ip|fresh) "cmd_$cmd" "$@" ;;
+    *) sed -n '2,/^set -euo/p' "$0" | sed '$d'; exit 1 ;;
 esac
