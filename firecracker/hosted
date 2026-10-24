@@ -29,7 +29,11 @@
 # name the lab itself is configured with, its *lab-name*), LOCK (the lab's
 # own doors' password in the VM; a fresh one per VM by default), MODE
 # (deployment, or session: a PRIVATE SESSION's full lab, restored only, its
-# password TOKEN -- what the private front hands the author's browser),
+# password TOKEN -- what the private front hands the author's browser;
+# with MONETIZE=1 and FRONT, the private front's session doors as the
+# guest reaches them, its deploys go there: the monetizing rung), EGRESS
+# (gate, the default: a guest reaches the gate and FRONT and nothing else;
+# open: whatever the hangar reaches),
 # FC_CPUS (the host CPUs a VM may run on, as taskset reads a list:
 # "0-15"; unset, any) and FC_PIN ("one": each VM held to a single CPU
 # of FC_CPUS, chosen by its name, so its vCPU never moves; unset, the
@@ -107,16 +111,66 @@ tap_make() {  # tap_make NAME ADDRESS/BITS
 nat_up() {  # nat_up NAME PORT GUESTPORT: NAT out for the guest, DNAT in from the hangar's PORT
     local slot; slot=$(slot_of "$1"); local g; g=$(guest_ip "$slot")
     iptables -t nat -C POSTROUTING -s "$g/32" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s "$g/32" -j MASQUERADE
-    iptables -t nat -A PREROUTING -p tcp --dport "$2" -j DNAT --to-destination "$g:$3"
+    # only what is addressed to the hangar itself: without the address type, a
+    # guest's own connection to any host on PORT was taken to this VM
+    iptables -t nat -A PREROUTING -p tcp --dport "$2" -m addrtype --dst-type LOCAL -j DNAT --to-destination "$g:$3"
     iptables -t nat -A OUTPUT -o lo -p tcp --dport "$2" -j DNAT --to-destination "$g:$3"
     iptables -C FORWARD -d "$g/32" -p tcp --dport "$3" -j ACCEPT 2>/dev/null || iptables -A FORWARD -d "$g/32" -p tcp --dport "$3" -j ACCEPT
-    iptables -C FORWARD -s "$g/32" -j ACCEPT 2>/dev/null || iptables -A FORWARD -s "$g/32" -j ACCEPT
+    egress_up "$1" "$g"
 }
 net_down() {  # net_down NAME PORT GUESTPORT
     local slot; slot=$(slot_of "$1"); local g; g=$(guest_ip "$slot")
-    iptables -t nat -D PREROUTING -p tcp --dport "$2" -j DNAT --to-destination "$g:$3" 2>/dev/null || true
+    iptables -t nat -D PREROUTING -p tcp --dport "$2" -m addrtype --dst-type LOCAL -j DNAT --to-destination "$g:$3" 2>/dev/null || true
+    iptables -t nat -D PREROUTING -p tcp --dport "$2" -j DNAT --to-destination "$g:$3" 2>/dev/null || true   # the form before the address type
     iptables -t nat -D OUTPUT -o lo -p tcp --dport "$2" -j DNAT --to-destination "$g:$3" 2>/dev/null || true
+    egress_down "$1"
     ip link del "host$slot" 2>/dev/null || true
+}
+
+# WHAT A GUEST MAY REACH.  Its application is a stranger's code, and the
+# ship's network beyond the hangar holds rooms whose doors answer anyone
+# aboard (a Lisp's eval door among them).  With EGRESS=gate (the default) a
+# guest reaches the gate's address and port and, for a private session, the
+# front's (FRONT), and answers what is asked of it; nothing else.
+# EGRESS=open lets it reach everything the hangar reaches.  The rules
+# applied are kept in run/NAME.egress so that down takes exactly those away.
+url_hostport() {  # url_hostport URL -> "HOST PORT"
+    local scheme=${1%%://*} rest=${1#*://} host port
+    rest=${rest%%/*}; host=${rest%%:*}; port=${rest##*:}
+    [ "$port" = "$rest" ] && { if [ "$scheme" = https ]; then port=443; else port=80; fi; }
+    echo "$host $port"
+}
+egress_up() {  # egress_up NAME GUEST-ADDRESS
+    local name=$1 g=$2 f=$run/$1.egress hp rule u
+    egress_down "$name"
+    local rules=()
+    if [ "${EGRESS:-gate}" = open ]; then
+        rules=("-s $g/32 -j ACCEPT")
+    elif iptables -C FORWARD -s "$g/32" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
+         || iptables -A FORWARD -s "$g/32" -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; then
+        echo "-s $g/32 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT" >> "$f"
+        for u in "$(guest_gate_url "$GATE_URL")" ${FRONT:+"$(guest_gate_url "$FRONT")"}; do
+            hp=$(url_hostport "$u")
+            rules+=("-s $g/32 -d ${hp% *} -p tcp --dport ${hp#* } -j ACCEPT")
+        done
+        rules+=("-s $g/32 -j DROP")
+    else
+        echo "hosted: $name: no connection tracking here, so its egress stays open" >&2
+        rules=("-s $g/32 -j ACCEPT")
+    fi
+    for rule in "${rules[@]}"; do
+        # shellcheck disable=SC2086  # each rule is words on purpose
+        iptables -A FORWARD $rule && echo "$rule" >> "$f"
+    done
+}
+egress_down() {  # egress_down NAME: the egress rules egress_up applied for NAME, gone
+    local f=$run/$1.egress rule
+    [ -f "$f" ] || return 0
+    while IFS= read -r rule; do
+        # shellcheck disable=SC2086
+        [ -n "$rule" ] && iptables -D FORWARD $rule 2>/dev/null || true
+    done < "$f"
+    rm -f "$f"
 }
 
 cpus_of() {  # cpus_of NAME: the CPU list NAME's firecracker is held to, or nothing
@@ -280,7 +334,13 @@ up_restored() {  # the lab already loaded: restore, activate, publish
     local t2; t2=$(now)
     wait_http "http://$TEMPLATE_GUEST:$gport/lisply/ping-lisp" 20 || { flock -u 9; cmd_down "$name"; die "$name: the restored clone does not answer"; }
     local code answer
-    code="(gdl-user::hosted-activate! :gate \"$(guest_gate_url "$GATE_URL")\" :lab \"$LAB\" :lock \"$LOCK\" :ip \"$(guest_ip "$slot")\" :gw \"$(tap_ip "$slot")\" :epoch $(date +%s)$( [ "${MODE:-deployment}" = session ] && printf ' :mode :session :token "%s"' "$TOKEN" || true))"
+    local session=""
+    if [ "${MODE:-deployment}" = session ]; then
+        session=$(printf ' :mode :session :token "%s" :id "%s"' "$TOKEN" "$name")
+        # the monetizing rung: deploys go to the private front, whose address the guest is given
+        [ "${MONETIZE:-0}" = 1 ] && [ -n "${FRONT:-}" ] && session="$session$(printf ' :front "%s" :monetize t' "$(guest_gate_url "$FRONT")")"
+    fi
+    code="(gdl-user::hosted-activate! :gate \"$(guest_gate_url "$GATE_URL")\" :lab \"$LAB\" :lock \"$LOCK\" :ip \"$(guest_ip "$slot")\" :gw \"$(tap_ip "$slot")\" :epoch $(date +%s)$session)"
     answer=$(curl -s --max-time 5 -X POST -H 'Content-Type: application/json' -H "X-Lisply-Secret: $(cat "$snap/lisply-secret")" \
                   -d "$(jq -cn --arg c "$code" '{code: $c}')" "http://$TEMPLATE_GUEST:$gport/lisply/lisp-eval" || true)
     case $answer in

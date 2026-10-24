@@ -113,14 +113,18 @@ the gate, the lab's name there, the password on the lab's own doors."
 
 (defvar *hosted-activated-at* nil "When this clone was activated (universal time).")
 
-(defun hosted-configure-session (gate lab token)
+(defun hosted-configure-session (gate lab token &key front id monetize)
   "A PRIVATE SESSION's lab: the whole lab, page and agent, for one trusted
 author (the trust ladder's rung 2), its sessions, archive and files on the
 VM's own disk, behind TOKEN -- the lab's password, which the private front
 hands the author's browser and nobody else -- with no human check (the
 front checked the author's standing) and no public listing beyond the
-VM.  Tolls are test payments here, for the author's own previews; deploys
-from a private session are a later rung."
+VM.  Tolls are test payments here, for the author's own previews.
+MONETIZE (the author was at the monetizing rung when the session opened,
+rung 3) offers Monetize and closed source: a web app is deployed through
+the private front at FRONT, the session ID and TOKEN its credentials there
+(the lab's *deploy-front*), and taken by card; the front keeps the
+deployment and its books, and this VM books nothing."
   (ensure-directories-exist "/data/prompt-lab/")
   (ensure-directories-exist "/data/archive/")
   (ensure-directories-exist "/data/prompt-lab-deployed/")
@@ -139,7 +143,14 @@ from a private session are a later rung."
     (when (hosted-find flag :prompt-lab) (hosted-set flag nil)))
   (when (hosted-find "*BOOKS?*" :prompt-lab) (hosted-set "*BOOKS?*" t))
   (hosted-set "*MESSAGES-URL*" (or gate "http://transporter-room/llm/messages"))
-  (when (and lab (hosted-find "*LAB-NAME*" :prompt-lab)) (hosted-set "*LAB-NAME*" lab)))
+  (when (and lab (hosted-find "*LAB-NAME*" :prompt-lab)) (hosted-set "*LAB-NAME*" lab))
+  (when (and monetize front id (hosted-find "*DEPLOY-FRONT*" :prompt-lab))
+    (hosted-set "*DEPLOYMENTS?*" t)
+    (when (hosted-find "*CLOSED-SOURCE?*" :prompt-lab) (hosted-set "*CLOSED-SOURCE?*" t))
+    (hosted-set "*TOLL-PROVIDER*" :stripe)
+    (hosted-set "*DEPLOYMENT-PAYMENTS?*" t)
+    (when (hosted-find "*BOOKS?*" :prompt-lab) (hosted-set "*BOOKS?*" nil))
+    (hosted-set "*DEPLOY-FRONT*" (list :url front :id id :token token))))
 
 (defun hosted-idle-door (req ent)
   "GET <prefix>/api/vm-idle: how long this private session's VM has been idle
@@ -167,10 +178,12 @@ hangar reads to take an idle VM down."
   (let ((path (format nil "~a/api/vm-idle" (symbol-value (hosted-lab-symbol "*URL-PREFIX*")))))
     (gwl:with-all-servers (server)
       (net.aserve:publish :path path :server server :function 'hosted-idle-door)))
-  (format t "~&[hosted-init] hosted runtime up at ~a: a private session; gate ~a; lab ~a~%"
+  (format t "~&[hosted-init] hosted runtime up at ~a: a private session; gate ~a; lab ~a~@[; Monetize, deploying through ~a~]~%"
           (symbol-value (hosted-lab-symbol "*URL-PREFIX*"))
           (symbol-value (hosted-lab-symbol "*MESSAGES-URL*"))
-          (symbol-value (hosted-lab-symbol "*LAB-NAME*")))
+          (symbol-value (hosted-lab-symbol "*LAB-NAME*"))
+          (let ((front (hosted-find "*DEPLOY-FRONT*" :prompt-lab)))
+            (and front (getf (symbol-value front) :url))))
   (finish-output)
   (with-open-file (out "/run/hosted/up" :direction :output :if-exists :supersede :if-does-not-exist :create)
     (write-line "up" out)))
@@ -190,13 +203,14 @@ VM generation counter reseeds on restore)."
     (when (and iid (boundp iid)) (setf (symbol-value iid) (make-random-state t))))
   (dotimes (i (mod (hosted-urandom-integer 2) 4096)) (random 2)))
 
-(defun hosted-activate! (&key gate lab lock ip gw epoch mode token)
+(defun hosted-activate! (&key gate lab lock ip gw epoch mode token id front monetize)
   "Activate a clone restored from the template's snapshot.  Hands the
 guest's init its new address, clock and disk, and returns at once (the
 address is about to move under the caller); a thread of its own waits for
 the disk, then configures and publishes.  /run/hosted/up says when.
 MODE :session makes it a private session's full lab behind TOKEN
-(hosted-configure-session); otherwise a deployment's runtime."
+(hosted-configure-session; ID, FRONT and MONETIZE for the monetizing
+rung); otherwise a deployment's runtime."
   ;; the template's lisply secret is every clone's until now: this one's
   ;; becomes a fresh one nobody holds (the caller is already through)
   (let ((secret (hosted-find "*LISPLY-SECRET*" :gendl-lisply)))
@@ -221,7 +235,8 @@ MODE :session makes it a private session's full lab behind TOKEN
                (progn (setq *hosted-activated-at* (get-universal-time))
                       (hosted-reseed)
                       (if (eq mode :session)
-                          (progn (hosted-configure-session gate lab token) (hosted-publish-session))
+                          (progn (hosted-configure-session gate lab token :front front :id id :monetize monetize)
+                                 (hosted-publish-session))
                           (progn (hosted-configure gate lab lock) (hosted-publish))))
                (format t "~&[hosted-init] activation: the deployment's disk did not mount~%")))
        (error (e) (format t "~&[hosted-init] activation failed: ~a~%" e))))

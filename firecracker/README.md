@@ -424,6 +424,34 @@ snapshot as the apps.  The pieces:
   restore makes), so the private archive carries over from one
   session to the next.  It is kept when a session ends.
 
+- **The monetizing rung.**  When the gate holds the author at the
+  MONETIZING standing as the session opens, the front marks the request
+  `monetize` and the hangar activates the VM with `:monetize`, its id
+  and the front's session doors (`HANGAR_FRONT_URL`): the session offers
+  Monetize and closed source, its tolls by card through the gate, and
+  its deploy and undeploy go to the front's `<prefix>/api/vm/` doors,
+  the session's id and token the credentials.  The front asks the gate
+  for the standing again at every deploy, writes the terms itself (the
+  fee, the author's Connect account; nothing the VM says of them is
+  taken), and keeps the web app in the PRIVATE DEPLOYED ROOT,
+  `$FC_DIR/private-deployed/<engine>/<name>/` (`HANGAR_PRIVATE_ROOT`),
+  mounted in the front's room.  This room flies that root beside the
+  feed, each app at `<name>.$APPS_DOMAIN` under `HANGAR_SESSION_LAB`;
+  the front keeps that root's books under the same name (its sweeper
+  books what the gate settled; the VMs book nothing).  A name the feed
+  holds is the feed's (`spool/feed-names.json`, written every pass, is
+  what the front refuses).  A private deployment's author is its
+  record's `author`, the key, so a disk retired from one session comes
+  back to the same author deploying from another.  Web apps only.
+- **What a VM reaches.**  Its application is a stranger's code, and the
+  ship's network holds rooms whose doors answer anyone aboard.  With
+  `HANGAR_EGRESS=gate` (the default) a VM reaches the gate's address and
+  port and, for a monetizing session, the front's, and answers what is
+  asked of it; nothing else (`open`: whatever the hangar reaches).  So
+  the front's session doors are reached through the ship's proxy (a
+  plain `/own-lab/api/vm/` path rule on the chief), never at the front
+  room's own port.
+
 Proven on narad: a key at author refused in words, a malformed one
 refused, a trusted one opened (`pl-d68c4c505e`, restored in 4.05 s); a
 stranger at the session's host got the lock form, the token the cookie
@@ -475,7 +503,10 @@ and its `.secrets`.  A new host needs:
 | `HANGAR_MAX_VMS` | 0 | deployments and sessions together (0: the room's memory cap) |
 | `HANGAR_MAX_SESSIONS` | 4 | private sessions at once |
 | `HANGAR_SESSION_IDLE` / `_MAX` | 7200 / 43200 s | when a session ends |
-| `HANGAR_SESSION_LAB` | prompt-lab-private | the sessions' lab name at the gate |
+| `HANGAR_SESSION_LAB` | prompt-lab-private | the sessions' lab name at the gate, and their deployments' |
+| `HANGAR_FRONT_URL` | unset | the front's session doors as a VM reaches them (unset: no session deploys) |
+| `HANGAR_PRIVATE_ROOT` | `$FC_DIR/private-deployed` | the private deployed root this room flies |
+| `HANGAR_EGRESS` | gate | what a VM reaches: the gate and the front, or `open` |
 | `HANGAR_RETIRE_DAYS` / `HANGAR_STOPPED_DAYS` | 30 / 30 | the un-hosting rule |
 | `HANGAR_SNAPSHOT` | 1 | restore from the engine's template |
 | `FC_CPUS` / `FC_PIN` | unset | hold VMs to chosen CPUs |
