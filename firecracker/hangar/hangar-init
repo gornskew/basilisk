@@ -215,10 +215,15 @@ next_port() {   # a port of the hangar's own per VM (hosted's DNAT wants them di
 }
 vm_running() { [ -f "$run/$1.pid" ] && kill -0 "$(cat "$run/$1.pid")" 2>/dev/null; }
 vms_running() { local n=0 f; for f in "$run"/*.pid; do [ -f "$f" ] && kill -0 "$(cat "$f")" 2>/dev/null && n=$((n+1)); done; echo $n; }
-gate_hosting() {   # gate_hosting NAME [LAB] -> 'true SINCE' (SINCE the stop, unix seconds) | false | '' (no answer)
+gate_hosting() {   # gate_hosting NAME [LAB] [RECORD] -> 'true SINCE' (SINCE the stop, unix seconds) | false | '' (no answer)
+    # the deployment's key from its RECORD (deployment.json's gate_key): a gate
+    # that registers keys answers a keyed deployment's hosting to that key alone
+    local key=''
+    [ -n "${3:-}" ] && key=$(jq -r '.gate_key // empty' "$3" 2>/dev/null)
     # the gate's stopped_since is a Lisp universal time: seconds since 1900
-    curl -s --max-time 5 -X POST -H 'Content-Type: application/json' \
-         -d "{\"lab\": \"${2:-$LAB}\", \"deployment\": \"$1\"}" "$GATE_URL/host-balance" \
+    jq -nc --arg lab "${2:-$LAB}" --arg name "$1" --arg key "$key" \
+       '{lab: $lab, deployment: $name} + (if $key == "" then {} else {deployment_key: $key} end)' \
+        | curl -s --max-time 5 -X POST -H 'Content-Type: application/json' --data-binary @- "$GATE_URL/host-balance" \
         | jq -r 'if .stopped == true then "true \((.stopped_since // 0) - 2208988800)" else "false" end' 2>/dev/null
 }
 days_seconds() { awk -v days="$1" 'BEGIN{printf "%d", days*86400}'; }
@@ -418,7 +423,7 @@ fleet_one() {   # fleet_one DIR LAB: one deployment, flown under LAB (the name i
         fi
         refresh_disk "$name" "$dir" "$engine"; rm -f "$run/$name.refresh"
     fi
-    hosting=$(gate_hosting "$name" "$lab"); stopped=${hosting%% *}
+    hosting=$(gate_hosting "$name" "$lab" "$dir/deployment.json"); stopped=${hosting%% *}
     if [ "$stopped" = true ]; then
         if vm_running "$name"; then
             log "$name: hosting stopped at the gate; taking its VM down"
