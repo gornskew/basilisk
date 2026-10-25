@@ -102,7 +102,10 @@ ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=$
 # THE FEED: a lab elsewhere serves its deployed root to this hangar
 # (demos deploy.lisp, <prefix>/api/hangar/deployments and /deployment,
 # behind a token); mirrored into $FC_DIR/feed, which is then the
-# deployed root read below.  Unset: /deployments is read as mounted.
+# deployed root read below.  Unset: /deployments is read as mounted;
+# DEPLOYMENTS=none says there is no lab's root at all (private sessions
+# and the private root alone), so a pass still counts as having read it
+# and the un-hosting rule retires what is gone.
 FEED_URL=${HANGAR_FEED_URL:-}; FEED_TOKEN_FILE=${HANGAR_FEED_TOKEN_FILE:-/run/secrets/hangar-token}
 HOSTED=/usr/local/lib/hangar/hosted
 # the scripts baked into this image, hashed: hangar/scripts-hash on the host
@@ -516,8 +519,10 @@ status_json
 [ -n "$FEED_URL" ] && { DEPLOYMENTS=$FC_DIR/feed; log "the deployed root is the lab's feed at $FEED_URL, mirrored in $DEPLOYMENTS"; }
 while :; do
     # whether this pass read the deployed root (the feed answered a list, or the mount is there)
+    # DEPLOYMENTS=none: no lab's deployed root at all (a hangar of private
+    # sessions and the private root alone) -- every pass has read it, empty
     if [ -n "$FEED_URL" ]; then if feed_sync; then ROOT_OK=1; else ROOT_OK=0; fi
-    elif [ -d "$DEPLOYMENTS" ]; then ROOT_OK=1; else ROOT_OK=0; fi
+    elif [ "$DEPLOYMENTS" = none ] || [ -d "$DEPLOYMENTS" ]; then ROOT_OK=1; else ROOT_OK=0; fi
     [ "$ROOT_OK" = 1 ] && feed_names
     if [ -f "$(rootfs)" ]; then template; fleet; sessions
     else [ -f "$run/.rootfs-warned" ] || { log "no $(rootfs): make it with hangar/make-rootfs on the host"; touch "$run/.rootfs-warned"; }; fi
