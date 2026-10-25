@@ -114,14 +114,14 @@ the gate, the lab's name there, the password on the lab's own doors."
 (defvar *hosted-activated-at* nil "When this clone was activated (universal time).")
 
 (defun hosted-configure-session (gate lab token &key front id monetize)
-  "A PRIVATE SESSION's lab: the whole lab, page and agent, for one trusted
-author (the trust ladder's rung 2), its sessions, archive and files on the
-VM's own disk, behind TOKEN -- the lab's password, which the private front
-hands the author's browser and nobody else -- with no human check (the
-front checked the author's standing) and no public listing beyond the
-VM.  Tolls are test payments here, for the author's own previews.
-MONETIZE (the author was at the monetizing rung when the session opened,
-rung 3) offers Monetize and closed source: a web app is deployed through
+  "A PRIVATE SESSION's lab: the whole lab, page and agent, for one author
+the gate allows it, its sessions, archive and files on the VM's own disk,
+behind TOKEN -- the lab's password, which the private front hands the
+author's browser and nobody else -- with no human check (the front asked
+the gate) and no public listing beyond the VM.  Tolls are test payments
+here, for the author's own previews.  MONETIZE (the gate allowed the
+author to sell when the session opened) offers Monetize and closed
+source: a web app is deployed through
 the private front at FRONT, the session ID and TOKEN its credentials there
 (the lab's *deploy-front*), and taken by card; the front keeps the
 deployment and its books, and this VM books nothing."
@@ -209,8 +209,8 @@ guest's init its new address, clock and disk, and returns at once (the
 address is about to move under the caller); a thread of its own waits for
 the disk, then configures and publishes.  /run/hosted/up says when.
 MODE :session makes it a private session's full lab behind TOKEN
-(hosted-configure-session; ID, FRONT and MONETIZE for the monetizing
-rung); otherwise a deployment's runtime."
+(hosted-configure-session; ID, FRONT and MONETIZE for a session that
+sells); otherwise a deployment's runtime."
   ;; the template's lisply secret is every clone's until now: this one's
   ;; becomes a fresh one nobody holds (the caller is already through)
   (let ((secret (hosted-find "*LISPLY-SECRET*" :gendl-lisply)))

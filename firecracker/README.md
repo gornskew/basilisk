@@ -140,7 +140,7 @@ Firecracker runs inside it as root, which is what Phase 0 accepts; the
 jailer is a later phase.  `--init` so a VM that is taken down is
 reaped (a bare `sleep` as PID 1 leaves zombies).  The host needs no sudo and nobody in the
 `kvm` group: Docker hands the devices over.  Nested virtualization
-suffices (the kit was proven on a WSL2 host).
+suffices (the kit was first proven under nested virtualization).
 
 **The root filesystem** is the Phase 0 one plus the hosted runtime:
 the demos tree (the prompt lab) and monocle at `/opt/hosted`, and
@@ -190,7 +190,7 @@ asks the gate's `/host-balance` for the deployment; while the gate
 says `stopped` (its hosting allowance and what was bought for it are
 spent, `stopped_since` set) the VM is taken down, and when a report
 fits again it is brought back.  The proxy answers its own 404 in
-between; a paused page there is a later rung.
+between; a paused page there came later (below).
 
 **Measured on the kit's first host** (a 2-vCPU VM at 1024 MiB, then
 1 vCPU at 512 MiB; the gendl-ccl image): lisply answers 1.6-3.7 s
@@ -217,9 +217,9 @@ gate.
 ### The hangar as a room
 
 The hangar is a room in the ship's articles (`basilisk.sexp`, a
-`:hangar-chief` posting; narad-stack's and balaram-stack's articles
-sign it on).  Its species is `hangar/Dockerfile`, built from this
-directory as context -- Debian, Firecracker and its kernel baked in,
+`:hangar-chief` posting, which a stack's articles sign on).  Its
+species is `hangar/Dockerfile`, built from this directory as context --
+Debian, Firecracker and its kernel baked in,
 and these scripts:
 
 ```bash
@@ -274,7 +274,7 @@ any other host -- the applications that are not in VMs, the previews
 domain, and a new deployment needs none:
 
 ```lisp
-(:host-match ("*.gen.works") :path "/" :hangar t :host "bridge" :port 9080
+(:host-match ("*.apps.example") :path "/" :hangar t :host "bridge" :port 9080
  :preserve-host? t :root-target-path "/prompt-lab/d/{label}")
 ```
 
@@ -327,7 +327,7 @@ sent; the guest now runs with a lisply secret (gendl's
 rotates it to one nobody holds; a cold boot's is a fresh one nobody
 holds.  The ping stays open; the hangar watches the deployment's door.
 
-**Measured on narad** (1 vCPU per VM; gendl at 512 MiB, GDL at 2048
+**Measured on a development host** (1 vCPU per VM; gendl at 512 MiB, GDL at 2048
 MiB):
 
 | | gendl | solid (GDL) |
@@ -368,7 +368,7 @@ debugfs, the guest's journal replayed first).
 - **A pass that could not read the deployed root** (the feed down)
   retires nothing.
 
-Proven in a throwaway room on narad (a 52 s grace period): deployed by
+Proven in a throwaway room (a 52 s grace period): deployed by
 one owner, the VM up; taken down, the disk retired with its records
 extracted; deployed again by the same owner, the same disk back (the
 same inode); taken down and deployed by another owner, a fresh disk
@@ -385,7 +385,7 @@ for good after).  The gate's balance door lifts a stop from an earlier
 month when the new month brings a free allowance -- a grounded VM is
 never metered, so without that a free-tier application stopped one
 month would never have come back the next, and would have counted
-toward retirement instead.  Proven against narad's gate in a throwaway
+toward retirement instead.  Proven against a development gate in a throwaway
 room: a September stop lifted at the door and its app flown; a live app
 stopped as of 40 days back grounded and its disk retired in one pass
 ('since 2026-09-13'); hosting added, the same disk back (the same inode)
@@ -393,16 +393,15 @@ and the VM up in 1.4 s.
 
 ### Private sessions (2026-10-23)
 
-The trust ladder's second rung: an author whose key the gate holds at
-the TRUSTED standing opens a private lab of their own -- the whole
-prompt lab, page and agent, in a microVM restored from the same
-snapshot as the apps.  The pieces:
+An author whose key the gate allows private sessions opens a private
+lab of their own -- the whole prompt lab, page and agent, in a microVM
+restored from the same snapshot as the apps.  The pieces:
 
 - **The front** (the lab system's `private.lisp`, published on a lab
-  room of the hangar's ship -- `lab.gen.works`, whose root the chief
+  room of the hangar's ship -- `lab.$APPS_DOMAIN`, whose root the chief
   sends to `/own-lab`; not `/private...`, which every scanner list
-  drops).  It asks the gate for the key's standing, refuses below
-  trusted in words, writes a request into the hangar's spool
+  drops).  It asks the gate whether the key may open one, refuses in
+  words when it may not, writes a request into the hangar's spool
   (`/fc/spool/requests/pl-<id>.json`: id, wallet, a 32-hex token), polls
   the hangar's answer (`spool/ready/<id>.json`), and hands the browser
   in: a form posting the token to the session's
@@ -424,14 +423,14 @@ snapshot as the apps.  The pieces:
   restore makes), so the private archive carries over from one
   session to the next.  It is kept when a session ends.
 
-- **The monetizing rung.**  When the gate holds the author at the
-  MONETIZING standing as the session opens, the front marks the request
+- **Selling from a session.**  When the gate allows the author to sell
+  as the session opens, the front marks the request
   `monetize` and the hangar activates the VM with `:monetize`, its id
   and the front's session doors (`HANGAR_FRONT_URL`): the session offers
   Monetize and closed source, its tolls by card through the gate, and
   its deploy and undeploy go to the front's `<prefix>/api/vm/` doors,
   the session's id and token the credentials.  The front asks the gate
-  for the standing again at every deploy, writes the terms itself (the
+  again at every deploy, writes the terms itself (the
   fee, the author's Connect account; nothing the VM says of them is
   taken), and keeps the web app in the PRIVATE DEPLOYED ROOT,
   `$FC_DIR/private-deployed/<engine>/<name>/` (`HANGAR_PRIVATE_ROOT`),
@@ -446,13 +445,13 @@ snapshot as the apps.  The pieces:
 - **What a VM reaches.**  Its application is a stranger's code, and the
   ship's network holds rooms whose doors answer anyone aboard.  With
   `HANGAR_EGRESS=gate` (the default) a VM reaches the gate's address and
-  port and, for a monetizing session, the front's, and answers what is
+  port and, for a session that sells, the front's, and answers what is
   asked of it; nothing else (`open`: whatever the hangar reaches).  So
   the front's session doors are reached through the ship's proxy (a
   plain `/own-lab/api/vm/` path rule on the chief), never at the front
   room's own port.
 
-Proven on narad: a key at author refused in words, a malformed one
+Proven on a development host: a key the gate does not allow refused in words, a malformed one
 refused, a trusted one opened (`pl-d68c4c505e`, restored in 4.05 s); a
 stranger at the session's host got the lock form, the token the cookie
 and the lab; a real build inside it drew 9.4 credits against the
@@ -460,9 +459,55 @@ author's key at the gate; closed through the front, the VM down, the
 link gone, the disk kept; a second session for the same author listed
 the first one's work in its archive.
 
-### Porting the hangar to another host (balaram's twin, a cloud machine)
+### The meter outside the guest (2026-10-25)
 
-Nothing here is balaram's: a host's specifics are its stack's articles
+A deployment's own program reports its compute to the gate
+(`/host-meter`, by the volume of what it compiles and runs), so a VM
+that stops reporting pays for nothing, and a loop that makes nothing to
+count is free even to an honest program.  The hangar can measure what a
+VM really used from outside it: every pass the fleet loop reads the CPU
+time the kernel charged each deployment's firecracker process
+(`/proc/<pid>/stat`, utime and stime: the vcpu and its own threads) and
+POSTs what each used since its last report, and over how long, to the
+gate's `/host-cpu` door:
+
+```json
+{"reports": [{"lab": "...", "deployment": "...", "cpu_usec": 2120000, "wall_usec": 15000000, "engine": "gendl"}]}
+```
+
+with a token only the hangar room holds (`HANGAR_METER_TOKEN_FILE`,
+default `/run/secrets/hangar-meter-token`, sent as `X-LLM-Gate-Hangar`;
+the gate holds the same value).  Not the VMs' address -- they reach the
+gate through the hangar's -- and not a deployment's own key, which its VM
+holds.  The token is never put in the rootfs or on a VM's disk.
+
+- A VM's first reading is its baseline, so the restore is not billed.
+- A pass the gate does not take (down, refused) keeps every baseline;
+  the next pass carries the whole interval, so nothing is lost.
+- Private sessions and templates are not measured.  A VM taken down
+  loses at most its last pass.
+- The gate bills CPU above a small idle share of a vCPU (a Lisp with
+  nothing to do still wakes, about a quarter of a percent of one; the
+  default share is 1%) against the deployment's hosting, and while it
+  hears from the hangar it takes the program's own reports as advisory,
+  tallying them beside the measure and flagging a deployment whose own
+  word falls far short of it.
+- No token: nothing is measured and the programs' reports stand.  The
+  room's start line says `the meter outside the guest: on` or `off`,
+  and `status.json` carries `"meter"`.
+
+Measured on a development host: an idle hosted VM, 20 ticks of CPU in 80
+s; a page served, about 0.2 CPU seconds.  Checked against a scratch gate
+with the loop's own functions (`HANGAR_INIT_FUNCTIONS_ONLY=1` sources
+them and stops before the loop) and a busy loop and a sleeper in a VM's
+place: no token, nothing; the first pass a baseline; the busy one billed
+above the idle share and the sleeper nothing; a wrong token refused and
+the baselines kept, the next pass carrying both intervals; a process
+raised again taking a new baseline.
+
+### Porting the hangar to another host (a second machine, a cloud machine)
+
+Nothing here is any one host's: a host's specifics are its stack's articles
 and its `.secrets`.  A new host needs:
 
 1. **KVM.**  Bare metal, or a cloud machine with nested
@@ -471,31 +516,32 @@ and its `.secrets`.  A new host needs:
    readable.  **No other hypervisor's driver loaded** (VirtualBox's
    `vboxdrv`, VMware's `vmmon`): they take VT-x per CPU and KVM fails
    VM entry under them (`KVM_EXIT_FAIL_ENTRY`, `kvm_intel ... vmread
-   failed`; balaram, 2026-10-22).
+   failed`).
 2. **Docker and checkouts:** basilisk (this kit), demos and monocle
-   (the rootfs and the front read them), the host's stack overlay.
+   (the rootfs and the front read them), the host's stack overlay.  And
+   the meter's token in the host's secrets, written BEFORE the raise (a
+   bind mount of a missing file makes a directory), its value at the gate.
 3. **The gate's tunnel:** a WireGuard spoke to the gate's host
    (`hull/wg-spoke.sh --split`), so the hangar, its VMs and the front
    reach the gate at its tunnel address; the gate's peer list admits
    the spoke's address.
-4. **The articles** -- copy balaram-stack's: the `:hangar-chief` posting
+4. **The articles** -- copy a working stack's: the `:hangar-chief` posting
    (devices, caps, sysctls, `/fc`, the environment: `GATE_URL`, `LAB`,
    `APPS_DOMAIN`, `CYCLOPS_ADMIN_URL`, `HANGAR_*`), the bridge's spool
    mount and the front's block in its init, and the chief's two rules:
-   `lab.gen.works` to the front, `*.gen.works` as the `:hangar` rule.
+   `lab.$APPS_DOMAIN` to the front, `*.$APPS_DOMAIN` as the `:hangar` rule.
    `cyclops.env` carries the chief's admin secret, which the hangar
    registers with.  Generate the compose file from the articles, then
    `./install`.
-5. **The names:** `*.gen.works` (and so `lab.gen.works` and every
-   `pl-<id>`) must reach this host's chief -- today Cloudflare sends
-   them to sally, whose chief forwards the wildcard to the hangar's
-   host.
+5. **The names:** `*.$APPS_DOMAIN` (and so `lab.$APPS_DOMAIN` and every
+   `pl-<id>`) must reach this host's chief -- directly, or through a
+   front proxy that forwards the wildcard to the hangar's host.
 6. **Raise, in order:** build the image (`hangar/Dockerfile`), make the
    rootfs (`hangar/make-rootfs <HANGAR_DIR>`), `./basilisk up hangar`
    (it makes the spool and the template), then the rest of the ship.
 7. **Check:** `hangar/scripts-hash` says CURRENT; the log shows the
-   snapshot made; a trusted key opens a session at
-   `https://lab.gen.works/?wallet=<key>`.
+   snapshot made and the meter on; an allowed key opens a session at
+   `https://lab.$APPS_DOMAIN/?wallet=<key>`.
 
 | Setting | Default | What |
 |---|---|---|
@@ -507,6 +553,7 @@ and its `.secrets`.  A new host needs:
 | `HANGAR_FRONT_URL` | unset | the front's session doors as a VM reaches them (unset: no session deploys) |
 | `HANGAR_PRIVATE_ROOT` | `$FC_DIR/private-deployed` | the private deployed root this room flies |
 | `HANGAR_EGRESS` | gate | what a VM reaches: the gate and the front, or `open` |
+| `HANGAR_METER_TOKEN_FILE` | `/run/secrets/hangar-meter-token` | the meter's token; absent, no VM is measured |
 | `HANGAR_RETIRE_DAYS` / `HANGAR_STOPPED_DAYS` | 30 / 30 | the un-hosting rule |
 | `HANGAR_SNAPSHOT` | 1 | restore from the engine's template |
 | `FC_CPUS` / `FC_PIN` | unset | hold VMs to chosen CPUs |

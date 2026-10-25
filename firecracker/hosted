@@ -31,7 +31,7 @@
 # (deployment, or session: a PRIVATE SESSION's full lab, restored only, its
 # password TOKEN -- what the private front hands the author's browser;
 # with MONETIZE=1 and FRONT, the private front's session doors as the
-# guest reaches them, its deploys go there: the monetizing rung), EGRESS
+# guest reaches them, its deploys go there: a session that sells), EGRESS
 # (gate, the default: a guest reaches the gate and FRONT and nothing else;
 # open: whatever the hangar reaches),
 # FC_CPUS (the host CPUs a VM may run on, as taskset reads a list:
@@ -337,7 +337,7 @@ up_restored() {  # the lab already loaded: restore, activate, publish
     local session=""
     if [ "${MODE:-deployment}" = session ]; then
         session=$(printf ' :mode :session :token "%s" :id "%s"' "$TOKEN" "$name")
-        # the monetizing rung: deploys go to the private front, whose address the guest is given
+        # a session that sells: deploys go to the private front, whose address the guest is given
         [ "${MONETIZE:-0}" = 1 ] && [ -n "${FRONT:-}" ] && session="$session$(printf ' :front "%s" :monetize t' "$(guest_gate_url "$FRONT")")"
     fi
     code="(gdl-user::hosted-activate! :gate \"$(guest_gate_url "$GATE_URL")\" :lab \"$LAB\" :lock \"$LOCK\" :ip \"$(guest_ip "$slot")\" :gw \"$(tap_ip "$slot")\" :epoch $(date +%s)$session)"

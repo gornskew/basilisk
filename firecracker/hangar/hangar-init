@@ -13,7 +13,7 @@
 #
 # Environment: FC_DIR (/fc: the hosted rootfs from hangar/make-rootfs,
 # the data disks, the run directory), DEPLOYMENTS (/deployments),
-# APPS_DOMAIN (gen.works), GATE_URL (the gate's Messages door), LAB
+# APPS_DOMAIN (apps.example), GATE_URL (the gate's Messages door), LAB
 # (the lab's name at the gate, its *lab-name*), CYCLOPS_ADMIN_URL
 # (http://transporter-room/_cyclops) and CYCLOPS_ADMIN_SECRET (the
 # chief's admin secret; without it nothing is registered and the loop
@@ -53,10 +53,10 @@
 # allowance, so a free-tier application comes back each month rather than
 # counting toward retirement.)
 #
-# PRIVATE SESSIONS (the trust ladder's rung 2): the private front (demos
+# PRIVATE SESSIONS: the private front (demos
 # private.lisp, on a lab room of this ship) writes a request into
 # $FC_DIR/spool/requests/<id>.json -- {id pl-<10 hex>, wallet, token} --
-# once the gate says the author's standing opens private sessions.  The
+# once the gate says the author may open private sessions.  The
 # loop raises a VM for it restored from the engine's snapshot and activated
 # as a session (hosted up, MODE=session: the whole lab, behind the token),
 # registers <id>.$APPS_DOMAIN with the chief, and answers in
@@ -70,8 +70,8 @@
 # HANGAR_MAX_SESSIONS (4) fly at once, the rest wait.  HANGAR_SESSION_LAB
 # (prompt-lab-private) is their lab's name at the gate.
 #
-# THE MONETIZING RUNG: a request the front marks "monetize" (the author's
-# standing at the gate is monetizing) opens with Monetize, its deploys
+# SELLING FROM A SESSION: a request the front marks "monetize" (the gate
+# allows the author to sell) opens with Monetize, its deploys
 # handed to the front's session doors at HANGAR_FRONT_URL (as the VMs reach
 # them: through the ship's proxy, never a room's own port).  The front
 # keeps those deployments in the PRIVATE DEPLOYED ROOT, $FC_DIR/private-
@@ -86,9 +86,24 @@
 #
 # HANGAR_EGRESS (gate): what a VM may reach -- the gate, and for a session
 # the front, and nothing else; open: whatever the hangar reaches (hosted).
+#
+# THE METER OUTSIDE THE GUEST: a deployment's own program reports its
+# compute to the gate (/host-meter), so a VM that reports nothing pays for
+# nothing.  Every pass this loop reads, for each deployment's VM, the CPU
+# time the kernel charged its firecracker process (the vcpu and its own
+# threads: /proc/<pid>/stat), and sends what each used since its last
+# report, and over how long, to the gate's /host-cpu -- with a token only
+# this room holds (HANGAR_METER_TOKEN_FILE, /run/secrets/hangar-meter-token;
+# never on a VM's disk or in the rootfs).  A VM's first reading is its
+# baseline, so the restore is not billed; a pass the gate does not take
+# keeps the baselines, and the next report carries the whole interval.  The
+# gate bills what is above an idle share of a vCPU and, while it hears
+# from this room, takes the program's own reports as advisory.  No token:
+# nothing is measured, and the programs' reports stand.  Private sessions
+# are not measured (their lab's own meter charges the author's wallet).
 set -u
 FC_DIR=${FC_DIR:-/fc}; DEPLOYMENTS=${DEPLOYMENTS:-/deployments}
-APPS_DOMAIN=${APPS_DOMAIN:-gen.works}; GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
+APPS_DOMAIN=${APPS_DOMAIN:-apps.example}; GATE_URL=${GATE_URL:-http://transporter-room/llm/messages}
 LAB=${LAB:-prompt-lab}; INTERVAL=${HANGAR_INTERVAL:-15}; ENGINE=${HANGAR_ENGINE:-gendl}
 MAX_VMS=${HANGAR_MAX_VMS:-0}   # 0: as many as the room's memory cap allows; a dev ship says 2
 SNAPSHOT=${HANGAR_SNAPSHOT:-1}
@@ -107,6 +122,7 @@ ADMIN_URL=${CYCLOPS_ADMIN_URL:-http://transporter-room/_cyclops}; ADMIN_SECRET=$
 # and the private root alone), so a pass still counts as having read it
 # and the un-hosting rule retires what is gone.
 FEED_URL=${HANGAR_FEED_URL:-}; FEED_TOKEN_FILE=${HANGAR_FEED_TOKEN_FILE:-/run/secrets/hangar-token}
+METER_TOKEN_FILE=${HANGAR_METER_TOKEN_FILE:-/run/secrets/hangar-meter-token}; CLK=$(getconf CLK_TCK 2>/dev/null || echo 100)
 HOSTED=/usr/local/lib/hangar/hosted
 # the scripts baked into this image, hashed: hangar/scripts-hash on the host
 # hashes the checkout's the same way, so a room raised on a stale image shows
@@ -233,7 +249,7 @@ days_seconds() { awk -v days="$1" 'BEGIN{printf "%d", days*86400}'; }
 status_json() {
     local tmp=/run/hangar/status.json.new first=1 f name
     {
-        echo "{\"rootfs\": $([ -f "$(rootfs)" ] && echo true || echo false), \"engine\": \"$ENGINE\", \"scripts\": \"$SCRIPTS\", \"snapshot\": $($HOSTED fresh "$ENGINE" && echo true || echo false), \"lab\": \"$LAB\", \"session_lab\": \"$SESSION_LAB\", \"front\": $([ -n "$FRONT_URL" ] && echo true || echo false), \"egress\": \"$EGRESS\", \"domain\": \"$APPS_DOMAIN\", \"registering\": $([ -n "$ADMIN_SECRET" ] && echo true || echo false), \"vms\": ["
+        echo "{\"rootfs\": $([ -f "$(rootfs)" ] && echo true || echo false), \"engine\": \"$ENGINE\", \"scripts\": \"$SCRIPTS\", \"snapshot\": $($HOSTED fresh "$ENGINE" && echo true || echo false), \"lab\": \"$LAB\", \"session_lab\": \"$SESSION_LAB\", \"front\": $([ -n "$FRONT_URL" ] && echo true || echo false), \"egress\": \"$EGRESS\", \"meter\": $([ -s "$METER_TOKEN_FILE" ] && echo true || echo false), \"domain\": \"$APPS_DOMAIN\", \"registering\": $([ -n "$ADMIN_SECRET" ] && echo true || echo false), \"vms\": ["
         for f in "$run"/*.pid; do
             [ -f "$f" ] || continue; name=$(basename "$f" .pid)
             case $name in tpl-*) continue ;; esac
@@ -318,7 +334,7 @@ sessions() {   # one pass over the private sessions' spool
     for f in "$SPOOL/requests"/*.json; do
         [ -f "$f" ] || continue
         id=$(jq -r '.id // empty' "$f" 2>/dev/null); wallet=$(jq -r '.wallet // empty' "$f" 2>/dev/null); token=$(jq -r '.token // empty' "$f" 2>/dev/null)
-        # the monetizing rung: deploys through the front, when this hangar knows where it is
+        # a session that sells: deploys through the front, when this hangar knows where it is
         mon=0; front=""
         if [ "$(jq -r '.monetize // false' "$f" 2>/dev/null)" = true ] && [ -n "$FRONT_URL" ]; then mon=1; front=$FRONT_URL; fi
         if ! [[ $id =~ ^pl-[0-9a-f]{10}$ && $wallet =~ ^[0-9a-f]{24}$ && $token =~ ^[0-9a-f]{32}$ && $(basename "$f" .json) = "$id" ]]; then
@@ -418,6 +434,7 @@ fleet_one() {   # fleet_one DIR LAB: one deployment, flown under LAB (the name i
     [ "$kind" = app ] || return 0          # a model stays in the lab's own image
     [ "$engine" = "$ENGINE" ] || return 0  # one rootfs per engine; the other engine's wait
     SEEN="$SEEN $name"
+    echo "$lab" > "$run/$name.lab"         # the ledger its compute is reported on (cpu_meter)
     # deployed again at the lab: the VM comes down, its disk takes the new files, and it comes back below
     if [ -f "$run/$name.refresh" ]; then
         if vm_running "$name"; then
@@ -477,7 +494,7 @@ fleet_gone() {   # the deployments no root holds any more: VMs down, disks retir
         case " $SEEN " in *" $name "*) ;; *)
             log "$name: no longer deployed; its VM goes"
             local gone_pid; gone_pid=$(cat "$run/$name.pid" 2>/dev/null || true)
-            $HOSTED down "$name" >/dev/null 2>&1 || true; rm -f "$run/$name.paused"; vm_gone "$gone_pid"
+            $HOSTED down "$name" >/dev/null 2>&1 || true; rm -f "$run/$name.paused" "$run/$name.cpu" "$run/$name.lab"; vm_gone "$gone_pid"
             register "$name" gone ;;
         esac
     done
@@ -496,14 +513,65 @@ fleet_gone() {   # the deployments no root holds any more: VMs down, disks retir
     expire_retired
 }
 
+# --- the meter outside the guest (the header says what and why) ---------------
+proc_cpu() {   # proc_cpu PID -> the process's utime+stime, in clock ticks
+    local stat
+    stat=$(cat "/proc/$1/stat" 2>/dev/null) || return 1
+    stat=${stat##*) }        # past the command's name, which may hold spaces: $1 is the kernel's field 3
+    set -- $stat
+    [ $# -ge 13 ] || return 1
+    echo $(( ${12} + ${13} ))   # fields 14 and 15
+}
+
+cpu_meter() {   # one pass: what each deployment's VM used since its last report, to the gate's /host-cpu
+    local token f name pid lab ticks now bpid bticks bnow row reports="" pending="" p code
+    token=$(head -1 "$METER_TOKEN_FILE" 2>/dev/null | tr -d ' \r')
+    if [ -z "$token" ]; then
+        [ -f "$run/.meter-warned" ] || { log "no token at $METER_TOKEN_FILE: the VMs' compute is not measured, and their own reports stand"; touch "$run/.meter-warned"; }
+        return 0
+    fi
+    rm -f "$run/.meter-warned"
+    now=$(cut -d' ' -f1 /proc/uptime); now=$((10#${now/./}))     # centiseconds since boot
+    for f in "$run"/*.pid; do
+        [ -f "$f" ] || continue; name=$(basename "$f" .pid)
+        case $name in tpl-*|pl-*) continue ;; esac               # a template being made, a private session
+        pid=$(cat "$f" 2>/dev/null); ticks=$(proc_cpu "$pid") || continue
+        lab=$(cat "$run/$name.lab" 2>/dev/null); [ -n "$lab" ] || continue
+        bpid=""; [ -f "$run/$name.cpu" ] && read -r bpid bticks bnow < "$run/$name.cpu"
+        if [ "$bpid" != "$pid" ]; then                           # a VM new since the last pass: its baseline
+            echo "$pid $ticks $now" > "$run/$name.cpu"; continue
+        fi
+        [ "$now" -gt "$bnow" ] && [ "$ticks" -ge "$bticks" ] || continue
+        row=$(jq -cn --arg lab "$lab" --arg name "$name" --arg engine "$ENGINE" \
+                     --argjson cpu $(( (ticks - bticks) * 1000000 / CLK )) --argjson wall $(( (now - bnow) * 10000 )) \
+                     '{lab: $lab, deployment: $name, cpu_usec: $cpu, wall_usec: $wall, engine: $engine}')
+        reports="$reports${reports:+,}$row"; pending="$pending $name:$pid:$ticks:$now"
+    done
+    [ -n "$reports" ] || return 0
+    code=$(printf '{"reports": [%s]}' "$reports" \
+               | curl -s -o "$run/.meter-answer" -w '%{http_code}' --max-time 10 -X POST -H 'Content-Type: application/json' \
+                      -H "X-LLM-Gate-Hangar: $token" --data-binary @- "$GATE_URL/host-cpu")
+    if [ "$code" = 200 ]; then
+        # taken: the baselines move on (a refused pass keeps them, and the next carries the whole interval)
+        for p in $pending; do IFS=: read -r name pid ticks now <<<"$p"; echo "$pid $ticks $now" > "$run/$name.cpu"; done
+        rm -f "$run/.meter-failed"
+    else
+        [ -f "$run/.meter-failed" ] || { log "the gate did not take the VMs' compute (status $code: $(head -c 160 "$run/.meter-answer" 2>/dev/null)); it is kept until the gate does"; touch "$run/.meter-failed"; }
+    fi
+}
+
+# a check sources the functions above and stops here (HANGAR_INIT_FUNCTIONS_ONLY=1)
+[ "${HANGAR_INIT_FUNCTIONS_ONLY:-}" = 1 ] && return 0
+
 trap 'log "stopping: every VM down"; for f in "$run"/*.pid; do [ -f "$f" ] && { n=$(basename "$f" .pid); $HOSTED down "$n"; register "$n" gone; }; done; exit 0' TERM INT
 log "hangar up: scripts $SCRIPTS, lab $LAB, gate $GATE_URL, hosts *.$APPS_DOMAIN, deployments $DEPLOYMENTS, engine $ENGINE, chief $ADMIN_URL, egress $EGRESS"
 log "private sessions: lab $SESSION_LAB, deployed root $PRIVATE_ROOT, front ${FRONT_URL:-(none: no session deploys)}"
+log "the meter outside the guest: $([ -s "$METER_TOKEN_FILE" ] && echo "on (token at $METER_TOKEN_FILE)" || echo "off (no token at $METER_TOKEN_FILE)")"
 [ -r /dev/kvm ] || log "WARNING: /dev/kvm is not here; no VM can fly"
 [ -n "$ADMIN_SECRET" ] || log "WARNING: no CYCLOPS_ADMIN_SECRET; the VMs fly unregistered and no host reaches them"
 # a fresh room: nothing from a previous life is running, and the ports are
 # the room's to give out again (a stale port file once put two VMs on one)
-rm -f "$run"/*.pid "$run"/*.sock "$run"/*.port "$run"/*.engine "$run"/*.paused "$run"/*.waiting "$run"/*.wallet "$run"/next-port "$run"/.template-* "$run"/.rootfs-warned
+rm -f "$run"/*.pid "$run"/*.sock "$run"/*.port "$run"/*.engine "$run"/*.paused "$run"/*.waiting "$run"/*.wallet "$run"/*.cpu "$run"/*.lab "$run"/next-port "$run"/.template-* "$run"/.rootfs-warned "$run"/.meter-*
 # the private sessions' spool, written by the front's room (another user): sessions
 # that were flying when the room went down are over, their links to authors' disks with them
 mkdir -p "$SPOOL/requests" "$SPOOL/ready" && chmod 1777 "$SPOOL" "$SPOOL/requests" "$SPOOL/ready"
@@ -524,7 +592,7 @@ while :; do
     if [ -n "$FEED_URL" ]; then if feed_sync; then ROOT_OK=1; else ROOT_OK=0; fi
     elif [ "$DEPLOYMENTS" = none ] || [ -d "$DEPLOYMENTS" ]; then ROOT_OK=1; else ROOT_OK=0; fi
     [ "$ROOT_OK" = 1 ] && feed_names
-    if [ -f "$(rootfs)" ]; then template; fleet; sessions
+    if [ -f "$(rootfs)" ]; then template; fleet; sessions; cpu_meter
     else [ -f "$run/.rootfs-warned" ] || { log "no $(rootfs): make it with hangar/make-rootfs on the host"; touch "$run/.rootfs-warned"; }; fi
     status_json
     sleep "$INTERVAL" & wait $!
