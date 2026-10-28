@@ -666,12 +666,15 @@ filters those out and keeps only top-level [mcp_servers.NAME] tables."
           (push (format "     :http-host \"%s\"" name) lines)
           (push (format "     :http-port %s" (skewed--get-prop http-port :aboard)) lines)
           (when (skewed--get-prop http-port :galaxy)
-            (push (format "     :http-host-port %s" (skewed--get-prop http-port :galaxy)) lines)))
+            ;; the port alone: a bind address ("127.0.0.1:${X:-9098}")
+            ;; belongs in the compose ports list, not in a number the
+            ;; dashboard reads
+            (push (format "     :http-host-port %s" (skewed--host-port-only (skewed--get-prop http-port :galaxy))) lines)))
         (when swank-port
           (push (format "     :swank-host \"%s\"" name) lines)
           (push (format "     :swank-port %s" (skewed--get-prop swank-port :aboard)) lines)
           (when (skewed--get-prop swank-port :galaxy)
-            (push (format "     :swank-host-port %s" (skewed--get-prop swank-port :galaxy)) lines)))
+            (push (format "     :swank-host-port %s" (skewed--host-port-only (skewed--get-prop swank-port :galaxy))) lines)))
         (push "    )" lines)))
     
     (push "   ))" lines)
