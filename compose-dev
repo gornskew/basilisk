@@ -603,6 +603,7 @@ start_services() {
                 || log_warning "${BASILISK_VOCAB_OLD_SHIP_PROTEST:-the old ship went down protesting (see generated/last-stand-down.log)}"
             release_ship
         fi
+        clear_stale_ships
         BASILISK_MINT_FRESH=1
         export BASILISK_MINT_FRESH
     fi
@@ -967,6 +968,52 @@ release_ship() {
     # shellcheck disable=SC2059
     log_warning "$(printf "${BASILISK_VOCAB_NET_HELD:-Ship's network '%s' is still in use after down%s}" "$_rls_net" "${_rls_holders:+ -- held by: ${_rls_holders}}")"
     log_warning "  release it once free: docker network rm ${_rls_net}"
+    return 0
+}
+
+# =============================================================================
+# STALE SHIPS ON THE PINNED SUBNET
+#
+# Every ship's network is pinned to the same subnets (basilisk.sexp
+# :network-ipv4-subnet / -ipv6-subnet), so a ship network that outlived
+# its ship holds the pool, and the next raise fails creating its own:
+# "invalid pool request: Pool overlaps with other one on this address
+# space" (narad 2026-10-28: Zhurala-148, raised and buried within the
+# minute, left his network behind; down released only the ship .ship
+# named, and compose's removal of the stray raced its creation of the
+# new one, leaving a crewless ship).  So before a fresh raise, remove
+# every EMPTY ship network that holds one of the pinned subnets.  One
+# with hands still plugged in is someone's live ship: name it and leave
+# it alone.  Subnets match as written, not by CIDR overlap -- every
+# ship is generated with the same strings.
+# =============================================================================
+_pinned_subnets() {
+    run_compose config 2>/dev/null \
+        | sed -n 's/^[[:space:]]*-[[:space:]]*subnet:[[:space:]]*"\{0,1\}\([^"]*\)"\{0,1\}[[:space:]]*$/\1/p'
+}
+
+clear_stale_ships() {
+    _css_pinned="$(_pinned_subnets)"
+    [ -n "$_css_pinned" ] || return 0
+    for _css_net in $(docker network ls -q --filter label=com.docker.compose.network=ship 2>/dev/null); do
+        _css_name="$(docker network inspect -f '{{.Name}}' "$_css_net" 2>/dev/null)" || continue
+        _css_hit=""
+        for _css_sub in $(docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}' "$_css_net" 2>/dev/null); do
+            if printf '%s\n' "$_css_pinned" | grep -qxF -- "$_css_sub"; then
+                _css_hit="$_css_sub"
+                break
+            fi
+        done
+        [ -n "$_css_hit" ] || continue
+        _css_holders="$(docker network inspect -f '{{range .Containers}}{{.Name}} {{end}}' "$_css_net" 2>/dev/null)"
+        if [ -z "$_css_holders" ] && docker network rm "$_css_net" > /dev/null 2>&1; then
+            # shellcheck disable=SC2059
+            log_info "$(printf "${BASILISK_VOCAB_STALE_SHIP_CLEARED:-A stale ship's network '%s' held %s; cleared it}" "$_css_name" "$_css_hit")"
+        else
+            # shellcheck disable=SC2059
+            log_warning "$(printf "${BASILISK_VOCAB_STALE_SHIP_HELD:-Ship network '%s' holds %s, the subnet this raise needs%s}" "$_css_name" "$_css_hit" "${_css_holders:+ -- crewed by: ${_css_holders}}")"
+        fi
+    done
     return 0
 }
 
