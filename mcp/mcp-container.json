@@ -12,7 +12,11 @@
         "--http-port",
         "7080",
         "--request-timeout-ms",
-        "30000"
+        "30000",
+        "--admin-secret-file",
+        "/projects/.secrets/lisply-secret",
+        "--admin-secret-header",
+        "X-Lisply-Secret"
       ]
     },
     "bridge": {
@@ -26,7 +30,11 @@
         "--http-port",
         "9080",
         "--request-timeout-ms",
-        "30000"
+        "30000",
+        "--admin-secret-file",
+        "/projects/.secrets/lisply-secret",
+        "--admin-secret-header",
+        "X-Lisply-Secret"
       ]
     },
     "engine-room": {
@@ -40,7 +48,11 @@
         "--http-port",
         "9090",
         "--request-timeout-ms",
-        "30000"
+        "30000",
+        "--admin-secret-file",
+        "/projects/.secrets/lisply-secret",
+        "--admin-secret-header",
+        "X-Lisply-Secret"
       ]
     }
   }

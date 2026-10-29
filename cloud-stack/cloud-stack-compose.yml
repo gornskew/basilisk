@@ -31,6 +31,7 @@ services:
       - SWANK_PORT=4218
       - START_SWANK=true
       - TZ=${TZ:-Etc/UTC}
+      - GENDL_LISPLY_SECRET_FILE=${GENDL_LISPLY_SECRET_FILE:-}
     volumes:
       - type: bind
         source: ${PROJECTS_DIR}

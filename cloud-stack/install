@@ -8,7 +8,19 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# basilisk beside this repo, or one level up when this repo sits in a
+# gs/ or gw/ bucket and basilisk at the top of /projects (or the other way
+# round).  Physical paths: reached through a top-level compat symlink,
+# `..` resolves against the real parent, which is how balaram's first
+# bucketed deploy (2026-09-16) looked for gs/basilisk and found nothing.
+if [ -z "${BASILISK_DIR:-}" ]; then
+    for d in "$SCRIPT_DIR/../basilisk" "$SCRIPT_DIR/../../basilisk" \
+             "$SCRIPT_DIR/../gs/basilisk" "$SCRIPT_DIR/../../gs/basilisk" \
+             "$SCRIPT_DIR/../gw/basilisk" "$SCRIPT_DIR/../../gw/basilisk"; do
+        [ -d "$d" ] && { BASILISK_DIR="$(cd "$d" && pwd -P)"; break; }
+    done
+fi
 TARGET_DIR="${BASILISK_DIR:-$SCRIPT_DIR/../basilisk}"
 
 echo "Installing cloud-stack..."

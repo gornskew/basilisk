@@ -104,15 +104,6 @@ engines, which parse them as integers."
   "Where every room sees the lisply secret (the galaxy's projects dir is
 mounted at /projects in each).")
 
-(defun skewed--lisply-secret-present-p ()
-  "True when the galaxy holds a non-empty .secrets/lisply-secret: the
-projects dir is PROJECTS_DIR, else the parent of this yard."
-  (let* ((projects (or (let ((p (getenv "PROJECTS_DIR"))) (and p (> (length p) 0) p))
-                       (file-name-directory (directory-file-name skewed-gen-yard-dir))))
-         (file (expand-file-name ".secrets/lisply-secret" projects)))
-    (and (file-readable-p file)
-         (> (or (file-attribute-size (file-attributes file)) 0) 0))))
-
 (defun skewed--generate-compose-yaml (config)
   "Generate docker-compose.yml content from CONFIG."
   (let* ((defaults (skewed--get-prop config :defaults))
@@ -348,13 +339,16 @@ projects dir is PROJECTS_DIR, else the parent of this yard."
         (push (format "      - TZ=%s" (or (skewed--get-prop defaults :timezone) "${TZ:-Etc/UTC}")) lines)
         ;; The lisply doors' shared secret (2026-10-19).  When the galaxy
         ;; holds .secrets/lisply-secret, every room is told where it lies:
-        ;; a Gendl room then answers its /lisply endpoints only to a
-        ;; caller carrying it (gendl gwl/lisply-backend), and mcp-exec
-        ;; hands the same file to every wrapper.  No file, no variable --
-        ;; a named file that cannot be read keeps the doors CLOSED, so the
-        ;; variable is never emitted ahead of the secret it names.
-        (when (skewed--lisply-secret-present-p)
-          (push (format "      - GENDL_LISPLY_SECRET_FILE=%s" skewed--lisply-secret-container-path) lines))
+        ;; a Gendl or Emacs room then answers its /lisply endpoints only to
+        ;; a caller carrying it, and mcp-exec hands the same file to every
+        ;; wrapper.  The decision is the HOST's, made at every `up':
+        ;; generate-env.sh writes the path into .env only when this host's
+        ;; file is non-empty, and leaves it empty otherwise, which both
+        ;; backends read as no secret.  (Until 2026-10-28 the line was
+        ;; emitted here only when the GENERATING host had a secret, so
+        ;; the committed compose decided for every host, and minting a
+        ;; secret on one changed nothing.)
+        (push "      - GENDL_LISPLY_SECRET_FILE=${GENDL_LISPLY_SECRET_FILE:-}" lines)
 
         ;; env_file (long-form, required:false) -- lets a service read
         ;; secrets from an uncommitted per-host file without breaking
@@ -504,14 +498,16 @@ projects dir is PROJECTS_DIR, else the parent of this yard."
 ;;; ============================================================================
 
 (defun skewed--lisply-secret-wrapper-args ()
-  "Wrapper flags that send the lisply secret, when the galaxy holds one.
+  "Wrapper flags that send the lisply secret.
 For the configs that start the wrapper directly inside the ready room;
 the host's configs go through mcp-exec, which adds the same flags
-itself.  The ready room's wrapper must know --admin-secret-file: put
-the secret file in place only once the room's image carries it."
-  (and (skewed--lisply-secret-present-p)
-       (list "--admin-secret-file" skewed--lisply-secret-container-path
-             "--admin-secret-header" "X-Lisply-Secret")))
+itself.  Always emitted, since these files are committed and shared by
+every host: a wrapper whose secret file is missing or empty sends no
+header (lisply-mcp server.js currentAdminSecret), which is right for a
+host with no secret.  The ready room's wrapper must know
+--admin-secret-file (readymax images since 2026-10-19 do)."
+  (list "--admin-secret-file" skewed--lisply-secret-container-path
+        "--admin-secret-header" "X-Lisply-Secret"))
 
 (defun skewed--generate-mcp-json-container (config)
   "Generate MCP config for in-container usage (claude/gemini CLI)."

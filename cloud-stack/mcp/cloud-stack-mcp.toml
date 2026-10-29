@@ -10,7 +10,7 @@
 
 [mcp_servers.guild-workshop]
 command = "node"
-args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "guild-workshop", "--backend-host", "guild-workshop", "--http-port", "9098", "--request-timeout-ms", "30000"]
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "guild-workshop", "--backend-host", "guild-workshop", "--http-port", "9098", "--request-timeout-ms", "30000", "--admin-secret-file", "/projects/.secrets/lisply-secret", "--admin-secret-header", "X-Lisply-Secret"]
 
 [mcp_servers.guild-workshop.tools.guild-workshop__ping_lisp]
 approval_mode = "approve"

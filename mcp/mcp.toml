@@ -10,7 +10,7 @@
 
 [mcp_servers.ready-room]
 command = "node"
-args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "ready-room", "--backend-host", "ready-room", "--http-port", "7080", "--request-timeout-ms", "30000"]
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "ready-room", "--backend-host", "ready-room", "--http-port", "7080", "--request-timeout-ms", "30000", "--admin-secret-file", "/projects/.secrets/lisply-secret", "--admin-secret-header", "X-Lisply-Secret"]
 
 [mcp_servers.ready-room.tools.ready-room__ping_lisp]
 approval_mode = "approve"
@@ -23,7 +23,7 @@ approval_mode = "approve"
 
 [mcp_servers.bridge]
 command = "node"
-args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "bridge", "--backend-host", "bridge", "--http-port", "9080", "--request-timeout-ms", "30000"]
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "bridge", "--backend-host", "bridge", "--http-port", "9080", "--request-timeout-ms", "30000", "--admin-secret-file", "/projects/.secrets/lisply-secret", "--admin-secret-header", "X-Lisply-Secret"]
 
 [mcp_servers.bridge.tools.bridge__ping_lisp]
 approval_mode = "approve"
@@ -36,7 +36,7 @@ approval_mode = "approve"
 
 [mcp_servers.engine-room]
 command = "node"
-args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "engine-room", "--backend-host", "engine-room", "--http-port", "9090", "--request-timeout-ms", "30000"]
+args = ["/home/emacs-user/lisply-mcp/scripts/mcp-wrapper.js", "--server-name", "engine-room", "--backend-host", "engine-room", "--http-port", "9090", "--request-timeout-ms", "30000", "--admin-secret-file", "/projects/.secrets/lisply-secret", "--admin-secret-header", "X-Lisply-Secret"]
 
 [mcp_servers.engine-room.tools.engine-room__ping_lisp]
 approval_mode = "approve"
