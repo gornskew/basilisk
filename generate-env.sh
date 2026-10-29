@@ -197,6 +197,20 @@ _off() { echo $(( $1 + BASILISK_PORT_OFFSET )); }
 # means no secret to every backend, so a host without one stays open.
 if [ -s "$PROJECTS_DIR/.secrets/lisply-secret" ]; then
     LISPLY_SECRET_FILE_LINE=/projects/.secrets/lisply-secret
+    # The file goes to the docker group at mode 640 (2026-10-29): a room
+    # whose species runs as its own uid -- the Transporter Chief's
+    # cyclops, 999 -- joins that group by its articles (:group-add), and
+    # a secret a room cannot read shuts its /lisply on every caller.  Not
+    # the owner's group: .secrets is mode 701, and a member of the
+    # owner's group would lose the traverse bit.  The docker group
+    # widens nothing; its members can read any room's files already.
+    if [ -n "$DOCKER_GROUP_ID" ] \
+       && chgrp "$DOCKER_GROUP_ID" "$PROJECTS_DIR/.secrets/lisply-secret" 2>/dev/null \
+       && chmod 640 "$PROJECTS_DIR/.secrets/lisply-secret" 2>/dev/null; then
+        :
+    else
+        echo "Warning: could not give .secrets/lisply-secret to the docker group (${DOCKER_GROUP_ID:-none}) at mode 640; a room running as another uid cannot read it" >&2
+    fi
 else
     LISPLY_SECRET_FILE_LINE=
 fi

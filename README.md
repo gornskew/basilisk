@@ -199,10 +199,14 @@ Once a visitor is aboard, [`mcp/opening-prompt.md`](mcp/opening-prompt.md) is a 
 ready-made first hail.
 
 **A password at the doors.** Put a passphrase in `.secrets/lisply-secret`
-in the galaxy's projects directory (beside the yard, mode 600) before
+in the galaxy's projects directory (beside the yard) before
 `./basilisk up`, and the Gendl rooms open their doors only to a cyborg
 who speaks it; the greeting hall hands it to every cyborg it admits,
 and a changed passphrase is heard at the next knock, with no raise.
+Each `up` hands the file to the docker group at mode 640, so a room
+whose crew sleeps under another uid (the Transporter Chief's) can
+read it through its `:group-add`; a room that cannot read the secret
+shuts its doors on everyone.
 Without the file the doors stand open as before -- fit only while no
 room's port reaches past your own machine.
 
