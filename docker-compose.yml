@@ -59,6 +59,10 @@ services:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local:/home/emacs-user/.emacs-local:ro
       - ${EMACS_LOCAL_SRC:-/nonexistent}/.emacs-local-early:/home/emacs-user/.emacs-local-early:ro
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
     networks:
       - ship
     healthcheck:
@@ -95,6 +99,10 @@ services:
         target: /projects
         bind:
           create_host_path: true
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
     networks:
       - ship
     healthcheck:
@@ -131,6 +139,10 @@ services:
         target: /projects
         bind:
           create_host_path: true
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
     networks:
       - ship
     healthcheck:
@@ -163,6 +175,10 @@ services:
         bind:
           create_host_path: true
       - /var/run/docker.sock:/var/run/docker.sock
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
     networks:
       - ship
 
@@ -184,5 +200,9 @@ services:
     environment:
       - TZ=${TZ:-Etc/UTC}
       - GENDL_LISPLY_SECRET_FILE=${GENDL_LISPLY_SECRET_FILE:-}
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
     networks:
       - ship
