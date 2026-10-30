@@ -407,8 +407,9 @@ mounted at /projects in each).")
           (dolist (grp group-add)
             (push (format "      - \"%s\"" grp) lines)))
         
-        ;; Ulimits
-        (let ((ulimits (skewed--get-prop svc :ulimits)))
+        ;; Ulimits: the room's own, else the ship's default
+        (let ((ulimits (or (skewed--get-prop svc :ulimits)
+                           (skewed--get-prop defaults :ulimits))))
           (when ulimits
             (push "    ulimits:" lines)
             (dolist (ul ulimits)
@@ -1598,11 +1599,23 @@ Examples:
                      (error "Could not read the base ship's articles: %s (this yard reads %s, no other name)"
                             skewed-gen-base-articles
                             skewed-gen-articles-filename))
-                   (skewed--filter-berthed
-                    (skewed--apply-relieves
-                     (skewed--resolve-post-requires raw base-config)
-                     base-config)
-                    base-names)))
+                   (let* ((cfg (skewed--filter-berthed
+                                (skewed--apply-relieves
+                                 (skewed--resolve-post-requires raw base-config)
+                                 base-config)
+                                base-names))
+                          (defaults (plist-get cfg :defaults))
+                          (base-ulimits (plist-get (plist-get base-config :defaults)
+                                                   :ulimits)))
+                     ;; An overlay's own rooms take the base ship's default
+                     ;; :ulimits unless the overlay states its own: a room
+                     ;; that only an overlay crews (a guild workshop, say)
+                     ;; would otherwise inherit nothing from the base file.
+                     (if (and base-ulimits (not (plist-get defaults :ulimits)))
+                         (plist-put cfg :defaults
+                                    (plist-put (copy-sequence defaults)
+                                               :ulimits base-ulimits))
+                       cfg))))
          (mcp-dir (expand-file-name "mcp/" skewed-gen-output-dir))
          (elisp-dir (expand-file-name "dot-files/emacs.d/etc/" skewed-gen-output-dir)))
     

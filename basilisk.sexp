@@ -56,7 +56,14 @@
   :timezone "${TZ:-Etc/UTC}"
   :network-ipv6 t
   :network-ipv4-subnet "172.20.0.0/16"
-  :network-ipv6-subnet "fd00:cafe::/80")
+  :network-ipv6-subnet "fd00:cafe::/80"
+  ;; Open files per room, unless a room sets its own.  Docker on a
+  ;; Debian 13 host hands containers a soft limit of 2^30, and CCL,
+  ;; CLISP and CMUCL close every descriptor up to it in each run-program
+  ;; child: minutes per subprocess (suzie's bridge, 2026-09-27; the
+  ;; clnet CI runner, 2026-10-30).  65536 keeps plenty of sockets for a
+  ;; serving room and costs CCL ~8 ms a child.
+  :ulimits ((:resource :nofile :soft 65536 :hard 1048576)))
 
  ;; How cyborg passengers come aboard: the lisply-mcp wrapper that
  ;; every posting with :cyborg-passengers-allowed? answers through.
