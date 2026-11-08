@@ -670,9 +670,24 @@ start_services() {
     # shellcheck disable=SC2086  (word-split intentional: service names)
     check_berths $_ss_services
 
-    _ss_up_log="${SCRIPT_DIR}/generated/last-raise.log"
+    # A room whose residence is not aboard stays ashore (rooms_ashore,
+    # below): named, and the rest raise without him.
     # shellcheck disable=SC2086  (word-split intentional: service names)
-    if ! run_compose up -d --remove-orphans $_ss_services >"$_ss_up_log" 2>&1; then
+    _ss_ashore="$(rooms_ashore $_ss_services)"
+    _ss_raise="$_ss_services"
+    if [ -n "$_ss_ashore" ]; then
+        # shellcheck disable=SC2059  (vocab values are printf formats)
+        log_warning "$(printf "${BASILISK_VOCAB_ASHORE:-No residence aboard for %s: left ashore, and the rest raise without him}" "$_ss_ashore")"
+        log_warning "  ${BASILISK_VOCAB_ASHORE_FIX:-Build or fetch his image, then rouse him:}  ./${SCRIPT_NAME} up ${_ss_ashore}"
+        _ss_raise="$(rooms_less "${_ss_services:-$(run_compose config --services 2>/dev/null)}" "$_ss_ashore")"
+    fi
+
+    _ss_up_log="${SCRIPT_DIR}/generated/last-raise.log"
+    if [ -n "$_ss_ashore" ] && [ -z "$_ss_raise" ]; then
+        # never a bare `up': with no rooms named it would raise them all
+        log_error "${BASILISK_VOCAB_ASHORE_ALL:-Every room asked for is ashore; nobody raised}"
+    # shellcheck disable=SC2086  (word-split intentional: service names)
+    elif ! run_compose up -d --remove-orphans $_ss_raise >"$_ss_up_log" 2>&1; then
         log_error "The raise went wrong; compose says:"
         sed 's/^/    /' "$_ss_up_log"
     fi
@@ -2222,6 +2237,47 @@ _PAIRS
     log_info "$(printf "${BASILISK_VOCAB_PULL_SOME:-Beaming aboard: %s}" "$_missing")"
     # shellcheck disable=SC2086  (word-split intentional: service names)
     run_compose pull $_missing
+}
+
+# A ROOM WHOSE RESIDENCE IS NOT ABOARD STAYS ASHORE (2026-11-07).
+# Compose creates no room at all when any one image is missing: not the
+# others, and so not the ship.  A whole raise went down that way when one
+# room's image was not yet on the host.  A species grown
+# in the local vat (pull_policy never) has no catalog to be fetched
+# from, and a fetch can fail for any species, so whatever the policy, a
+# room whose image is still absent after the pull is left out of the
+# raise by name and the rest of the ship raises.  Prints those rooms,
+# among the ones named, or among all when none are.
+rooms_ashore() {
+    _ra_named=" $* "
+    _ra_ashore=""
+    while IFS=" " read -r _ra_svc _ra_img; do
+        [ -z "$_ra_svc" ] || [ -z "$_ra_img" ] && continue
+        if [ "$_ra_named" != "  " ]; then
+            case "$_ra_named" in *" $_ra_svc "*) ;; *) continue ;; esac
+        fi
+        if ! docker image inspect "$_ra_img" > /dev/null 2>&1; then
+            _ra_ashore="${_ra_ashore:+$_ra_ashore }$_ra_svc"
+        fi
+    done << _PAIRS
+$(run_compose config 2>/dev/null | awk '
+    $1 == "services:" { in_services=1; next }
+    in_services && match($0, /^[[:space:]]{2}[A-Za-z0-9_-]+:$/) {
+        service=$1; sub(":", "", service); next
+    }
+    in_services && $1 == "image:" { print service, $2 }
+')
+_PAIRS
+    printf '%s' "$_ra_ashore"
+}
+
+# The rooms of the first list (spaces or newlines) not in the second.
+rooms_less() {
+    _rl_out=""
+    for _rl_svc in $1; do
+        case " $2 " in *" $_rl_svc "*) ;; *) _rl_out="${_rl_out:+$_rl_out }$_rl_svc" ;; esac
+    done
+    printf '%s' "$_rl_out"
 }
 
 clean_all() {
