@@ -76,7 +76,7 @@ $_devs}"
 # docker-cp docker-compose.yml, generate-env.sh and mcp/ back out of the
 # repo snapshot baked inside it.
 #
-# Removed 2026-08-15 (Dave: "no more tricks with extracting yards from
+# Removed 2026-08-15 (the owner: "no more tricks with extracting yards from
 # images").  It only ever existed because the stack machinery lived in the
 # skewed-emacs repo and therefore in its image; once the yard is its own
 # repo, the honest instruction is the obvious one:
@@ -1097,7 +1097,7 @@ restart_services() {
 # exists.  A plain docker restart (same filesystem) therefore keeps
 # its name; only a genuinely fresh/recreated container (new writable
 # layer, no file) mints one.  Whether that is the full desired restart
-# semantics is an open question (Dave, 2026-08-14) -- this is the
+# semantics is an open question (the owner, 2026-08-14) -- this is the
 # conservative default until that gets worked through.
 #
 # Consumers: eyes-only-metrics.lisp's MY-IDENTITY and (for the Captain)
@@ -1106,7 +1106,7 @@ restart_services() {
 # =============================================================================
 
 # SPECIES IS THE IMAGE TYPE -- repo:tag, DERIVED and never looked up
-# (Dave, 2026-08-17).  There is no species table here any more, and no
+# (the owner, 2026-08-17).  There is no species table here any more, and no
 # species registry anywhere: Basilisk does not adjudicate whether an
 # image qualifies as a species, because the image simply IS one.
 #
@@ -1137,7 +1137,7 @@ _crew_species_from_image() {
     esac
 }
 
-# Role comes from the POSTING, not the species (Dave, 2026-08-16).
+# Role comes from the POSTING, not the species (the owner, 2026-08-16).
 #
 # Deriving role from the image was only ever a guess made in the absence
 # of a declared posting, and the canon makes it provably wrong: a
@@ -1146,7 +1146,7 @@ _crew_species_from_image() {
 # mislabels it.  The hostname now DECLARES the posting, so the role is
 # read rather than inferred.
 #
-# There is no longer a post->species table either (Dave, 2026-08-17).
+# There is no longer a post->species table either (the owner, 2026-08-17).
 # It ran backwards: what usually stands a post is a reasonable thing to
 # know, but it is not how species is resolved.  Species comes off the
 # image and nowhere else, so a post that cannot be recognized costs a
@@ -1161,7 +1161,7 @@ _crew_species_from_image() {
 # containers created before the rename; both map to the same ROLE
 # string, "pilot", because the role vocabulary reaches the eyes-only
 # per-skin rank titles and renaming IT is a separate, still-open
-# decision (Dave) -- do not rename the role here as a tidy-up.
+# decision (the owner's) -- do not rename the role here as a tidy-up.
 _crew_role_for_posting() {
     case "$1" in
         # Canon postings (positions ruling 2026-08-24: captain,
@@ -1307,7 +1307,7 @@ _crew_display() {
     printf '%s' "$_cd_out"
 }
 
-# MANNED/DRONE IS GONE FROM HERE, deliberately (Dave, 2026-08-17).
+# MANNED/DRONE IS GONE FROM HERE, deliberately (the owner, 2026-08-17).
 #
 # It asked exactly one question -- is there a compiler aboard? -- and
 # that is a CAPABILITY OF THE IMAGE, not a trait of a species, so it
@@ -1362,7 +1362,7 @@ _crew_onsets_for() {
         gdl:*)          echo 'Ost Ven Kal Rhe Sig Tor Wex Yar' ;;
         autoheal:*)     echo 'Om Sal Vel Lum Mir Ana Eir Thea' ;;
         eyes-only:*)    echo 'Ji Min Seo Ha Soo Eun Hye Yu' ;;
-        # The Curator riffs on the greybeards (Dave's ruling,
+        # The Curator riffs on the greybeards (the owner's ruling,
         # 2026-08-23: the persona inside the chamber may cycle
         # through riffs on famous unix & lisp names).
         museum-chamber:*) echo 'Ken Rit Kern Thom Mc Den Bri Stal' ;;
@@ -1579,7 +1579,7 @@ _ci_image="$(docker inspect --format \
 
         # Species is the image type, full stop -- no label to consult,
         # no post default to fall back to, nothing to resolve between
-        # (Dave, 2026-08-17).  The old three-step chain also had an
+        # (the owner, 2026-08-17).  The old three-step chain also had an
         # ordering bug that dies with it: its post-default arm ran
         # against the HOSTNAME-derived posting, because the
         # basilisk.post label override below had not happened yet.
@@ -1931,7 +1931,7 @@ crew_muster() {
         fi
         printf '  %-8s %-30s %s\n' "$_cm_post" "$_cm_shown" "${_cm_ports:-(no published ports)}"
 
-        # REQUIREMENTS vs CAPABILITIES (Dave, 2026-08-17).  A posting
+        # REQUIREMENTS vs CAPABILITIES (the owner, 2026-08-17).  A posting
         # states its requirements (basilisk.requires, emitted by the
         # yard); the species states its capabilities in its own image
         # manifest (basilisk.capabilities label) -- the SSoT for what an
