@@ -149,6 +149,9 @@ deployment and its books, and this VM books nothing."
     (when (hosted-find "*CLOSED-SOURCE?*" :prompt-lab) (hosted-set "*CLOSED-SOURCE?*" t))
     (hosted-set "*TOLL-PROVIDER*" :stripe)
     (hosted-set "*DEPLOYMENT-PAYMENTS?*" t)
+    ;; the author's share for the community pot: the gate pours it into
+    ;; the pot as each payment settles, so the Monetize slider is offered
+    (when (hosted-find "*POT-PERCENT-LEAST*" :prompt-lab) (hosted-set "*POT-PERCENT-LEAST*" 0))
     (when (hosted-find "*BOOKS?*" :prompt-lab) (hosted-set "*BOOKS?*" nil))
     (hosted-set "*DEPLOY-FRONT*" (list :url front :id id :token token))))
 
