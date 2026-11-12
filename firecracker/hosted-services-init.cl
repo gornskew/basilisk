@@ -144,7 +144,14 @@ deployment and its books, and this VM books nothing."
   (when (hosted-find "*BOOKS?*" :prompt-lab) (hosted-set "*BOOKS?*" t))
   (hosted-set "*MESSAGES-URL*" (or gate "http://transporter-room/llm/messages"))
   (when (and lab (hosted-find "*LAB-NAME*" :prompt-lab)) (hosted-set "*LAB-NAME*" lab))
-  (when (and monetize front id (hosted-find "*DEPLOY-FRONT*" :prompt-lab))
+  ;; MONETIZE :free (a trusted author): deploys through the front too, but
+  ;; only open work that charges nothing -- no closed source, tolls as test
+  ;; payments in the previews, the front refusing anything that charges
+  (when (and (eq monetize :free) front id (hosted-find "*DEPLOY-FRONT*" :prompt-lab))
+    (hosted-set "*DEPLOYMENTS?*" t)
+    (when (hosted-find "*BOOKS?*" :prompt-lab) (hosted-set "*BOOKS?*" nil))
+    (hosted-set "*DEPLOY-FRONT*" (list :url front :id id :token token)))
+  (when (and monetize (not (eq monetize :free)) front id (hosted-find "*DEPLOY-FRONT*" :prompt-lab))
     (hosted-set "*DEPLOYMENTS?*" t)
     (when (hosted-find "*CLOSED-SOURCE?*" :prompt-lab) (hosted-set "*CLOSED-SOURCE?*" t))
     (hosted-set "*TOLL-PROVIDER*" :stripe)

@@ -335,8 +335,12 @@ sessions() {   # one pass over the private sessions' spool
         [ -f "$f" ] || continue
         id=$(jq -r '.id // empty' "$f" 2>/dev/null); wallet=$(jq -r '.wallet // empty' "$f" 2>/dev/null); token=$(jq -r '.token // empty' "$f" 2>/dev/null)
         # a session that sells: deploys through the front, when this hangar knows where it is
+        # ("free": the author may deploy open work that charges nothing, and sells nothing)
         mon=0; front=""
-        if [ "$(jq -r '.monetize // false' "$f" 2>/dev/null)" = true ] && [ -n "$FRONT_URL" ]; then mon=1; front=$FRONT_URL; fi
+        case "$(jq -r '.monetize // false' "$f" 2>/dev/null)" in
+            true) [ -n "$FRONT_URL" ] && { mon=1; front=$FRONT_URL; } ;;
+            free) [ -n "$FRONT_URL" ] && { mon=free; front=$FRONT_URL; } ;;
+        esac
         if ! [[ $id =~ ^pl-[0-9a-f]{10}$ && $wallet =~ ^[0-9a-f]{24}$ && $token =~ ^[0-9a-f]{32}$ && $(basename "$f" .json) = "$id" ]]; then
             log "a malformed session request ($(basename "$f")) dropped"; rm -f "$f"; continue
         fi
@@ -358,7 +362,7 @@ sessions() {   # one pass over the private sessions' spool
         fi
         ln -f "$disk" "$FC_DIR/$id.data.ext4"; echo "$wallet" > "$run/$id.wallet"
         port=$(next_port)
-        log "$id: a private session$([ "$mon" = 1 ] && echo ' with Monetize'); raising its VM on :$port"
+        log "$id: a private session$([ "$mon" = 1 ] && echo ' with Monetize')$([ "$mon" = free ] && echo ' with free deploys'); raising its VM on :$port"
         local out rc; out=$(MODE=session TOKEN=$token LAB=$SESSION_LAB MONETIZE=$mon FRONT=$front $HOSTED up "$id" "$port" 2>&1); rc=$?
         [ -z "$out" ] || printf '%s\n' "$out" | sed 's/^/  /'
         if [ "$rc" = 0 ] && vm_running "$id"; then
