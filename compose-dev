@@ -120,6 +120,13 @@ _quote_arg() {
     printf "'"
 }
 
+# The compose project name: the clone's directory, lower-cased, plus the
+# instance.  The ship's own containers carry it as their
+# com.docker.compose.project label (put_guests_ashore tells guests by it).
+_compose_project_name() {
+    printf '%s' "$(basename "$SCRIPT_DIR" | tr 'A-Z' 'a-z')${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
+}
+
 run_compose() {
     _rc_fargs=""
     while IFS= read -r _cf; do
@@ -141,7 +148,7 @@ _FILELIST
     # (no-instance) project name is the directory basename, exactly
     # compose's own default, so existing single-deployment ships see
     # identical labels and no recreation.
-    _rc_project="$(basename "$SCRIPT_DIR" | tr 'A-Z' 'a-z')${BASILISK_INSTANCE:+-$BASILISK_INSTANCE}"
+    _rc_project="$(_compose_project_name)"
 
     eval "$COMPOSE_CMD -p $(_quote_arg "$_rc_project") $_rc_fargs $_rc_caller"
 }
@@ -598,6 +605,7 @@ start_services() {
             # shellcheck disable=SC2059  (vocab values are printf formats)
             log_info "$(printf "${BASILISK_VOCAB_OLD_SHIP_RETIRES:-The standing ship '%s' goes to his rest before the new raising}" "$_ss_old_net")"
             mkdir -p "${SCRIPT_DIR}/generated"
+            put_guests_ashore
             run_compose down --remove-orphans \
                 >"${SCRIPT_DIR}/generated/last-stand-down.log" 2>&1 \
                 || log_warning "${BASILISK_VOCAB_OLD_SHIP_PROTEST:-the old ship went down protesting (see generated/last-stand-down.log)}"
@@ -987,6 +995,45 @@ release_ship() {
 }
 
 # =============================================================================
+# GUESTS ASHORE BEFORE A STAND-DOWN (2026-11-13)
+#
+# Another compose project may join one of its containers to the ship's
+# network as an external network (a stack overlay's companion projects,
+# a developer's own container), and docker refuses to remove a network
+# with an endpoint still on it.  compose down removes the ship's own
+# containers and then fails on the network ('network ... has active
+# endpoints'), release_ship can only report the holders, and the next
+# raise collides with the leftover on the pinned subnets: the whole ship
+# stays down (narad 2026-11-13, two guests from a companion project and
+# two from a developer's).  So before the ship stands down, every
+# container on its network that is not one of its own -- its compose
+# project label differs, or it has none -- is disconnected from it.
+# The guest keeps running on its other networks; whatever joined it
+# joins it again to the next ship (it has to anyway: every raise mints
+# a new network).
+# =============================================================================
+put_guests_ashore() {
+    _pga_net="$(_ship_network_name)"
+    docker network inspect "$_pga_net" > /dev/null 2>&1 || return 0
+    _pga_project="$(_compose_project_name)"
+    for _pga_id in $(docker network inspect \
+        --format '{{range $k, $v := .Containers}}{{$k}} {{end}}' "$_pga_net" 2>/dev/null); do
+        _pga_proj="$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$_pga_id" 2>/dev/null)" || continue
+        [ "$_pga_proj" = "$_pga_project" ] && continue
+        _pga_name="$(docker inspect --format '{{.Name}}' "$_pga_id" 2>/dev/null)"
+        _pga_name="${_pga_name#/}"
+        if docker network disconnect -f "$_pga_net" "$_pga_id" > /dev/null 2>&1; then
+            # shellcheck disable=SC2059  (vocab values are printf formats)
+            log_info "$(printf "${BASILISK_VOCAB_GUEST_ASHORE:-%s, a guest on the ship's network '%s', put ashore before the stand-down}" "${_pga_name:-$_pga_id}" "$_pga_net")"
+        else
+            # shellcheck disable=SC2059
+            log_warning "$(printf "${BASILISK_VOCAB_GUEST_STAYS:-%s, a guest on the ship's network '%s', could not be put ashore; the stand-down may leave the network held}" "${_pga_name:-$_pga_id}" "$_pga_net")"
+        fi
+    done
+    return 0
+}
+
+# =============================================================================
 # STALE SHIPS ON THE PINNED SUBNET
 #
 # Every ship's network is pinned to the same subnets (basilisk.sexp
@@ -1048,6 +1095,7 @@ stop_services() {
     # already say, so it rides in a log and surfaces only on failure.
     mkdir -p "${SCRIPT_DIR}/generated"
     _sts_log="${SCRIPT_DIR}/generated/last-stand-down.log"
+    put_guests_ashore
     run_compose down --remove-orphans >"$_sts_log" 2>&1
     _sts_rc=$?
     if [ "$_sts_rc" -ne 0 ]; then
