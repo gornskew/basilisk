@@ -45,6 +45,19 @@ cid=$(docker create "$GENDL_IMAGE"); docker export "$cid" -o "$FC_DIR/gendl.tar"
 echo "copying the lab's checkouts from $DEMOS and $MONOCLE"
 rsync -a --delete --exclude .git --exclude '*.fasl' --exclude node_modules --exclude CLAUDE.md "$DEMOS/" "$FC_DIR/hosted/demos/"
 rsync -a --delete --exclude .git --exclude '*.fasl' "$MONOCLE/" "$FC_DIR/hosted/monocle/"
+# the copies leave .git behind, so each records its commit in a COMMIT file
+# at its root, which the lab's source page reads (the AGPL source offer);
+# a checkout with uncommitted changes says so after the commit
+record_commit() {   # record_commit CHECKOUT COPY
+    local commit
+    commit=$(git -C "$1" rev-parse HEAD 2>/dev/null) || commit=""
+    if [ -n "$commit" ] && ! git -C "$1" diff --quiet HEAD 2>/dev/null; then
+        commit="$commit (with uncommitted changes)"
+    fi
+    printf '%s\n' "$commit" > "$2/COMMIT"
+}
+record_commit "$DEMOS" "$FC_DIR/hosted/demos"
+record_commit "$MONOCLE" "$FC_DIR/hosted/monocle"
 echo "building $FC_DIR/$NAME.ext4 ($SIZE) for engine $ENGINE"
 # built aside and moved into place, so a hangar never snapshots a half-written one
 docker run --rm -v "$FC_DIR":/work -v "$here":/hangar:ro -v "$FC_DIR/hosted":/hosted:ro \
