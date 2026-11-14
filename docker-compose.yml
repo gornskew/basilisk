@@ -42,6 +42,9 @@ services:
       - 'TERM=xterm-256color'
       - 'COLORTERM=truecolor'
       - 'LISPLY_SEARCH_CORPORA=/lisply/corpora'
+      - 'LISPLY_EMBED_URL=${LISPLY_EMBED_URL:-}'
+      - 'LISPLY_EMBED_KEY_FILE=${LISPLY_EMBED_KEY_FILE:-}'
+      - 'LISPLY_SEARCH_MODE=${LISPLY_SEARCH_MODE:-}'
       - TZ=${TZ:-Etc/UTC}
       - GENDL_LISPLY_SECRET_FILE=${GENDL_LISPLY_SECRET_FILE:-}
     volumes:

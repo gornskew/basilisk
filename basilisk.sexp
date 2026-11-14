@@ -167,7 +167,16 @@
                 ("TERM" . "xterm-256color")
                 ("COLORTERM" . "truecolor")
                 ;; where the chart locker is stowed aboard (below)
-                ("LISPLY_SEARCH_CORPORA" . "/lisply/corpora"))
+                ("LISPLY_SEARCH_CORPORA" . "/lisply/corpora")
+                ;; searching the charts by meaning (lisply-mcp CORPUS.md,
+                ;; section 7): the embedding server that embeds a query,
+                ;; the file holding its key, and the ranking a search gets
+                ;; when it names none.  Empty here, so the Captain searches
+                ;; by keyword; a ship that has a server names it in its own
+                ;; articles, the key file among its mounted secrets.
+                ("LISPLY_EMBED_URL" . "${LISPLY_EMBED_URL:-}")
+                ("LISPLY_EMBED_KEY_FILE" . "${LISPLY_EMBED_KEY_FILE:-}")
+                ("LISPLY_SEARCH_MODE" . "${LISPLY_SEARCH_MODE:-}"))
    ;; The Captain's papers and effects, stowed aboard from the galaxy.
    :cargo-bays (;; THE CHART LOCKER (2026-09-14): the lisply_search corpora
                 ;; aboard.  The yard fills generated/corpora at every raise
