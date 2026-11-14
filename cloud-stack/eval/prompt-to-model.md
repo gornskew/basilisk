@@ -176,6 +176,8 @@ solids (`box-solid`, `cylinder-solid`), not the wireframe primitives;
 | 2026-09-25, a cloud vat, second run | Opus 5.5, workshop 21-23 | 3 | 0 | 0 | 0 | 5 |
 | 2026-09-25, a cloud vat, third run | Opus 5.5, bridge | 17 | 3 | 0 | 0 | 6 (4 to the room) |
 | 2026-09-25, a cloud vat, third run | Opus 5.5, workshop 21-23 | 3 | 0 | 0 | 0 | 6 (4 to the room) |
+| 2026-11-13, the prompt lab's harness | Sonnet 5.5, open Gendl (CCL) | 13 | -- | 7 | 0 | 7 rounds |
+| 2026-11-13, the prompt lab's harness | Haiku 5.5, open Gendl (CCL) | 8 | -- | 4 | 8 | 13.5 rounds |
 
 Three Opus 5.5 passes on the bridge in two days scored 20, 17+3,
 19+1 and 17+3: the spread is the runner's strictness and the
@@ -193,6 +195,26 @@ turned 90 degrees; Opus built it right.  Fable's self-verdicts were
 too generous in 5 of 20; Opus rated itself lower than the runner in
 5 of 20.  On the workshop every volume was within 0.02 percent of
 the arithmetic, holes cut, keyway included.
+
+The 2026-11-13 rows are NOT the same procedure, and compare with the
+rows above only roughly.  Each prompt went to the prompt lab's own agent
+(its system prompt, its tools, its round cap, one prompt in a fresh
+session, through a gate), not to a sub-agent briefed with the primer on
+the bridge; the 'calls' are the lab's tool rounds.  The runner's checks
+were done in code -- build, count, the union of the leaves' boxes (10
+percent or 10 mm a stated axis, 25 percent an axis the table guesses),
+pile by box midpoints -- with no render look, so the with-flaws column
+is empty and every number that missed is PARTIAL.  Sonnet 5.5's seven
+partials are mostly readings a look would likely call PASS-with-flaws: a
+stair run and an airplane turned to X, a pergola's rafters overhanging
+the beams, a truss and a gear in more pieces than the table counts, a
+shelf too many; one is a real miss (the deck read as 5 by 4 m).  Haiku
+5.5's eight FAILs are seven models with no leaf that measures and one
+that defined no model; it ended its turn in 11 of 20.  Against the
+first run's Sonnet 5 (12 PASS, 3 PARTIAL, 5 FAIL, about 20 calls) and
+Haiku 4.5 (0 of 7): Sonnet 5.5 failed nothing in about a third of the
+calls, and Haiku 5.5 leaves a measurable model in 12 of 20.  No Opus 5.5 row
+was run this way; the rows above are the control.
 
 ## The report
 
