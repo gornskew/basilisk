@@ -334,8 +334,13 @@ show_help() {
     _sh_l_restart="$(printf '%-18s' "restart [${_sh_word}]")"
     _sh_l_stop="$(printf '%-18s' "stop [${_sh_word}]")"
     _sh_l_logs="$(printf '%-18s' "logs [${_sh_word}]")"
-    # shellcheck disable=SC2059  (vocab values are printf formats)
-    printf "${BASILISK_VOCAB_HELP_INTRO:-Basilisk — raises a Basilisk-class ship: the standard rig flies a
+    # A default holding a single quote stays out of the here-document
+    # expansion below, for the same reason as the intro.
+    _sh_d_logs="A room's logs"
+    # The default intro sits in a plain string.  Written inline in the
+    # parameter expansion, its odd count of single quotes parsed under
+    # dash but failed `bash -n`.
+    _sh_intro="Basilisk — raises a Basilisk-class ship: the standard rig flies a
 Ready Room (skewed-emacs), a Bridge and an Engineering Nexus (gendl),
 a Sick Bay (autoheal), and a Museum Chamber, mustered onto one network
 and validated.  Anything more — a Transporter Room, Guild Workshops —
@@ -345,7 +350,9 @@ Rooms answer to their module type slugs (ready-room, bridge, ...);
 containers wear the minted personal name of each room's keeper, fresh
 at every muster (read the roll with '%s status', or from .muster).
 %s and ./compose-dev are the same file, so nothing that
-already says compose-dev breaks.  See BASILISK.md and README.md.}\n" "$0" "$0"
+already says compose-dev breaks.  See BASILISK.md and README.md."
+    # shellcheck disable=SC2059  (vocab values are printf formats)
+    printf "${BASILISK_VOCAB_HELP_INTRO:-$_sh_intro}\n" "$0" "$0"
     cat << EOF
 
 USAGE:
@@ -356,7 +363,7 @@ COMMANDS:
     down               ${BASILISK_VOCAB_HELP_CMD_DOWN:-Stand the whole ship down}
     ${_sh_l_restart} ${BASILISK_VOCAB_HELP_CMD_RESTART:-Relieve the watch — one room, or all}
     ${_sh_l_stop} ${BASILISK_VOCAB_HELP_CMD_STOP:-Stop without striking the berths}
-    ${_sh_l_logs} ${BASILISK_VOCAB_HELP_CMD_LOGS:-A room's logs}
+    ${_sh_l_logs} ${BASILISK_VOCAB_HELP_CMD_LOGS:-$_sh_d_logs}
     status             ${BASILISK_VOCAB_HELP_CMD_STATUS:-The muster: each room, its keeper, how they fare}
     ps                 Show running containers
     emacs              ${BASILISK_VOCAB_HELP_CMD_EMACS:-Step into the ready room (emacsclient)}
@@ -1011,8 +1018,9 @@ release_ship() {
     _rls_tries=0
     while [ "$_rls_tries" -lt 5 ]; do
         if docker network rm "$_rls_net" > /dev/null 2>&1; then
+            _rls_fmt="Ship's network '%s' was left in use by down; released it (try %s)"
             # shellcheck disable=SC2059
-            log_info "$(printf "${BASILISK_VOCAB_NET_RELEASED:-Ship's network '%s' was left in use by down; released it (try %s)}" "$_rls_net" "$((_rls_tries + 1))")"
+            log_info "$(printf "${BASILISK_VOCAB_NET_RELEASED:-$_rls_fmt}" "$_rls_net" "$((_rls_tries + 1))")"
             return 0
         fi
         _rls_tries=$((_rls_tries + 1))
@@ -1020,8 +1028,9 @@ release_ship() {
     done
     _rls_holders="$(docker network inspect \
         --format '{{range .Containers}}{{.Name}} {{end}}' "$_rls_net" 2>/dev/null)"
+    _rls_fmt="Ship's network '%s' is still in use after down%s"
     # shellcheck disable=SC2059
-    log_warning "$(printf "${BASILISK_VOCAB_NET_HELD:-Ship's network '%s' is still in use after down%s}" "$_rls_net" "${_rls_holders:+ -- held by: ${_rls_holders}}")"
+    log_warning "$(printf "${BASILISK_VOCAB_NET_HELD:-$_rls_fmt}" "$_rls_net" "${_rls_holders:+ -- held by: ${_rls_holders}}")"
     log_warning "  release it once free: docker network rm ${_rls_net}"
     return 0
 }
@@ -1055,11 +1064,13 @@ put_guests_ashore() {
         _pga_name="$(docker inspect --format '{{.Name}}' "$_pga_id" 2>/dev/null)"
         _pga_name="${_pga_name#/}"
         if docker network disconnect -f "$_pga_net" "$_pga_id" > /dev/null 2>&1; then
+            _pga_fmt="%s, a guest on the ship's network '%s', put ashore before the stand-down"
             # shellcheck disable=SC2059  (vocab values are printf formats)
-            log_info "$(printf "${BASILISK_VOCAB_GUEST_ASHORE:-%s, a guest on the ship's network '%s', put ashore before the stand-down}" "${_pga_name:-$_pga_id}" "$_pga_net")"
+            log_info "$(printf "${BASILISK_VOCAB_GUEST_ASHORE:-$_pga_fmt}" "${_pga_name:-$_pga_id}" "$_pga_net")"
         else
+            _pga_fmt="%s, a guest on the ship's network '%s', could not be put ashore; the stand-down may leave the network held"
             # shellcheck disable=SC2059
-            log_warning "$(printf "${BASILISK_VOCAB_GUEST_STAYS:-%s, a guest on the ship's network '%s', could not be put ashore; the stand-down may leave the network held}" "${_pga_name:-$_pga_id}" "$_pga_net")"
+            log_warning "$(printf "${BASILISK_VOCAB_GUEST_STAYS:-$_pga_fmt}" "${_pga_name:-$_pga_id}" "$_pga_net")"
         fi
     done
     return 0
@@ -1101,8 +1112,9 @@ clear_stale_ships() {
         [ -n "$_css_hit" ] || continue
         _css_holders="$(docker network inspect -f '{{range .Containers}}{{.Name}} {{end}}' "$_css_net" 2>/dev/null)"
         if [ -z "$_css_holders" ] && docker network rm "$_css_net" > /dev/null 2>&1; then
+            _css_fmt="A stale ship's network '%s' held %s; cleared it"
             # shellcheck disable=SC2059
-            log_info "$(printf "${BASILISK_VOCAB_STALE_SHIP_CLEARED:-A stale ship's network '%s' held %s; cleared it}" "$_css_name" "$_css_hit")"
+            log_info "$(printf "${BASILISK_VOCAB_STALE_SHIP_CLEARED:-$_css_fmt}" "$_css_name" "$_css_hit")"
         else
             # shellcheck disable=SC2059
             log_warning "$(printf "${BASILISK_VOCAB_STALE_SHIP_HELD:-Ship network '%s' holds %s, the subnet this raise needs%s}" "$_css_name" "$_css_hit" "${_css_holders:+ -- crewed by: ${_css_holders}}")"
@@ -1587,8 +1599,9 @@ muster_crew() {
             # The hand is aboard: same name, same room, watch continues.
             _crew_minted_names="${_crew_minted_names:+$_crew_minted_names }${_mc_cur}"
             _mc_name="$_mc_cur"
+            _mc_fmt="%s's %s stands its watch"
             # shellcheck disable=SC2059
-            log_info "  $(printf "${BASILISK_VOCAB_MUSTER_STANDS:-%s's %s stands its watch}" "$_mc_name" "$(printf '%s' "$_mc_room" | tr '-' ' ')")"
+            log_info "  $(printf "${BASILISK_VOCAB_MUSTER_STANDS:-$_mc_fmt}" "$_mc_name" "$(printf '%s' "$_mc_room" | tr '-' ' ')")"
         else
             # No container bearing the name: mint a relief.  Unique per
             # run via _crew_minted_names, against every name the docker
