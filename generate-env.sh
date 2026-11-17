@@ -183,8 +183,11 @@ else
     fi
     BASILISK_SHIP="$(_mint_ship_name)"
     printf '%s\n' "$BASILISK_SHIP" > "$SHIP_FILE"
+    # The default sits in a plain string: a single quote inside the
+    # parameter expansion parses under dash but fails `bash -n`.
+    _minted_fmt="Minted ship's name: %s (kept in %s)"
     # shellcheck disable=SC2059  (vocab values are printf formats)
-    printf "${BASILISK_VOCAB_SHIP_MINTED:-Minted ship's name: %s (kept in %s)}\n" \
+    printf "${BASILISK_VOCAB_SHIP_MINTED:-$_minted_fmt}\n" \
         "$BASILISK_SHIP" "$SHIP_FILE"
 fi
 NETWORK_NAME="$(printf '%s' "$BASILISK_SHIP" | tr 'A-Z' 'a-z')"
