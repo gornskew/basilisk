@@ -726,6 +726,7 @@ start_services() {
     # console whose daemon is up to notice the files land.
     stow_species_corpora
     index_mount_corpora
+    embed_corpora
 
     return "$_ss_rc"
 }
@@ -820,6 +821,37 @@ index_mount_corpora() {
             log_warning "  chart locker: could not start the indexer for ${_imc_name}"
         fi
     done
+}
+
+# The charts' bearings: a corpus can carry an embeddings companion so the
+# Captain searches it by meaning as well as by word (lisply-mcp CORPUS.md,
+# section 7).  A raise brings them current: the reference indexer, run
+# aboard the console in the background, re-embeds only the rows whose text
+# changed and leaves a corpus whose text did not alone.  It embeds nothing
+# -- the corpus stays stale and is searched by keyword -- when more rows
+# changed than LISPLY_EMBED_MAX_ROWS, while LISPLY_EMBED_BUSY_URL says the
+# hardware it shares is at work, or when the embedding server does not
+# answer.  One line per corpus in generated/corpora/embeddings/rebuild.log.
+# Everything comes from the console's own environment (the articles' space
+# suit), the key read from its file by the indexer; a ship that names no
+# embedding server (LISPLY_EMBED_URL) does none of this.
+embed_corpora() {
+    _ec_cap="$(room_container "$(captain_room)")"
+    [ -z "$_ec_cap" ] && return 0
+    _ec_url="$(docker exec "$_ec_cap" printenv LISPLY_EMBED_URL 2>/dev/null)"
+    [ -z "$_ec_url" ] && return 0
+    if ! docker exec "$_ec_cap" sh -c 'lisply-index --help 2>&1 | grep -q -- --embed-dir' >/dev/null 2>&1; then
+        log_info "  chart locker: the console's lisply-index predates --embed-dir; embeddings left as they are"
+        return 0
+    fi
+    # Detached, like the mount indexers above -- and after them: wait (up to
+    # ten minutes) while one is still writing its corpus.  The bracket keeps
+    # the pattern from matching this very shell.
+    if docker exec -d "$_ec_cap" sh -c 'i=0; while pgrep -f "[l]isply-index.js --root" >/dev/null && [ $i -lt 120 ]; do sleep 5; i=$((i + 1)); done; exec lisply-index --embed-dir /lisply/corpora --embed-log /lisply/corpora/embeddings/rebuild.log --quiet'; then
+        log_info "  chart locker: bringing the embeddings current in the background (generated/corpora/embeddings/rebuild.log)"
+    else
+        log_warning "  chart locker: could not start the embeddings step"
+    fi
 }
 
 # =============================================================================

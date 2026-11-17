@@ -176,7 +176,15 @@
                 ;; articles, the key file among its mounted secrets.
                 ("LISPLY_EMBED_URL" . "${LISPLY_EMBED_URL:-}")
                 ("LISPLY_EMBED_KEY_FILE" . "${LISPLY_EMBED_KEY_FILE:-}")
-                ("LISPLY_SEARCH_MODE" . "${LISPLY_SEARCH_MODE:-}"))
+                ("LISPLY_SEARCH_MODE" . "${LISPLY_SEARCH_MODE:-}")
+                ;; bringing the bearings current at a raise (compose-dev,
+                ;; embed_corpora): how many changed rows a raise may embed
+                ;; on its own, the metrics of the hardware the embedding
+                ;; server shares (nothing is embedded while it works), and
+                ;; the instruction for a corpus that has no companion yet
+                ("LISPLY_EMBED_MAX_ROWS" . "${LISPLY_EMBED_MAX_ROWS:-}")
+                ("LISPLY_EMBED_BUSY_URL" . "${LISPLY_EMBED_BUSY_URL:-}")
+                ("LISPLY_EMBED_INSTRUCTION" . "${LISPLY_EMBED_INSTRUCTION:-}"))
    ;; The Captain's papers and effects, stowed aboard from the galaxy.
    :cargo-bays (;; THE CHART LOCKER (2026-09-14): the lisply_search corpora
                 ;; aboard.  The yard fills generated/corpora at every raise
