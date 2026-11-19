@@ -1,0 +1,27 @@
+#!/bin/bash
+# Copyright © 2026 Gornskew Enterprises
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.  Distributed WITHOUT
+# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+# A session ship's console door: what every browser connection to the
+# ship's ttyd runs.  ttyd -a hands the URL's ?arg= values through: $1 is
+# the session's model file as the lab names it, $2 "newcomer" for the
+# frame set up for someone new to Emacs.  Only the one pattern is opened;
+# anything else opens the work directory.  The ship holds one session,
+# so this is tidiness rather than a boundary.
+
+[ "$2" = newcomer ] && export SKEWED_EMACS_NEWCOMER=1
+target="${1:-}"
+case "$target" in
+  /state/prompt-lab/*/model.lisp)
+    case "$target" in
+      *[!a-z0-9/.-]*|*..*) target="" ;;
+    esac ;;
+  *) target="" ;;
+esac
+[ -n "$target" ] && [ -f "$target" ] && exec emacsclient -t "$target"
+exec emacsclient -t /state/prompt-lab/

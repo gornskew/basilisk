@@ -1,0 +1,6 @@
+# the generator's byproducts for a full ship; a session ship uses only
+# basilisk.sexp and the docker-compose.yml rendered from it
+/dot-files/
+/generated/
+/install
+/mcp/

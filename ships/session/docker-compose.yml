@@ -1,0 +1,120 @@
+# Copyright © 2026 Gornskew Enterprises
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.  Distributed WITHOUT
+# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+# DO NOT EDIT - Generated from basilisk.sexp
+# Regenerate with: (skewed-generate-all-configs)
+
+networks:
+  ship:
+    name: ${DOCKER_NETWORK_NAME:-basilisk}
+    driver: bridge
+    internal: true
+
+services:
+
+  bridge:
+    image: genworks/${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_BRIDGE:-bridge}
+    hostname: bridge
+    labels:
+      basilisk.post: "first-officer"
+      basilisk.module: "bridge"
+      basilisk.requires: "gendl"
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,exec,size=256m
+      - /home/gendl-user/.cache:rw,size=256m,uid=1000,gid=1000
+      - /home/gendl-user/quicklisp-gendl-1599/cache:rw,size=256m,uid=1000,gid=1000
+      - /home/gendl-user/quicklisp-gendl-1599/local-projects:rw,size=8m,uid=1000,gid=1000
+    environment:
+      - HTTP_PORT=9080
+      - START_HTTP=true
+      - SWANK_PORT=4200
+      - START_SWANK=true
+      - 'WORKER_NAME=${SHIP_NAME}'
+      - 'LAB_PREFIX=/prompt-lab/s/${SHIP_NAME}'
+      - 'LAB_CONSOLE=1'
+      - 'LAB_SESSION_LIFETIME=${SHIP_SESSION_LIFETIME:-1800}'
+      - 'LAB_TURNSTILE_SITE_KEY=${SHIP_TURNSTILE_SITE_KEY:-}'
+      - 'LAB_NAME=${SHIP_LAB_NAME:-}'
+      - TZ=${TZ:-Etc/UTC}
+      - GENDL_LISPLY_SECRET_FILE=${GENDL_LISPLY_SECRET_FILE:-}
+    volumes:
+      - ${SHIP_DEMOS}:/demos-pristine:ro
+      - ${SHIP_MONOCLE}:/monocle:ro
+      - ${SHIP_DEMOS}/prompt-lab/ship/ship-init.cl:/home/gendl-user/gdl-services-init.cl:ro
+      - ${SHIP_STATE}/work:/state:rw
+      - ${SHIP_STATE}/archive:/worker-archive:rw
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    cpus: 1
+    mem_limit: 640m
+    networks:
+      - ship
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9080/lisply/ping-lisp"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+  ready-room:
+    image: gornskew/${EMACS_IMAGE_BASE:-readymax}:${EMACS_IMAGE_BRANCH:-devo}-${SHIP_CONSOLE_VARIANT:-full}
+    container_name: ${BASILISK_PREFIX:-}${BASILISK_CREW_READY_ROOM:-ready-room}
+    hostname: ready-room
+    labels:
+      basilisk.post: "captain"
+      basilisk.module: "ready-room"
+      basilisk.requires: "readymax"
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      - HTTP_PORT=7080
+      - START_HTTP=true
+      - 'WEBTERM=ttyd'
+      - 'WEBTERM_PORT=6942'
+      - 'WEBTERM_ARGS=-b /prompt-lab/s/${SHIP_NAME}/console -a -m 2 -t titleFixed=Prompt-Lab'
+      - 'WEBTERM_ENTRY=/home/emacs-user/session-enter'
+      - 'TERM=xterm-256color'
+      - 'COLORTERM=truecolor'
+      - TZ=${TZ:-Etc/UTC}
+      - GENDL_LISPLY_SECRET_FILE=${GENDL_LISPLY_SECRET_FILE:-}
+    volumes:
+      - ${SHIP_STATE}/work:/state:rw
+      - ${SHIP_KIT}/session.el:/home/emacs-user/.emacs-local:ro
+      - ${SHIP_KIT}/session-enter:/home/emacs-user/session-enter:ro
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 1048576
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    cpus: 1
+    mem_limit: 256m
+    networks:
+      - ship
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7080/lisply/ping-lisp"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
