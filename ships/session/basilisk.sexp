@@ -62,6 +62,10 @@
    :description "The prompt lab, serving this ship's one session."
    :type "common-lisp"
    :provenance "genworks"
+   ;; the lab exits 0 when its session is done: it stays down, for whatever
+   ;; raised the ship to strike it, rather than coming back fresh for a
+   ;; second visitor at the same address; a crash still restarts it
+   :restart "on-failure"
    :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl"
    :hailing-frequencies ((:name "http" :aboard 9080)
                          (:name "swank" :aboard 4200))

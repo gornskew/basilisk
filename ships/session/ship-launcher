@@ -1,0 +1,202 @@
+#!/bin/bash
+# Copyright © 2026 Gornskew Enterprises
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as
+# published by the Free Software Foundation, either version 3 of the
+# License, or (at your option) any later version.  Distributed WITHOUT
+# ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
+
+# THE SHIP LAUNCHER: keeps a fleet of session ships (this directory's
+# template) for a host's prompt lab.  It holds a WARM POOL of ships raised
+# and booted, ready for a visitor, never more than a CAP in all, and strikes
+# each ship when its lab quits (the lab serves one session and exits when
+# that session is done).  Nothing that runs a visitor's code holds the
+# docker socket: this runs on the host, as root.
+#
+# The launcher and whatever greets visitors (a start page) share one
+# directory, SHIPS_HOME:
+#
+#   raising/<ship>    raised, its lab still booting
+#   ready/<ship>      booted and unclaimed: the warm pool
+#   live/<ship>       claimed by a visitor.  The reverse proxy's registry
+#                     (cyclops CYCLOPS_SESSION_SHIPS) is this directory: a
+#                     ship is routed while its name is here, and only then
+#   state/<ship>/     the ship's own files (work/, archive/)
+#   archive-spool/<ship>/   a struck ship's archive, for the public lab
+#                     to import
+#
+# A start page CLAIMS a ship with one atomic rename, ready/<ship> to
+# live/<ship>; a rename that fails means another visitor took that one, so
+# it tries the next.  An empty ready/ means the pool is spent: offer a queue.
+#
+# Each ship's internal network is joined by two rooms from outside: the
+# reverse proxy (SHIPS_CHIEF_SERVICE, a compose service name) and a relay
+# of the ship's own, aliased gate-relay on that network, forwarding one
+# port to the language-model gate (SHIPS_GATE, host:port; none if empty).
+#
+#   ship-launcher run           the loop (a systemd service runs this)
+#   ship-launcher tick          one pass: strike, attach, fill
+#   ship-launcher status
+#   ship-launcher claim         take a ship from the pool, as a start page
+#                               would, and print its name (for tests)
+#   ship-launcher strike SHIP   strike one ship now
+set -u
+KIT=$(cd "$(dirname "$0")" && pwd)
+HOME_DIR=${SHIPS_HOME:-/var/lib/session-ships}
+CAP=${SHIPS_CAP:-30}
+WARM=${SHIPS_WARM:-4}
+TICK=${SHIPS_TICK:-3}
+CHIEF=${SHIPS_CHIEF_SERVICE:-transporter-room}
+GATE=${SHIPS_GATE:-}
+RELAY_IMAGE=${SHIPS_RELAY_IMAGE:-alpine/socat:1.8.0.0}
+LIFETIME=${SHIPS_SESSION_LIFETIME:-1800}
+# a claimed ship whose visitor never opened a session is struck after this
+CLAIM_IDLE=${SHIPS_CLAIM_IDLE:-600}
+# and every ship, whatever it is doing, after this (its session's lifetime
+# and an hour)
+MAX_AGE=${SHIPS_MAX_AGE:-$((LIFETIME + 3600))}
+# a raise whose lab has not answered by now has failed
+BOOT_LIMIT=${SHIPS_BOOT_LIMIT:-300}
+LAB_UID=${SHIPS_LAB_UID:-1000}
+export SHIP_DEMOS=${SHIPS_DEMOS:?SHIPS_DEMOS: a checkout of genworks/demos}
+export SHIP_MONOCLE=${SHIPS_MONOCLE:?SHIPS_MONOCLE: a checkout of monocle}
+export SHIP_KIT=$KIT SHIP_SESSION_LIFETIME=$LIFETIME
+export SHIP_TURNSTILE_SITE_KEY=${SHIPS_TURNSTILE_SITE_KEY:-} SHIP_LAB_NAME=${SHIPS_LAB_NAME:-}
+export SHIP_CONSOLE_VARIANT=${SHIPS_CONSOLE_VARIANT:-full}
+
+mkdir -p "$HOME_DIR"/{raising,ready,live,state,archive-spool}
+chmod 755 "$HOME_DIR" "$HOME_DIR"/{ready,live}
+
+log() { echo "$(date -u +%FT%TZ) $*"; }
+age() { echo $(( $(date +%s) - $(stat -c %Y "$1" 2>/dev/null || date +%s) )); }
+chief() { docker ps -q --filter "label=com.docker.compose.service=$CHIEF" | head -1; }
+ships_in() { ls -1 "$HOME_DIR/$1" 2>/dev/null; }
+count() { ships_in "$1" | wc -l; }
+new_name() { echo "s$(od -An -N5 -tx1 /dev/urandom | tr -d ' \n')"; }
+
+compose() {
+  local ship=$1; shift
+  SHIP_NAME=$ship SHIP_STATE=$HOME_DIR/state/$ship DOCKER_NETWORK_NAME=$ship-net \
+    BASILISK_PREFIX=$ship- docker compose -p "$ship" -f "$KIT/docker-compose.yml" "$@"
+}
+
+lab_answers() {
+  docker exec "$1-bridge" curl -s -m 3 -o /dev/null -w '%{http_code}' \
+    "http://localhost:9080/prompt-lab/s/$1/api/config" 2>/dev/null | grep -q 200
+}
+
+lab_state() { docker inspect -f '{{.State.Status}}' "$1-bridge" 2>/dev/null || echo gone; }
+
+raise() {
+  local ship; ship=$(new_name)
+  local state=$HOME_DIR/state/$ship
+  mkdir -p "$state/work" "$state/archive"
+  chown "$LAB_UID:$LAB_UID" "$state/work" "$state/archive"
+  touch "$state/raised"
+  chmod 700 "$state"
+  if ! compose "$ship" up -d >/dev/null 2>&1; then
+    log "raise $ship failed"; strike "$ship"; return 1
+  fi
+  if [ -n "$GATE" ]; then
+    docker run -d --name "$ship-relay" --restart unless-stopped --read-only --cap-drop ALL \
+      --security-opt no-new-privileges --memory 32m --pids-limit 64 \
+      --label "session-ship=$ship" "$RELAY_IMAGE" "TCP-LISTEN:80,fork,reuseaddr" "TCP:$GATE" >/dev/null &&
+      docker network connect --alias gate-relay "$ship-net" "$ship-relay"
+  fi
+  local c; c=$(chief); [ -n "$c" ] && docker network connect "$ship-net" "$c" 2>/dev/null
+  touch "$HOME_DIR/raising/$ship"
+  log "raised $ship"
+}
+
+strike() {
+  local ship=$1
+  # out of the registry first, so nothing more is routed to it
+  rm -f "$HOME_DIR/live/$ship" "$HOME_DIR/ready/$ship" "$HOME_DIR/raising/$ship"
+  local archive=$HOME_DIR/state/$ship/archive
+  if [ -d "$archive" ] && [ -n "$(ls -A "$archive" 2>/dev/null)" ]; then
+    mv "$archive" "$HOME_DIR/archive-spool/$ship"
+  fi
+  docker rm -f "$ship-relay" >/dev/null 2>&1
+  local c; c=$(chief); [ -n "$c" ] && docker network disconnect "$ship-net" "$c" >/dev/null 2>&1
+  compose "$ship" down -v --remove-orphans >/dev/null 2>&1
+  rm -rf "${HOME_DIR:?}/state/$ship"
+  log "struck $ship"
+}
+
+attach() {
+  # a recreated reverse proxy has lost the ships' networks: join it again
+  local c; c=$(chief); [ -n "$c" ] || return 0
+  local joined; joined=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$c")
+  for ship in $(ships_in raising) $(ships_in ready) $(ships_in live); do
+    case " $joined " in *" $ship-net "*) ;; *)
+      docker network connect "$ship-net" "$c" 2>/dev/null && log "proxy joined to $ship-net" ;;
+    esac
+  done
+}
+
+session_opened() { [ -n "$(ls -A "$HOME_DIR/state/$1/work/prompt-lab" 2>/dev/null)" ]; }
+
+tick() {
+  local ship
+  # booted ships join the pool; a raise that never booted is struck
+  for ship in $(ships_in raising); do
+    if lab_answers "$ship"; then mv "$HOME_DIR/raising/$ship" "$HOME_DIR/ready/$ship"; log "ready $ship"
+    elif [ "$(age "$HOME_DIR/raising/$ship")" -gt "$BOOT_LIMIT" ]; then log "$ship never booted"; strike "$ship"
+    fi
+  done
+  # a ship whose lab has quit (its session done) or died is struck
+  for ship in $(ships_in ready) $(ships_in live); do
+    case $(lab_state "$ship") in
+      running|restarting) ;;
+      *) strike "$ship"; continue ;;
+    esac
+    [ "$(age "$HOME_DIR/state/$ship/raised")" -gt "$MAX_AGE" ] && { log "$ship past its age"; strike "$ship"; }
+  done
+  # a claim is stamped the first time it is seen; a claimed ship whose
+  # visitor never opened a session goes after CLAIM_IDLE
+  for ship in $(ships_in live); do
+    local stamp=$HOME_DIR/state/$ship/claimed
+    [ -e "$stamp" ] || { touch "$stamp"; log "claimed $ship"; continue; }
+    if ! session_opened "$ship" && [ "$(age "$stamp")" -gt "$CLAIM_IDLE" ]; then
+      log "$ship claimed and never used"; strike "$ship"
+    fi
+  done
+  # stray rooms of ships the directory no longer names (a crash mid-strike)
+  for ship in $(docker ps -a --filter label=com.docker.compose.service=bridge \
+                  --format '{{.Label "com.docker.compose.project"}}' | grep -E '^s[0-9a-f]{10}$'); do
+    [ -e "$HOME_DIR/raising/$ship" ] || [ -e "$HOME_DIR/ready/$ship" ] || [ -e "$HOME_DIR/live/$ship" ] || strike "$ship"
+  done
+  attach
+  # fill the warm pool, within the cap
+  local warm=$(( $(count raising) + $(count ready) )) all
+  all=$(( warm + $(count live) ))
+  while [ "$warm" -lt "$WARM" ] && [ "$all" -lt "$CAP" ]; do
+    raise || break
+    warm=$((warm + 1)); all=$((all + 1))
+  done
+}
+
+claim() {
+  local ship
+  # rename(2) is atomic: of two claims on one ship, the second finds no
+  # source and moves on to the next
+  for ship in $(ships_in ready); do
+    mv "$HOME_DIR/ready/$ship" "$HOME_DIR/live/$ship" 2>/dev/null && { echo "$ship"; return 0; }
+  done
+  return 1
+}
+
+locked() { exec 9>"$HOME_DIR/.lock"; flock -n 9 || { echo "another launcher holds $HOME_DIR" >&2; exit 1; }; }
+
+case "${1:-status}" in
+  run) locked; log "launcher: pool $WARM, cap $CAP, home $HOME_DIR"
+       while :; do tick; sleep "$TICK"; done ;;
+  tick) locked; tick ;;
+  claim) claim || { echo "the pool is empty" >&2; exit 1; } ;;
+  strike) [ -n "${2:-}" ] || { echo "strike SHIP" >&2; exit 2; }; strike "$2" ;;
+  status)
+    for d in raising ready live; do printf '%-8s %s\n' "$d" "$(ships_in $d | tr '\n' ' ')"; done
+    printf '%-8s %s\n' spool "$(ls -1 "$HOME_DIR/archive-spool" 2>/dev/null | tr '\n' ' ')" ;;
+  *) echo "usage: $0 run|tick|status|claim|strike SHIP" >&2; exit 2 ;;
+esac

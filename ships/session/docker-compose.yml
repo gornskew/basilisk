@@ -25,7 +25,7 @@ services:
       basilisk.post: "first-officer"
       basilisk.module: "bridge"
       basilisk.requires: "gendl"
-    restart: unless-stopped
+    restart: on-failure
     stdin_open: true
     tty: true
     read_only: true
