@@ -289,6 +289,12 @@ Set `BASILISK_DIR=` if your Basilisk scroll chest is elsewhere.
 Always re-utter _both_ the `skewed-generate-configs` (elisp) _and_ the
 `./install` (shell) after every tampering attempt. 
 
+The yard redraws `install` at every utterance, so never amend it by
+hand: the next drawing drops the amendment without a word. A step the
+pouch needs for itself goes in `install.d/*.sh` beside it, which the
+yard never draws; an install drawn while any are aboard sources them,
+in name order, as its last act.
+
 **Bringing your own residence** is not a special case: a stack pouch
 whose articles plug in one more module. It comes pre-staffed from its
 catalog, and its crew are minted names at muster like anyone else's —

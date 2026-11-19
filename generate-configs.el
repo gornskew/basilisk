@@ -731,7 +731,30 @@ hosts stay offsettable."
               (push (format "%s=%s" var val) pins))))))
     (nreverse pins)))
 
-(defun skewed--generate-install-script (prefix &optional has-mcp variant port-pins template-files no-pull)
+;; STACK HOOKS (install.d/*.sh).  The install is GENERATED, so a step
+;; only one stack needs -- appending an untracked settings file to
+;; host.env, or warning when a host file installed outside the yard has
+;; drifted from the stack's copy -- cannot be written into it by hand:
+;; the next regeneration drops the edit without a word.  Such steps live
+;; in the stack repo as install.d/*.sh, which the generator never
+;; writes.  A stack that has any gets this loop at the end of its
+;; install, after host.env is written; a stack with none gets nothing,
+;; so its install stays as it was.  The glob is read at install time, so
+;; adding a second hook needs no regeneration; adding the first does.
+(defun skewed--install-hook-lines ()
+  "Return the install-script lines that source the stack's install.d hooks."
+  (list "# --- stack hooks (install.d) -----------------------------------"
+        "# Hand-written steps kept in this repo's install.d/, which the"
+        "# generator never writes.  Each *.sh is sourced in name order, with"
+        "# SCRIPT_DIR and TARGET_DIR set and set -e in force."
+        "for hook in \"$SCRIPT_DIR/install.d/\"*.sh; do"
+        "    [ -f \"$hook\" ] || continue"
+        "    echo \"Running install.d/$(basename \"$hook\")...\""
+        "    . \"$hook\""
+        "done"
+        ""))
+
+(defun skewed--generate-install-script (prefix &optional has-mcp variant port-pins template-files no-pull hooks)
   "Generate install script for overlay or base repository with PREFIX.
 When PREFIX is empty, generates a base install (copies docker-compose.yml).
 When HAS-MCP is non-nil, include MCP config copy commands.
@@ -745,6 +768,8 @@ host.env: a provisioned ship puts to sea on what is already aboard --
 boot never contacts a registry, even for a missing image, and it also
 outranks a stray PULL_ALWAYS.  Deploys take on stores explicitly with
 `basilisk pull' / `up --pull'.
+When HOOKS is non-nil (the stack carries install.d/*.sh), the install
+ends by sourcing each of them; see `skewed--install-hook-lines'.
 Returns the install script content as a string."
   (let ((lines '())
         (is-base (string-empty-p prefix))
@@ -924,6 +949,10 @@ Returns the install script content as a string."
           (push "echo \"  wrote $TARGET_DIR/systemd/host.env\"" lines)
           (push "echo \"  install/refresh the units with: (cd $TARGET_DIR && sh systemd/install)\"" lines)
           (push "" lines))))
+
+    (when hooks
+      (dolist (line (skewed--install-hook-lines))
+        (push line lines)))
 
     (push "echo \"\"" lines)
     (push "echo \"Installation complete!\"" lines)
@@ -1764,7 +1793,10 @@ Examples:
                    (plist-get (skewed--get-prop config :meta) :strain)
                    (skewed--ingress-port-pins config)
                    template-files
-                   (plist-get (skewed--get-prop config :meta) :no-pull?))))
+                   (plist-get (skewed--get-prop config :meta) :no-pull?)
+                   (let ((hook-dir (expand-file-name "install.d" skewed-gen-output-dir)))
+                     (and (file-directory-p hook-dir)
+                          (directory-files hook-dir nil "\\.sh\\'"))))))
         (set-file-modes install-file #o755)
         (message "Generated: %s" install-file)))
 
