@@ -141,6 +141,11 @@ mounted at /projects in each).")
         (push "  ship:" lines)
         (push (format "    name: ${DOCKER_NETWORK_NAME:-%s}" network-name) lines)
         (push "    driver: bridge" lines)
+        ;; A sealed ship (:network-internal): no route off the box at
+        ;; all; its rooms reach each other and whatever a room outside
+        ;; joins to it (a session ship's chief and gate relay)
+        (when (skewed--get-prop defaults :network-internal)
+          (push "    internal: true" lines))
         (when ipv6
           (push "    enable_ipv6: true" lines)
           (when (or ipv4-subnet ipv6-subnet)
@@ -435,6 +440,21 @@ mounted at /projects in each).")
           (when caps
             (push "    cap_add:" lines)
             (dolist (cap caps) (push (format "      - %s" cap) lines))))
+        ;; A room that runs strangers' code (a session ship) gives up what
+        ;; it does not need: capabilities (:cap-drop, ALL for every one),
+        ;; privilege gained through exec (:security-opt, e.g.
+        ;; "no-new-privileges:true"), and an unbounded process count
+        ;; (:pids-limit)
+        (let ((caps (skewed--get-prop svc :cap-drop)))
+          (when caps
+            (push "    cap_drop:" lines)
+            (dolist (cap caps) (push (format "      - %s" cap) lines))))
+        (let ((opts (skewed--get-prop svc :security-opt)))
+          (when opts
+            (push "    security_opt:" lines)
+            (dolist (opt opts) (push (format "      - %s" opt) lines))))
+        (let ((pids (skewed--get-prop svc :pids-limit)))
+          (when pids (push (format "    pids_limit: %s" pids) lines)))
         (let ((sysctls (skewed--get-prop svc :sysctls)))
           (when sysctls
             (push "    sysctls:" lines)
