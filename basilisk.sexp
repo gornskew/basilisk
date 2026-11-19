@@ -238,7 +238,7 @@
    :module "bridge"
    :description "The First Officer: bridge duty, visitors, and guests."
    :type "common-lisp"
-   :provenance "gornskew"
+   :provenance "genworks"
    :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-ccl"
    :hailing-frequencies ((:name "http" :galaxy ${GENDL_CCL_HOST_PORT:-19080} :aboard 9080)
                          (:name "swank" :aboard 4200))
@@ -258,7 +258,7 @@
    :module "engine-room"
    :description "The Ship's Engineer: engineering for ship and passengers."
    :type "common-lisp"
-   :provenance "gornskew"
+   :provenance "genworks"
    :species "${GENDL_IMAGE_BASE:-gendl}:${GENDL_IMAGE_BRANCH:-devo}-sbcl"
    :hailing-frequencies ((:name "http" :galaxy ${GENDL_SBCL_HOST_PORT:-29080} :aboard 9090)
                          (:name "swank" :aboard 4210))

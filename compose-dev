@@ -1204,7 +1204,7 @@ restart_services() {
 #
 # The REGISTRY/NAMESPACE is stripped.  It is the image's home planet --
 # its provenance -- and says nothing about what the image IS, so
-# gornskew/gendl and someone else's gendl are the same species from
+# genworks/gendl and someone else's gendl are the same species from
 # different worlds.  (This replaces an older reading in which the
 # genworks/gdl vs gornskew/gendl namespace was the signal behind the
 # licensing tier.  That distinction is real, but it is provenance, and
@@ -1586,7 +1586,7 @@ muster_crew() {
     log_info "${BASILISK_VOCAB_MUSTER_HEAD:-Mustering the crew (rooms are known by their keepers):}"
     while IFS='	' read -r _mc_room _mc_species; do
         [ -n "$_mc_room" ] || continue
-        # The ledger species carries provenance (gornskew/gendl:devo-ccl);
+        # The ledger species carries provenance (genworks/gendl:devo-ccl);
         # the name pools key on bare repo:tag, so strip the home planet
         # the same way identity minting does.
         _mc_species="$(_crew_species_from_image "$_mc_species")"
