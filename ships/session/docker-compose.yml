@@ -42,6 +42,7 @@ services:
       - 'WORKER_NAME=${SHIP_NAME}'
       - 'LAB_PREFIX=/prompt-lab/s/${SHIP_NAME}'
       - 'LAB_CONSOLE=1'
+      - 'LAB_CONSOLE_PATH=${SHIP_CONSOLE_PATH:-/prompt-lab/console}'
       - 'LAB_SESSION_LIFETIME=${SHIP_SESSION_LIFETIME:-1800}'
       - 'LAB_TURNSTILE_SITE_KEY=${SHIP_TURNSTILE_SITE_KEY:-}'
       - 'LAB_NAME=${SHIP_LAB_NAME:-}'
@@ -89,7 +90,7 @@ services:
       - START_HTTP=true
       - 'WEBTERM=ttyd'
       - 'WEBTERM_PORT=6942'
-      - 'WEBTERM_ARGS=-b /prompt-lab/s/${SHIP_NAME}/console -a -m 2 -t titleFixed=Prompt-Lab'
+      - 'WEBTERM_ARGS=-b ${SHIP_CONSOLE_PATH:-/prompt-lab/console} -a -m 2 -t titleFixed=Prompt-Lab'
       - 'WEBTERM_ENTRY=/home/emacs-user/session-enter'
       - 'TERM=xterm-256color'
       - 'COLORTERM=truecolor'

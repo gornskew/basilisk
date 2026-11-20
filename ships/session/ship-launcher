@@ -68,8 +68,10 @@ export SHIP_CONSOLE_VARIANT=${SHIPS_CONSOLE_VARIANT:-full}
 mkdir -p "$HOME_DIR"/{raising,ready,live,state,archive-spool}
 chmod 755 "$HOME_DIR" "$HOME_DIR"/{ready,live}
 # the start page claims a ship by renaming it from ready/ to live/, as the
-# labs' user (a Gendl image's, uid 1000); the reverse proxy only reads live/
-chown "$LAB_UID:$LAB_UID" "$HOME_DIR"/{ready,live}
+# labs' user (a Gendl image's, uid 1000), and removes a struck ship's
+# archive from archive-spool/ once it has imported it; the reverse proxy
+# only reads live/
+chown "$LAB_UID:$LAB_UID" "$HOME_DIR"/{ready,live,archive-spool}
 
 log() { echo "$(date -u +%FT%TZ) $*"; }
 age() { echo $(( $(date +%s) - $(stat -c %Y "$1" 2>/dev/null || date +%s) )); }

@@ -28,8 +28,10 @@
 ;;;
 ;;; Raised per session as compose project ${SHIP_NAME}, with:
 ;;;   SHIP_NAME     the ship's name; also its network (with DOCKER_NETWORK_NAME),
-;;;                 its rooms' names (with BASILISK_PREFIX) and its routes,
-;;;                 /prompt-lab/s/<SHIP_NAME>/ and .../console
+;;;                 its rooms' names (with BASILISK_PREFIX) and its routes:
+;;;                 /prompt-lab/s/<SHIP_NAME>/ for the lab, and the console
+;;;                 at the one path every ship shares, SHIP_CONSOLE_PATH
+;;;                 (/prompt-lab/console), with ship=<SHIP_NAME>
 ;;;   SHIP_STATE    a host directory of its own: work/ (the session's files,
 ;;;                 shared by the two rooms) and archive/ (the lab's archive)
 ;;;   SHIP_DEMOS    a checkout of genworks/demos, read-only
@@ -83,6 +85,9 @@
                 ("LAB_PREFIX" . "/prompt-lab/s/${SHIP_NAME}")
                 ;; this ship carries a console: the lab links it
                 ("LAB_CONSOLE" . "1")
+                ;; every ship's console behind one path, the ship named by
+                ;; ship= (the reverse proxy picks the ready room by it)
+                ("LAB_CONSOLE_PATH" . "${SHIP_CONSOLE_PATH:-/prompt-lab/console}")
                 ("LAB_SESSION_LIFETIME" . "${SHIP_SESSION_LIFETIME:-1800}")
                 ("LAB_TURNSTILE_SITE_KEY" . "${SHIP_TURNSTILE_SITE_KEY:-}")
                 ("LAB_NAME" . "${SHIP_LAB_NAME:-}"))
@@ -107,7 +112,7 @@
                          (:name "webterm" :aboard 6942))
    :space-suit (("WEBTERM" . "ttyd")
                 ("WEBTERM_PORT" . "6942")
-                ("WEBTERM_ARGS" . "-b /prompt-lab/s/${SHIP_NAME}/console -a -m 2 -t titleFixed=Prompt-Lab")
+                ("WEBTERM_ARGS" . "-b ${SHIP_CONSOLE_PATH:-/prompt-lab/console} -a -m 2 -t titleFixed=Prompt-Lab")
                 ("WEBTERM_ENTRY" . "/home/emacs-user/session-enter")
                 ("TERM" . "xterm-256color")
                 ("COLORTERM" . "truecolor"))
