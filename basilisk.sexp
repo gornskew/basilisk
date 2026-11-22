@@ -10,7 +10,7 @@
 ;; ANY WARRANTY; see <https://www.gnu.org/licenses/agpl-3.0.html>.
 
 ;;;
-;;; The ship's articles: who is aboard every Basilisk-class ship as she
+;;; The ship's articles: who is aboard every Basilisk-class ship as he
 ;;; leaves the yard.  The ship register is the yard's NATIVE TONGUE --
 ;;; the generator reads these keys directly, and only its outputs
 ;;; speak docker and compose.  Canon therefore ships no glossary; a
