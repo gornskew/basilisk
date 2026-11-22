@@ -265,7 +265,7 @@ the gate reports stopped is taken down and a paused page stands in for
 it, hosting added brings it back, and a deployment taken down takes
 its VM with it and retires its disk (the un-hosting rule, below).  THE ROUTING
 IS THE SHIP'S PROXY'S: every pass the loop REGISTERS each host with
-the chief (`POST /_cyclops/hangar/vms`, the admin secret), and a
+the Transporter Chief (`POST /_cyclops/hangar/vms`, the admin secret), and a
 `:hangar` rule in cyclops sends a registered host to its VM (the
 hangar's port for it), a paused host's root to the proxy's own paused
 page (whose host-topup form the rule carries to the lab's room), and
@@ -283,9 +283,9 @@ domain, and a new deployment needs none:
 longer path passes through, the host is the stickiness so no affinity
 is wanted.)  `/run/hangar/status.json` in the room says what flies;
 `/run/hangar/alive`, touched every pass, is the health check; the
-chief's `GET /_cyclops/hangar/vms` shows what it was told.  The
-environment: `GATE_URL`, `LAB` (the lab's configured name at the gate,
-so the VMs report on the lab's ledgers), `APPS_DOMAIN`,
+Transporter Chief's `GET /_cyclops/hangar/vms` shows what it was told.
+The environment: `GATE_URL`, `LAB` (the lab's configured name at the
+gate, so the VMs report on the lab's ledgers), `APPS_DOMAIN`,
 `CYCLOPS_ADMIN_URL` and `CYCLOPS_ADMIN_SECRET`, `HANGAR_INTERVAL`,
 `VCPUS` and `MEM_MIB` per VM, `HANGAR_ENGINE` (`gendl` or `solid`: the
 engine whose rootfs the room flies), `HANGAR_SNAPSHOT` (1, below; 0
@@ -341,9 +341,9 @@ MiB):
 
 Each clone's session ids differ from the others', its clock is the
 host's, it lists only its own deployment, `lisp-eval` answers 403 to
-no secret and to the template's alike, and the chief routes its host
-to it.  GDL's Allegro reads symbols in lower case: the hosted init
-names the lab's settings through `hosted-case`.
+no secret and to the template's alike, and the Transporter Chief routes
+its host to it.  GDL's Allegro reads symbols in lower case: the hosted
+init names the lab's settings through `hosted-case`.
 
 ### The un-hosting rule for a deployment taken down (2026-10-23)
 
@@ -398,13 +398,13 @@ lab of their own -- the whole prompt lab, page and agent, in a microVM
 restored from the same snapshot as the apps.  The pieces:
 
 - **The front** (the lab system's `private.lisp`, published on a lab
-  room of the hangar's ship -- `lab.$APPS_DOMAIN`, whose root the chief
-  sends to `/own-lab`; not `/private...`, which every scanner list
-  drops).  It asks the gate whether the key may open one, refuses in
-  words when it may not, writes a request into the hangar's spool
-  (`/fc/spool/requests/pl-<id>.json`: id, wallet, a 32-hex token), polls
-  the hangar's answer (`spool/ready/<id>.json`), and hands the browser
-  in: a form posting the token to the session's
+  room of the hangar's ship -- `lab.$APPS_DOMAIN`, whose root the
+  Transporter Chief sends to `/own-lab`; not `/private...`, which every
+  scanner list drops).  It asks the gate whether the key may open one,
+  refuses in words when it may not, writes a request into the hangar's
+  spool (`/fc/spool/requests/pl-<id>.json`: id, wallet, a 32-hex token),
+  polls the hangar's answer (`spool/ready/<id>.json`), and hands the
+  browser in: a form posting the token to the session's
   `<host>/prompt-lab/api/unlock`, which sets the lab's cookie and
   lands on `/prompt-lab?wallet=<key>`.  One live session per author.
 - **The hangar** raises a VM per request (`hosted up` with
@@ -448,8 +448,8 @@ restored from the same snapshot as the apps.  The pieces:
   port and, for a session that sells, the front's, and answers what is
   asked of it; nothing else (`open`: whatever the hangar reaches).  So
   the front's session doors are reached through the ship's proxy (a
-  plain `/own-lab/api/vm/` path rule on the chief), never at the front
-  room's own port.
+  plain `/own-lab/api/vm/` path rule on the Transporter Chief), never at
+  the front room's own port.
 
 Proven on a development host: a key the gate does not allow refused in words, a malformed one
 refused, a trusted one opened (`pl-d68c4c505e`, restored in 4.05 s); a
@@ -528,14 +528,15 @@ and its `.secrets`.  A new host needs:
 4. **The articles** -- copy a working stack's: the `:hangar-chief` posting
    (devices, caps, sysctls, `/fc`, the environment: `GATE_URL`, `LAB`,
    `APPS_DOMAIN`, `CYCLOPS_ADMIN_URL`, `HANGAR_*`), the bridge's spool
-   mount and the front's block in its init, and the chief's two rules:
-   `lab.$APPS_DOMAIN` to the front, `*.$APPS_DOMAIN` as the `:hangar` rule.
-   `cyclops.env` carries the chief's admin secret, which the hangar
-   registers with.  Generate the compose file from the articles, then
-   `./install`.
+   mount and the front's block in its init, and the Transporter Chief's two
+   rules: `lab.$APPS_DOMAIN` to the front, `*.$APPS_DOMAIN` as the
+   `:hangar` rule.  `cyclops.env` carries the Transporter Chief's admin
+   secret, which the hangar registers with.  Generate the compose file from
+   the articles, then `./install`.
 5. **The names:** `*.$APPS_DOMAIN` (and so `lab.$APPS_DOMAIN` and every
-   `pl-<id>`) must reach this host's chief -- directly, or through a
-   front proxy that forwards the wildcard to the hangar's host.
+   `pl-<id>`) must reach this host's Transporter Chief -- directly, or
+   through a front proxy that forwards the wildcard to the hangar's
+   host.
 6. **Raise, in order:** build the image (`hangar/Dockerfile`), make the
    rootfs (`hangar/make-rootfs <HANGAR_DIR>`), `./basilisk up hangar`
    (it makes the spool and the template), then the rest of the ship.

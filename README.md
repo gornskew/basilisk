@@ -257,12 +257,12 @@ is in-voyage.
 
 Everything beyond the standard rig — a **Guild Workshop** (its Guild
 engineer arriving with his famous shirt-pocket sliderule), a
-**Transporter Room** (with its Chief), a **Radio Shack** (its Comms
-Officer feeding the bridge viewscreen from his own room) — arrives by
-**stack pouch**: a pouch beside this one, carrying its own "stack" of
-extra modules and possibly other adjustments. Stack pouch articles
-are **sparse**: they almost never repeat what is already in the base
-basilisk pouch.
+**Transporter Room** (with its Transporter Chief), a **Radio Shack**
+(its Comms Officer feeding the bridge viewscreen from his own room) —
+arrives by **stack pouch**: a pouch beside this one, carrying its own
+"stack" of extra modules and possibly other adjustments. Stack pouch
+articles are **sparse**: they almost never repeat what is already in the
+base basilisk pouch.
 
 ```bash
 mkdir ~/projects/obelisk-stack && cd ~/projects/obelisk-stack

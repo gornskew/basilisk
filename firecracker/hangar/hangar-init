@@ -16,13 +16,13 @@
 # APPS_DOMAIN (apps.example), GATE_URL (the gate's Messages door), LAB
 # (the lab's name at the gate, its *lab-name*), CYCLOPS_ADMIN_URL
 # (http://transporter-room/_cyclops) and CYCLOPS_ADMIN_SECRET (the
-# chief's admin secret; without it nothing is registered and the loop
-# says so), HANGAR_INTERVAL (15 s), VCPUS and MEM_MIB per VM (hosted's
-# defaults), HANGAR_FEED_URL and HANGAR_FEED_TOKEN_FILE (the lab's feed
-# doors and the token that opens them; unset, /deployments is read as
-# mounted), HANGAR_ENGINE (gendl, or solid: the engine whose rootfs this
-# hangar flies), HANGAR_MAX_VMS (0: no limit but the room's memory cap; a
-# dev ship says 2 -- the rest wait, and fly as others are grounded),
+# Transporter Chief's admin secret; without it nothing is registered and
+# the loop says so), HANGAR_INTERVAL (15 s), VCPUS and MEM_MIB per VM
+# (hosted's defaults), HANGAR_FEED_URL and HANGAR_FEED_TOKEN_FILE (the
+# lab's feed doors and the token that opens them; unset, /deployments is
+# read as mounted), HANGAR_ENGINE (gendl, or solid: the engine whose rootfs
+# this hangar flies), HANGAR_MAX_VMS (0: no limit but the room's memory
+# cap; a dev ship says 2 -- the rest wait, and fly as others are grounded),
 # HANGAR_SNAPSHOT (1: the engine's TEMPLATE is booted once, the lab loaded,
 # and snapshotted -- again whenever the rootfs is newer -- and every VM is
 # a clone restored from it in about a second; 0: every VM boots cold),
@@ -59,7 +59,7 @@
 # once the gate says the author may open private sessions.  The
 # loop raises a VM for it restored from the engine's snapshot and activated
 # as a session (hosted up, MODE=session: the whole lab, behind the token),
-# registers <id>.$APPS_DOMAIN with the chief, and answers in
+# registers <id>.$APPS_DOMAIN with the Transporter Chief, and answers in
 # spool/ready/<id>.json ({state up|failed|ended, host, reason}), which the
 # front reads.  The author's work lives on ONE disk per author
 # ($FC_DIR/authors/<hash of the wallet>.data.ext4, hard-linked as the VM's
@@ -132,7 +132,7 @@ export FC_DIR GATE_URL LAB ENGINE
 run=$FC_DIR/run; mkdir -p "$run" /run/hangar
 log() { echo "$(date -u +%FT%TZ) hangar: $*"; }
 
-# --- the chief's table -------------------------------------------------------
+# --- the Transporter Chief's table -------------------------------------------
 register() {   # register NAME STATE [PORT] [TITLE]: tell the proxy where NAME's host goes
     local name=$1 state=$2 port=${3:-} title=${4:-$1} body
     [ -n "$ADMIN_SECRET" ] || return 0

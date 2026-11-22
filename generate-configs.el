@@ -143,7 +143,8 @@ mounted at /projects in each).")
         (push "    driver: bridge" lines)
         ;; A sealed ship (:network-internal): no route off the box at
         ;; all; its rooms reach each other and whatever a room outside
-        ;; joins to it (a session ship's chief and gate relay)
+        ;; joins to it (a session ship's Transporter Chief and gate
+        ;; relay)
         (when (skewed--get-prop defaults :network-internal)
           (push "    internal: true" lines))
         (when ipv6
@@ -203,8 +204,8 @@ mounted at /projects in each).")
         ;; Service key, hostname and in-network DNS all answer to the
         ;; plain room type (the type-hail: ready-room, bridge,
         ;; museum-chamber), so mcp-exec's --backend-host, probes and the
-        ;; chief's standing orders reference rooms, never residents, and
-        ;; survive every relief untouched.
+        ;; Transporter Chief's standing orders reference rooms, never
+        ;; residents, and survive every relief untouched.
         (push (format "    container_name: ${BASILISK_PREFIX:-}${%s:-%s}"
                       (skewed--crew-env-name name) name)
               lines)
@@ -301,8 +302,8 @@ mounted at /projects in each).")
         ;; them as the WHOLE list: compose merges `ports' across files by
         ;; appending, so the base's galaxy-side publishes would otherwise
         ;; stay open.  `!override' replaces the list, `!reset' empties it
-        ;; (compose 2.24+).  A public hull that opens only its Chief
-        ;; depends on this (suzie, 2026-09-08).
+        ;; (compose 2.24+).  A public hull that opens only its
+        ;; Transporter Chief depends on this (suzie, 2026-09-08).
         (unless network-mode
           (let ((ports-with-host (cl-remove-if-not (lambda (p) (skewed--get-prop p :galaxy)) ports))
                 (deviation? (and (null image) ports)))
@@ -892,12 +893,12 @@ Returns the install script content as a string."
       (push "done" lines))
     (push "" lines)
 
-    ;; CREW LEDGER + TEMPLATED FITTINGS.  The chief's standing orders and
-    ;; the services-init hooks ride INTO the basilisk clone, so the yard
-    ;; never reaches outside its own directory on the way up.  Templates
-    ;; are rewritten from the ledger by compose-dev (substitute_templates)
-    ;; before any container starts; the rewritten copies land in
-    ;; generated/ and are what the articles mount.
+    ;; CREW LEDGER + TEMPLATED FITTINGS.  The Transporter Chief's standing
+    ;; orders and the services-init hooks ride INTO the basilisk clone, so
+    ;; the yard never reaches outside its own directory on the way up.
+    ;; Templates are rewritten from the ledger by compose-dev
+    ;; (substitute_templates) before any container starts; the rewritten
+    ;; copies land in generated/ and are what the articles mount.
     (unless is-base
       ;; The overlay ledger keeps its PREFIXED name in the clone: the
       ;; base generated/crew.env is a tracked yard output, and an
@@ -1169,13 +1170,14 @@ joined, missing names derived.  Every consumer sees the same names."
 ;;; his http frequency answers on -- "the captain in the ready room"
 ;;; is port 7080 in the skewed-emacs room.  The articles'
 ;;; hailing-frequencies are the single source of truth for every
-;;; port: fittings look ports up, never restate them.  So the chief's
-;;; standing orders survive renames and reliefs untouched.  ONE hand
-;;; per posting for now: the first declared wins (base order, then
-;;; overlay additions); ships with several of a posting are a known
-;;; limitation, deliberately unhandled until the simple case has
-;;; sailed.  (The bare ${BASILISK_POST_<P>} key, which yielded the
-;;; room under a crew-sounding name, retired with this ruling.)
+;;; port: fittings look ports up, never restate them.  So the
+;;; Transporter Chief's standing orders survive renames and reliefs
+;;; untouched.  ONE hand per posting for now: the first declared wins
+;;; (base order, then overlay additions); ships with several of a
+;;; posting are a known limitation, deliberately unhandled until the
+;;; simple case has sailed.  (The bare ${BASILISK_POST_<P>} key, which
+;;; yielded the room under a crew-sounding name, retired with this
+;;; ruling.)
 
 (defun skewed--posting-env-name (post)
   "BASILISK_POST_<POSTING> environment name for POST keyword."
@@ -1792,9 +1794,9 @@ Examples:
                            (directory-file-name skewed-gen-yard-dir))
                           "skewed-emacs"))
       (let ((install-file (expand-file-name "install" skewed-gen-output-dir))
-            ;; Templated fittings this stack carries: the chief's
-            ;; standing orders (any cyclops-*.sexp, installed under
-            ;; the register-neutral name cyclops.sexp) and the
+            ;; Templated fittings this stack carries: the Transporter
+            ;; Chief's standing orders (any cyclops-*.sexp, installed
+            ;; under the register-neutral name cyclops.sexp) and the
             ;; services-init hooks.  They ride into basilisk/templates/
             ;; so the yard never reaches outside its own directory on
             ;; the way up.

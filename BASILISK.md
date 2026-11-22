@@ -231,7 +231,7 @@ the residence to house them arrives by stack pouch:
 
 | module | posting | the watch |
 |---|---|---|
-| **Transporter Room** | **Transporter Chief** | From this fully equipped room, the Chief greets, screens, and directs everything and everyone transporting aboard and abroad; knows who is who and what is what and where they all belong |
+| **Transporter Room** | **Transporter Chief** | From this fully equipped room, the Transporter Chief greets, screens, and directs everything and everyone transporting aboard and abroad; knows who is who and what is what and where they all belong |
 | **Radio Shack** | **Communications Officer** | From his own shack adjoining the bridge — never on it, in the old marine custom — he demands constant reports from crew members as well as from other ships and galaxies of interest, and synthesizes these onto the ship's main bridge viewscreen |
 | **Chartroom** | **Navigator** | Keeps the chartroom and its engine: orbits, transfers, and ephemerides, reckoned for any berth that hails the room. His residence runs heavy, so his berth is elective — on ships that sail without him the posting stands open on the books, and the chartroom arrives with the hand who signs on to keep it |
 
@@ -245,7 +245,7 @@ flowchart TB
         BR["Bridge — the First Officer<br/><i>gendl</i> · ccl strain"]
         EN["Engine Room — the Ship's Engineer<br/><i>gendl</i> · sbcl strain"]
         SB["Sick Bay — the Doctor<br/><i>autoheal</i><br/>(rounds watch every module)"]
-        TR["Transporter Room — the Chief<br/><i>(residence by stack pouch)</i>"]
+        TR["Transporter Room — the Transporter Chief<br/><i>(residence by stack pouch)</i>"]
         CH["Chartroom — the Navigator<br/><i>(elective berth)</i>"]
         MC["Museum Chamber — the Curator<br/>(filtered — one line in:<br/>the museum terminal)"]
       end
@@ -363,9 +363,9 @@ all.
 **Ships that have a Transporter Room can welcome guests more productively**
 
 
-The Chief's watch is knowing who is who and what is what — the
-departments are poor at it precisely because they are busy about their
-own work. Without a transporter room on board, guests may suddenly
+The Transporter Chief's watch is knowing who is who and what is what —
+the departments are poor at it precisely because they are busy about
+their own work. Without a transporter room on board, guests may suddenly
 appear on the bridge or in engineering with no notice, no warning, no
 vetting.
 

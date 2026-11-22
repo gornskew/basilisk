@@ -432,11 +432,11 @@ EOF
 # SERVICE MANAGEMENT
 # =============================================================================
 
-# TEMPLATE SUBSTITUTION -- the yard rewrites the chief's standing
-# orders (and any other templated fittings) from the current crew, on
-# the way up.  templates/ arrives via a stack's ./install; crew.env is
-# generated from the articles.  ROUTINGS NAME A ROOM AND A CREW
-# MEMBER (ruling 2026-08-24): ${BASILISK_POST_<POSTING>_ROOM}
+# TEMPLATE SUBSTITUTION -- the yard rewrites the Transporter Chief's
+# standing orders (and any other templated fittings) from the current
+# crew, on the way up.  templates/ arrives via a stack's ./install;
+# crew.env is generated from the articles.  ROUTINGS NAME A ROOM AND A
+# CREW MEMBER (ruling 2026-08-24): ${BASILISK_POST_<POSTING>_ROOM}
 # resolves to the room where that posting stands (the container
 # hostname), and ${BASILISK_POST_<POSTING>_<FREQ>_PORT} to the aboard
 # port the crew member standing it answers on -- "the captain in the
@@ -1440,9 +1440,9 @@ _crew_display() {
 # board ships as a binary with a :post :comms.  Until 2026-08-17 it
 # would have fallen through to the unknown pool and sounded like no
 # one.  The Communications Officer answers to a Korean given name;
-# the transporter room is kept by an old Irish line of chiefs, the
-# most honored name of the line left off the rolls out of respect.
-# Each pool keeps its own corner of the sonic space: captain
+# the transporter room is kept by an old Irish line of Transporter
+# Chiefs, the most honored name of the line left off the rolls out of
+# respect.  Each pool keeps its own corner of the sonic space: captain
 # consonant-heavy, gendl liquid, gdl English-gentry, autoheal vocalic.
 _crew_onsets_for() {
     case "$1" in
