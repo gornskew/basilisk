@@ -183,7 +183,10 @@ feed_sync() {   # mirror the lab's deployments into $FC_DIR/feed/<engine>/<name>
 }
 
 refresh_disk() {   # refresh_disk NAME DIR ENGINE: the deployment's new files into its existing data disk (no mount: debugfs)
-    local name=$1 dir=$2 engine=$3 disk=$FC_DIR/$name.data.ext4 path=/prompt-lab-deployed/$engine/$name f want got
+    # (two locals: a word of one local is expanded before its earlier
+    # names are set, so disk and path took the caller's $name)
+    local name=$1 dir=$2 engine=$3 f want got
+    local disk=$FC_DIR/$name.data.ext4 path=/prompt-lab-deployed/$engine/$name
     [ -f "$disk" ] || return 0
     # the guest was killed, not unmounted: its journal is dirty, and the
     # next boot would replay it OVER anything written here -- replay it first
@@ -196,6 +199,23 @@ refresh_disk() {   # refresh_disk NAME DIR ENGINE: the deployment's new files in
         debugfs -w -R "set_inode_field $path/$f gid 1000" "$disk" >/dev/null 2>&1 || true
         want=$(stat -c %s "$dir/$f"); got=$(debugfs -R "stat $path/$f" "$disk" 2>/dev/null | sed -n 's/.*Size: \([0-9]*\).*/\1/p' | head -1)
         [ "$want" = "$got" ] || log "$name: $f did not go onto the disk (size $got, wanted $want)"
+    done
+    # and its files/ -- the session's uploaded files, which the app reads
+    # (the lab's own-file) -- made to match the deployment's, file by file
+    # (names are the lab's safe file names: no spaces, no slashes)
+    debugfs -w -R "mkdir $path/files" "$disk" >/dev/null 2>&1 || true
+    debugfs -w -R "set_inode_field $path/files uid 1000" "$disk" >/dev/null 2>&1 || true
+    debugfs -w -R "set_inode_field $path/files gid 1000" "$disk" >/dev/null 2>&1 || true
+    for f in $(debugfs -R "ls -p $path/files" "$disk" 2>/dev/null | awk -F/ '$6 != "" && $6 != "." && $6 != ".." {print $6}'); do
+        debugfs -w -R "rm $path/files/$f" "$disk" >/dev/null 2>&1 || true
+    done
+    for f in "$dir"/files/*; do
+        [ -f "$f" ] || continue
+        debugfs -w -R "write $f $path/files/${f##*/}" "$disk" >/dev/null 2>&1 || true
+        debugfs -w -R "set_inode_field $path/files/${f##*/} uid 1000" "$disk" >/dev/null 2>&1 || true
+        debugfs -w -R "set_inode_field $path/files/${f##*/} gid 1000" "$disk" >/dev/null 2>&1 || true
+        want=$(stat -c %s "$f"); got=$(debugfs -R "stat $path/files/${f##*/}" "$disk" 2>/dev/null | sed -n 's/.*Size: \([0-9]*\).*/\1/p' | head -1)
+        [ "$want" = "$got" ] || log "$name: files/${f##*/} did not go onto the disk (size $got, wanted $want)"
     done
 }
 
