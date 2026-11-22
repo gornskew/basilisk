@@ -30,10 +30,14 @@
 # live/<ship>; a rename that fails means another visitor took that one, so
 # it tries the next.  An empty ready/ means the pool is spent: offer a queue.
 #
-# Each ship's internal network is joined by two rooms from outside: the
-# reverse proxy (SHIPS_CHIEF_SERVICE, a compose service name) and a relay
-# of the ship's own, aliased gate-relay on that network, forwarding one
-# port to the language-model gate (SHIPS_GATE, host:port; none if empty).
+# Each ship's internal network is joined by one room from outside: the
+# reverse proxy (SHIPS_CHIEF_SERVICE, a compose service name), aliased
+# gate-relay there.  It routes visitors in to the ship, and it is the
+# ship's only way out: what the ship sends it goes to the language-model
+# gate's lab doors, stamped with the ship's name, or nowhere (cyclops
+# session-ships, CYCLOPS_SESSION_SHIPS_GATE).  It knows a ship by its
+# network: each ship's entry in raising/, ready/ and live/ holds the
+# network's subnets on its first line.
 #
 #   ship-launcher run           the loop (a systemd service runs this)
 #   ship-launcher tick          one pass: strike, attach, fill
@@ -48,8 +52,6 @@ CAP=${SHIPS_CAP:-30}
 WARM=${SHIPS_WARM:-4}
 TICK=${SHIPS_TICK:-3}
 CHIEF=${SHIPS_CHIEF_SERVICE:-transporter-room}
-GATE=${SHIPS_GATE:-}
-RELAY_IMAGE=${SHIPS_RELAY_IMAGE:-alpine/socat:1.8.0.0}
 LIFETIME=${SHIPS_SESSION_LIFETIME:-1800}
 # a claimed ship whose visitor never opened a session is struck after this
 CLAIM_IDLE=${SHIPS_CLAIM_IDLE:-600}
@@ -103,14 +105,10 @@ raise() {
   if ! compose "$ship" up -d >/dev/null 2>&1; then
     log "raise $ship failed"; strike "$ship"; return 1
   fi
-  if [ -n "$GATE" ]; then
-    docker run -d --name "$ship-relay" --restart unless-stopped --read-only --cap-drop ALL \
-      --security-opt no-new-privileges --memory 32m --pids-limit 64 \
-      --label "session-ship=$ship" "$RELAY_IMAGE" "TCP-LISTEN:80,fork,reuseaddr" "TCP:$GATE" >/dev/null &&
-      docker network connect --alias gate-relay "$ship-net" "$ship-relay"
-  fi
-  local c; c=$(chief); [ -n "$c" ] && docker network connect "$ship-net" "$c" 2>/dev/null
-  touch "$HOME_DIR/raising/$ship"
+  local c; c=$(chief); [ -n "$c" ] && docker network connect --alias gate-relay "$ship-net" "$c" 2>/dev/null
+  # the entry names the ship's network, by which the reverse proxy knows
+  # (and confines) what the ship sends it; a claim's rename carries it
+  docker network inspect -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}' "$ship-net" > "$HOME_DIR/raising/$ship"
   log "raised $ship"
 }
 
@@ -122,6 +120,7 @@ strike() {
   if [ -d "$archive" ] && [ -n "$(ls -A "$archive" 2>/dev/null)" ]; then
     mv "$archive" "$HOME_DIR/archive-spool/$ship"
   fi
+  # a gate relay, from a launcher before the reverse proxy carried the calls
   docker rm -f "$ship-relay" >/dev/null 2>&1
   local c; c=$(chief); [ -n "$c" ] && docker network disconnect "$ship-net" "$c" >/dev/null 2>&1
   compose "$ship" down -v --remove-orphans >/dev/null 2>&1
@@ -135,7 +134,7 @@ attach() {
   local joined; joined=$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$c")
   for ship in $(ships_in raising) $(ships_in ready) $(ships_in live); do
     case " $joined " in *" $ship-net "*) ;; *)
-      docker network connect "$ship-net" "$c" 2>/dev/null && log "proxy joined to $ship-net" ;;
+      docker network connect --alias gate-relay "$ship-net" "$c" 2>/dev/null && log "proxy joined to $ship-net" ;;
     esac
   done
 }
