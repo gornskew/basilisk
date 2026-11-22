@@ -142,9 +142,9 @@ mounted at /projects in each).")
         (push (format "    name: ${DOCKER_NETWORK_NAME:-%s}" network-name) lines)
         (push "    driver: bridge" lines)
         ;; A sealed ship (:network-internal): no route off the box at
-        ;; all; its rooms reach each other and whatever a room outside
-        ;; joins to it (a session ship's Transporter Chief and gate
-        ;; relay)
+        ;; all; its rooms reach each other and whatever room outside
+        ;; joins it (for a session ship, the transporter room of the
+        ;; ship alongside)
         (when (skewed--get-prop defaults :network-internal)
           (push "    internal: true" lines))
         (when ipv6

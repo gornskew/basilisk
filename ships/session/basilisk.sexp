@@ -21,10 +21,11 @@
 ;;;    ttyd, its SLIME on the bridge, nothing else in reach (session.el, and
 ;;;    the door script session-enter, beside this file).
 ;;;
-;;; The network is internal: no route off the host.  Rooms outside are
-;;; JOINED to it by whatever raises the ship: a reverse proxy that routes
-;;; the session's pages and console in, and a relay that forwards one port
-;;; to the language-model gate.
+;;; The network is internal: no route off the host.  One room outside is
+;;; JOINED to it by whatever raises the ship: the transporter room of the
+;;; ship alongside.  Its Transporter Chief, a reverse proxy, routes the
+;;; session's pages and console in and is the ship's only way out, to the
+;;; language-model gate that a transporter room keeps as a service.
 ;;;
 ;;; Raised per session as compose project ${SHIP_NAME}, with:
 ;;;   SHIP_NAME     the ship's name; also its network (with DOCKER_NETWORK_NAME),
