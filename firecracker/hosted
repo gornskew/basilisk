@@ -32,7 +32,10 @@
 # password TOKEN -- what the private front hands the author's browser;
 # with MONETIZE=1 and FRONT, the private front's session doors as the
 # guest reaches them, its deploys go there: a session that sells;
-# MONETIZE=free, the same for open work that charges nothing only), EGRESS
+# MONETIZE=free, the same for open work that charges nothing only; AUTHOR
+# and STANDING, the session's author key and the standing the front read for
+# it, which the guest's lab answers for that key, since the gate answers no
+# VM), EGRESS
 # (gate, the default: a guest reaches the gate and FRONT and nothing else;
 # open: whatever the hangar reaches),
 # FC_CPUS (the host CPUs a VM may run on, as taskset reads a list:
@@ -342,6 +345,12 @@ up_restored() {  # the lab already loaded: restore, activate, publish
         [ "${MONETIZE:-0}" = 1 ] && [ -n "${FRONT:-}" ] && session="$session$(printf ' :front "%s" :monetize t' "$(guest_gate_url "$FRONT")")"
         # free deploys only: open work that charges nothing, through the same front
         [ "${MONETIZE:-0}" = free ] && [ -n "${FRONT:-}" ] && session="$session$(printf ' :front "%s" :monetize :free' "$(guest_gate_url "$FRONT")")"
+        # the author the session was opened for, and the standing the front
+        # read for them: the gate answers no VM (Ruling 449).  Checked here
+        # again, since they go into Lisp
+        if [[ ${AUTHOR:-} =~ ^[0-9a-f]{24}$ && ${STANDING:-} =~ ^(trusted|monetizing)$ ]]; then
+            session="$session$(printf ' :author "%s" :standing "%s"' "$AUTHOR" "$STANDING")"
+        fi
     fi
     code="(gdl-user::hosted-activate! :gate \"$(guest_gate_url "$GATE_URL")\" :lab \"$LAB\" :lock \"$LOCK\" :ip \"$(guest_ip "$slot")\" :gw \"$(tap_ip "$slot")\" :epoch $(date +%s)$session)"
     answer=$(curl -s --max-time 5 -X POST -H 'Content-Type: application/json' -H "X-Lisply-Secret: $(cat "$snap/lisply-secret")" \

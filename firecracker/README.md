@@ -417,6 +417,17 @@ restored from the same snapshot as the apps.  The pieces:
   `/data`, its password the token, browsing on for the author's own
   archive, no human check, tolls as test payments, deploys off for
   now; `<prefix>/api/vm-idle` says how long it has been idle.
+- **The author's standing**: the gate answers no session machine about
+  a key, so the front writes into the request the standing it read when
+  the session opened (`standing`, trusted or monetizing; an older front's
+  `monetize` names the rung too), and the hangar activates the VM with
+  `:author` and `:standing`.  The lab answers that one key's standing
+  from there (its uploads, privacy and caps); any other key named in the
+  VM has none.  It is fixed for the VM's life: a standing lowered after
+  the session opened holds in the VM until the session ends -- idle
+  `HANGAR_SESSION_IDLE`, at most `HANGAR_SESSION_MAX` (12 hours by
+  default), or closed -- while the front asks the gate again at every
+  deploy.
 - **The author's disk**: one per author,
   `/fc/authors/<sha256 of the key, 16 hex>.data.ext4`, hard-linked as
   the VM's own while it flies (a symlink would fail the size check a

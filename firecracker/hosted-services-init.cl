@@ -113,7 +113,7 @@ the gate, the lab's name there, the password on the lab's own doors."
 
 (defvar *hosted-activated-at* nil "When this clone was activated (universal time).")
 
-(defun hosted-configure-session (gate lab token &key front id monetize)
+(defun hosted-configure-session (gate lab token &key front id monetize author standing)
   "A PRIVATE SESSION's lab: the whole lab, page and agent, for one author
 the gate allows it, its sessions, archive and files on the VM's own disk,
 behind TOKEN -- the lab's password, which the private front hands the
@@ -144,6 +144,16 @@ deployment and its books, and this VM books nothing."
   (when (hosted-find "*BOOKS?*" :prompt-lab) (hosted-set "*BOOKS?*" t))
   (hosted-set "*MESSAGES-URL*" (or gate "http://transporter-room/llm/messages"))
   (when (and lab (hosted-find "*LAB-NAME*" :prompt-lab)) (hosted-set "*LAB-NAME*" lab))
+  ;; the AUTHOR the session was opened for and the STANDING the front read
+  ;; for them (Ruling 449): the gate answers no VM about a key, so the lab
+  ;; answers this one key's standing from here -- its uploads, privacy and
+  ;; caps as the author's rung allows.  Any other key named in the VM is
+  ;; asked of the gate as before, and has none.  A lab without the switch
+  ;; (an older image) skips it
+  (when (and (stringp author) (= (length author) 24) (every (lambda (c) (digit-char-p c 16)) author)
+             (member standing '("trusted" "monetizing") :test #'equal)
+             (hosted-find "*ACTIVATION-AUTHOR*" :prompt-lab))
+    (hosted-set "*ACTIVATION-AUTHOR*" (list author standing)))
   ;; MONETIZE :free (a trusted author): deploys through the front too, but
   ;; only open work that charges nothing -- no closed source, tolls as test
   ;; payments in the previews, the front refusing anything that charges
@@ -213,14 +223,15 @@ VM generation counter reseeds on restore)."
     (when (and iid (boundp iid)) (setf (symbol-value iid) (make-random-state t))))
   (dotimes (i (mod (hosted-urandom-integer 2) 4096)) (random 2)))
 
-(defun hosted-activate! (&key gate lab lock ip gw epoch mode token id front monetize)
+(defun hosted-activate! (&key gate lab lock ip gw epoch mode token id front monetize author standing)
   "Activate a clone restored from the template's snapshot.  Hands the
 guest's init its new address, clock and disk, and returns at once (the
 address is about to move under the caller); a thread of its own waits for
 the disk, then configures and publishes.  /run/hosted/up says when.
 MODE :session makes it a private session's full lab behind TOKEN
 (hosted-configure-session; ID, FRONT and MONETIZE for a session that
-sells); otherwise a deployment's runtime."
+sells; AUTHOR and STANDING, the author and rung it was opened for);
+otherwise a deployment's runtime."
   ;; the template's lisply secret is every clone's until now: this one's
   ;; becomes a fresh one nobody holds (the caller is already through)
   (let ((secret (hosted-find "*LISPLY-SECRET*" :gendl-lisply)))
@@ -245,7 +256,8 @@ sells); otherwise a deployment's runtime."
                (progn (setq *hosted-activated-at* (get-universal-time))
                       (hosted-reseed)
                       (if (eq mode :session)
-                          (progn (hosted-configure-session gate lab token :front front :id id :monetize monetize)
+                          (progn (hosted-configure-session gate lab token :front front :id id :monetize monetize
+                                                           :author author :standing standing)
                                  (hosted-publish-session))
                           (progn (hosted-configure gate lab lock) (hosted-publish))))
                (format t "~&[hosted-init] activation: the deployment's disk did not mount~%")))

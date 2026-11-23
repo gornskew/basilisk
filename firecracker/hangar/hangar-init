@@ -350,7 +350,7 @@ session_end() {   # session_end ID WHY: the VM down, the author's disk kept, the
 
 sessions() {   # one pass over the private sessions' spool
     [ -d "$SPOOL/requests" ] || return 0
-    local f id wallet token port disk other idle busy age why answer mon front
+    local f id wallet token port disk other idle busy age why answer mon front standing
     for f in "$SPOOL/requests"/*.json; do
         [ -f "$f" ] || continue
         id=$(jq -r '.id // empty' "$f" 2>/dev/null); wallet=$(jq -r '.wallet // empty' "$f" 2>/dev/null); token=$(jq -r '.token // empty' "$f" 2>/dev/null)
@@ -360,6 +360,16 @@ sessions() {   # one pass over the private sessions' spool
         case "$(jq -r '.monetize // false' "$f" 2>/dev/null)" in
             true) [ -n "$FRONT_URL" ] && { mon=1; front=$FRONT_URL; } ;;
             free) [ -n "$FRONT_URL" ] && { mon=free; front=$FRONT_URL; } ;;
+        esac
+        # the author's standing as the front read it from the gate (the gate
+        # answers no VM, so the session takes it from here: Ruling 449); a
+        # front from before says only monetize, which names the rung too
+        standing=$(jq -r '.standing // empty' "$f" 2>/dev/null)
+        case $standing in
+            trusted|monetizing) ;;
+            *) case "$(jq -r '.monetize // false' "$f" 2>/dev/null)" in
+                   true) standing=monetizing ;; free) standing=trusted ;; *) standing= ;;
+               esac ;;
         esac
         if ! [[ $id =~ ^pl-[0-9a-f]{10}$ && $wallet =~ ^[0-9a-f]{24}$ && $token =~ ^[0-9a-f]{32}$ && $(basename "$f" .json) = "$id" ]]; then
             log "a malformed session request ($(basename "$f")) dropped"; rm -f "$f"; continue
@@ -383,7 +393,7 @@ sessions() {   # one pass over the private sessions' spool
         ln -f "$disk" "$FC_DIR/$id.data.ext4"; echo "$wallet" > "$run/$id.wallet"
         port=$(next_port)
         log "$id: a private session$([ "$mon" = 1 ] && echo ' with Monetize')$([ "$mon" = free ] && echo ' with free deploys'); raising its VM on :$port"
-        local out rc; out=$(MODE=session TOKEN=$token LAB=$SESSION_LAB MONETIZE=$mon FRONT=$front $HOSTED up "$id" "$port" 2>&1); rc=$?
+        local out rc; out=$(MODE=session TOKEN=$token LAB=$SESSION_LAB MONETIZE=$mon FRONT=$front AUTHOR=$wallet STANDING=$standing $HOSTED up "$id" "$port" 2>&1); rc=$?
         [ -z "$out" ] || printf '%s\n' "$out" | sed 's/^/  /'
         if [ "$rc" = 0 ] && vm_running "$id"; then
             register "$id" up "$port" "A private session"
