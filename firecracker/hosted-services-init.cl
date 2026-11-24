@@ -83,6 +83,65 @@ upper-case name there is another symbol."
   (hosted-set "*URL-PREFIX*" "/prompt-lab/solid")
   (hosted-set "*ENGINE*" :solid))
 
+;; THE DOORS A RUNTIME DOES NOT OPEN (2026-11-23).  A deployed application
+;; offers its own addresses and nothing a developer works through; a
+;; private session's lab offers the lab's.  What a Gendl image publishes
+;; for its developer -- the browsers and portals, the classic form door,
+;; the make door, the remote-object doors, and the developer children every
+;; page carries under its own /sessions/ address -- is answered here as an
+;; address that does not exist, by a filter the web server runs ahead of
+;; every lookup.  A deployment that needs one of them names it on its
+;; kernel line (hosted.open=/path,/path) or at activation (:open).
+(defparameter *hosted-closed-paths*
+  '("/sluice" "/sluice-demo" "/geysr" "/yayao" "/make" "/answer" "/color-map" "/color-palette"
+    "/test-view" "/make-remote-object" "/send-remote-message" "/send-remote-output"
+    "/fetch-remote-input" "/unbind-slots" "/delete-remote-object")
+  "Paths a hosted runtime answers as not existing, with any path under them.")
+
+(defparameter *hosted-closed-prefixes* '("/geysr-static" "/demos/robot")
+  "Path prefixes a hosted runtime answers as not existing.")
+
+(defparameter *hosted-open-paths* nil
+  "Paths of *hosted-closed-paths* this deployment keeps open (hosted.open).")
+
+(defun hosted-closed-path-p (path)
+  "True for PATH, a request's decoded path, when this runtime does not open it."
+  (and (stringp path)
+       (not (member path *hosted-open-paths* :test #'string=))
+       (or (some (lambda (p)
+                   (and (not (member p *hosted-open-paths* :test #'string=))
+                        (or (string= path p)
+                            (and (> (length path) (length p))
+                                 (string= p path :end2 (length p))
+                                 (char= (char path (length p)) #\/)))))
+                 *hosted-closed-paths*)
+           (some (lambda (p) (and (>= (length path) (length p)) (string= p path :end2 (length p))))
+                 *hosted-closed-prefixes*)
+           (search "/$$" path))))
+
+(defun hosted-door-filter (req)
+  "The web server's filter: a request for a closed path is looked up as an
+address nothing answers, so the server answers it as it answers any
+unknown address."
+  (let ((path (ignore-errors (net.aserve::request-decoded-uri-path req))))
+    (when (hosted-closed-path-p path)
+      (setf (net.aserve::request-decoded-uri-path req) "/hosted-closed")))
+  nil)
+
+(defun hosted-close-doors! (&optional open)
+  "Put hosted-door-filter on every server, OPEN (a list of paths, or a
+comma-separated string) kept open."
+  (setq *hosted-open-paths*
+        (if (stringp open)
+            (remove "" (mapcar (lambda (s) (string-trim " " s)) (uiop:split-string open :separator ","))
+                    :test #'string=)
+            open))
+  (gwl:with-all-servers (server)
+    (pushnew 'hosted-door-filter (net.aserve:wserver-filters server))))
+
+;; at load, so the template and every clone restored from it carry it
+(hosted-close-doors! (hosted-arg "hosted.open"))
+
 (defun hosted-configure (gate lab lock)
   "Point the lab at the deployment's disk and set what is this clone's:
 the gate, the lab's name there, the password on the lab's own doors."
@@ -223,7 +282,7 @@ VM generation counter reseeds on restore)."
     (when (and iid (boundp iid)) (setf (symbol-value iid) (make-random-state t))))
   (dotimes (i (mod (hosted-urandom-integer 2) 4096)) (random 2)))
 
-(defun hosted-activate! (&key gate lab lock ip gw epoch mode token id front monetize author standing)
+(defun hosted-activate! (&key gate lab lock ip gw epoch mode token id front monetize author standing open)
   "Activate a clone restored from the template's snapshot.  Hands the
 guest's init its new address, clock and disk, and returns at once (the
 address is about to move under the caller); a thread of its own waits for
@@ -232,6 +291,8 @@ MODE :session makes it a private session's full lab behind TOKEN
 (hosted-configure-session; ID, FRONT and MONETIZE for a session that
 sells; AUTHOR and STANDING, the author and rung it was opened for);
 otherwise a deployment's runtime."
+  ;; a deployment that needs a door the runtime keeps shut names it (OPEN)
+  (when open (hosted-close-doors! open))
   ;; the template's lisply secret is every clone's until now: this one's
   ;; becomes a fresh one nobody holds (the caller is already through)
   (let ((secret (hosted-find "*LISPLY-SECRET*" :gendl-lisply)))
