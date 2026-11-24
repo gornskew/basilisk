@@ -235,7 +235,14 @@ deployment and its books, and this VM books nothing."
   "GET <prefix>/api/vm-idle: how long this private session's VM has been idle
 (seconds since its last session was used, or since activation when none
 was), how many sessions it holds and whether one is working -- what the
-hangar reads to take an idle VM down."
+hangar reads to take an idle VM down.  The hangar asks at the VM's own
+address; a request addressed by name came through a Transporter Chief,
+from anyone, and finds nothing here (404)."
+  (let ((host (or (net.aserve:header-slot-value req :host) "")))
+    (unless (every (lambda (c) (or (digit-char-p c) (find c ".:[]"))) host)
+      (return-from hosted-idle-door
+        (net.aserve:with-http-response (req ent :response net.aserve:*response-not-found*)
+          (net.aserve:with-http-body (req ent))))))
   (let* ((now (get-universal-time))
          (last (or *hosted-activated-at* now))
          (count 0) (busy nil))
