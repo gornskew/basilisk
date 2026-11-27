@@ -35,6 +35,12 @@
 
 (defvar bcl-failures 0 "Checks failed so far.")
 
+(defvar bcl-eval nil
+  "Whether to ask a lab room for its agent tools by an eval on its own
+lisply door (`--eval').  Off by default: the tool list is the lab's own
+test's (demos prompt-lab/test/level-tools.lisp), and an eval in a
+production room wants its own word.")
+
 (defvar bcl-secret-name-re
   "secret\\|token\\|passw\\|api[_-]?key\\|private[_-]?key\\|credential\\|stripe\\|anthropic\\|lisply"
   "What a name looks like when it holds or names a secret (case ignored).")
@@ -136,11 +142,22 @@ Values: (EXIT . OUTPUT)."
            (out (bcl-docker "exec" container "sh" "-c" script)))
       (cond ((null out) (bcl-say 'skip "no secret-named files" "the search could not run"))
             ((string-empty-p out) (bcl-say 'pass "no secret-named files" (format "searched %d place(s)" (length (delete-dups dirs)))))
-            (t (let ((lines (split-string out "\n" t)))
+            (t (let* ((lines (split-string out "\n" t))
+                      ;; by the place searched and the file's name: a path's
+                      ;; middle (a session's directory, say) is never printed
+                      (groups (let ((h (make-hash-table :test #'equal)))
+                                (dolist (l lines)
+                                  (let* ((path (cadr (split-string l " ")))
+                                         (top (or (cl-find-if (lambda (d) (string-prefix-p (file-name-as-directory d) path))
+                                                              (sort (copy-sequence (delete-dups dirs)) (lambda (a b) (> (length a) (length b)))))
+                                                  "?"))
+                                         (key (format "%s/.../%s" (directory-file-name top) (file-name-nondirectory path))))
+                                    (puthash key (1+ (gethash key h 0)) h)))
+                                (let (g) (maphash (lambda (k v) (push (if (> v 1) (format "%s x%d" k v) k) g)) h) (sort g #'string<)))))
                  (bcl-say 'fail "no secret-named files"
                           (format "%d found (%d readable by the room): %s" (length lines)
                                   (cl-count-if (lambda (l) (string-prefix-p "readable" l)) lines)
-                                  (mapconcat (lambda (l) (cadr (split-string l " "))) (seq-take lines 12) ", ")))))))))
+                                  (string-join (seq-take groups 15) ", ")))))))))
 
 (defun bcl-check-harden (inspect room)
   (let ((want (plist-get room :harden)))
@@ -208,7 +225,9 @@ Values: (EXIT . OUTPUT)."
   "A lab room's agent tools for a session of no kind, asked of the room's own
 lisply door (a read: the tool list is computed, nothing kept)."
   (let ((allowed (plist-get (plist-get room :tools) :model)))
-    (when allowed
+    (when (and allowed (not bcl-eval))
+      (bcl-say 'skip "the lab's agent tools are the level's" "no eval asked for (--eval)"))
+    (when (and allowed bcl-eval)
       (let* ((code "(format nil \"~{~a~^ ~}\" (map 'list (lambda (tool) (cdr (assoc \"name\" tool :test 'string=))) (prompt-lab:tool-definitions)))")
              (body (json-encode `(("code" . ,code) ("package" . "prompt-lab"))))
              (script (format "s=''; [ -n \"$GENDL_LISPLY_SECRET_FILE\" ] && [ -r \"$GENDL_LISPLY_SECRET_FILE\" ] && s=$(head -n1 \"$GENDL_LISPLY_SECRET_FILE\"); curl -s -m 10 -X POST -H 'Content-Type: application/json' -H \"X-Lisply-Secret: $s\" -d %s http://localhost:${HTTP_PORT:-9080}/lisply/lisp-eval"
@@ -325,10 +344,12 @@ lisply door (a read: the tool list is computed, nothing kept)."
 
 (defun basilisk-check-level-main ()
   "The command line: LEVEL [TARGET] in `command-line-args-left'."
+  (setq bcl-eval (and (member "--eval" command-line-args-left) t)
+        command-line-args-left (remove "--eval" command-line-args-left))
   (let ((level (pop command-line-args-left))
         (target (pop command-line-args-left)))
     (unless level
-      (princ "usage: basilisk check-level LEVEL [PROJECT-OR-VM]   (levels: l2 l3 l4 l5)\n")
+      (princ "usage: basilisk check-level LEVEL [PROJECT-OR-VM] [--eval]   (levels: l2 l3 l4 l5)\n")
       (kill-emacs 2))
     (kill-emacs (if (zerop (basilisk-check-level level target)) 0 1))))
 

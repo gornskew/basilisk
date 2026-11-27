@@ -12,7 +12,7 @@
  :rooms
  ((:service "bridge"
    :what "the free lab, Gendl on CCL"
-   :mounts ("/state" "/labs-state" "/home/gendl-user/gdl-services-init.cl")
+   :mounts ("/state" "/labs-state" "/demos-pristine" "/monocle" "/home/gendl-user/gdl-services-init.cl")
    :tmpfs ("/tmp")
    :secret-env nil
    :secret-files nil
@@ -33,7 +33,7 @@
                    "describe_object" "search_docs" "list_files" "read_file")))
   (:service "guild-workshop"
    :what "the free lab's solids room, Genworks GDL on Allegro"
-   :mounts ("/state" "/labs-state" "/home/gdl-user/gdl-services-init.cl")
+   :mounts ("/state" "/labs-state" "/demos-pristine" "/monocle" "/home/gdl-user/gdl-services-init.cl")
    :tmpfs ("/tmp")
    :secret-env nil
    :secret-files nil
