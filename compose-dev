@@ -372,6 +372,7 @@ COMMANDS:
     init               Initialize environment (.env setup via generate-env.sh)
     install-shell-functions  Write ${_sh_term}/${_sh_gui} helpers (+ eskew/egskew aliases) to shell RC file(s)
     config             Show merged Docker Compose configuration
+    check-level L [T]  Check a carved level (l2 l3 l4 l5) against the running ship, read-only
 
 ${_sh_WORD}S:
 EOF
@@ -2768,6 +2769,10 @@ main() {
 
     case "${1:-help}" in
         help|--help|-h) ;;
+        # what a carved level allows, checked against the running ship
+        # (levels/README.md): read-only, so before any preflight that could
+        # write; secrets by name and length only
+        check-level) shift; exec emacs --batch -Q -l "$SCRIPT_DIR/levels/check-level.el" -f basilisk-check-level-main "$@" ;;
         *) preflight_checks || exit 1 ;;
     esac
 
