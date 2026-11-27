@@ -198,7 +198,9 @@ Values: (EXIT . OUTPUT)."
   (if (plist-get probe :ip-of)
       (let ((c (bcl-container (or (plist-get probe :project) project) (plist-get probe :ip-of))))
         (and c (bcl-ip c)))
-    (plist-get probe :to)))
+    ;; only a room of this ship: a name it does not have is not looked up,
+    ;; so no question about it leaves the host
+    (and (bcl-container project (plist-get probe :to)) (plist-get probe :to))))
 
 (defun bcl-check-probes (container room project)
   (if (not (equal (bcl-docker "exec" container "sh" "-c" "command -v curl >/dev/null && echo yes") "yes"))
